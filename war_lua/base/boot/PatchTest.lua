@@ -1,0 +1,106 @@
+-- 测试补丁专用
+
+-- 形式1
+-- local BattleUtils = {}
+
+-- return BattleUtils
+
+-- G_patchTab["game.utils.init"] = function () 
+--     function BattleUtils.battleDemo_Guide() 
+--     	print("asdasdasd") 
+--     end 
+-- end
+
+
+-- 形式2
+-- local LoginView = class("LoginView", BaseView)
+-- return LoginView
+-- view 层需要回传当前View否则无法获得到
+-- G_patchTab["game.view.login.LoginView"] = function (LoginView) 
+-- 	function LoginView:destroy()
+-- 	    cc.Device:setAccelerometerEnabled(false)
+-- 	    if self._acceleLayer then
+-- 	        local dispatcher = cc.Director:getInstance():getEventDispatcher()
+-- 	        dispatcher:removeEventListenersForTarget(self._acceleLayer, true)
+-- 	    end
+-- 	    if self._spineLayer then
+-- 	        self._spineLayer:removeAllChildren()
+-- 	    end
+-- 	    spineMgr:clear()
+-- 	    ScheduleMgr:unregSchedule(self._updateId)
+-- 	    ScheduleMgr:unregSchedule(self._effUpdateId)
+-- 	    ScheduleMgr:unregSchedule(self._acceleUpdateId)
+-- 	    cc.SpriteFrameCache:getInstance():removeSpriteFramesFromFile("asset/ui/login.plist")
+-- 	    cc.Director:getInstance():getTextureCache():removeTextureForKey("asset/ui/login.png")
+
+-- 	    -- 不释放资源
+-- 	    LoginView.super.destroy(self, false)
+-- 	end
+-- end
+
+-- 形式3
+-- ios 需要64
+-- local UpdateView = package.loaded['base.boot.UpdateView'] 
+-- UpdateView.checkLockDb = function(self, inVersion)
+--     self:closeInfo(nil)
+--     local status = 0
+--     local reslibFileName = self._configMgr:getValue('RESLIB_FILENAME')
+--     local reslibTableNames = self._pcdbMgr:execute_sqlite3('select name from sqlite_master where type = \"table\" order by name', reslibFileName)
+--     --当前客户端版本号列表,直接切换到线上或者线上之前的一个版本,然后重新检查更新
+--     local dbContent = cjson.decode(reslibTableNames).content
+--     for i = #dbContent, 1, -1 do
+--         local backNum = tonumber(string.sub(dbContent[i], 9, string.len(dbContent[i])))
+--         if backNum == tonumber(inVersion) then
+--             local reslibTableDatas = self._pcdbMgr:execute_sqlite3('select count(*) from ' .. dbContent[i] , reslibFileName)
+--             local dbContent = cjson.decode(reslibTableDatas).content
+--             if dbContent[1] ~= nil and tonumber(dbContent[1]) > 0 then
+--                 self._configMgr:setValue('APP_BUILD_NUM', inVersion)
+--                 self._configMgr:save()
+--                 self._pcdbMgr:setCurrentVersion(inVersion)                
+--                 status = 1
+--                 break
+--             end
+--         end
+--     end
+--     return status
+-- end
+
+-- local tempHandleUpdatePackage = UpdateView.handleUpdatePackage
+-- UpdateView.handleUpdatePackage1 = tempHandleUpdatePackage
+-- UpdateView.handleUpdatePackage = function(self, inData) 
+--     local newVersion = inData.v and inData.v.version
+--     if self:checkLockDb(newVersion) == 1 then
+--         self:updateRes(true)
+--         return
+--     else
+--         self:handleUpdatePackage1(inData)
+--         cc.FileUtils:getInstance():purgeCachedEntries()
+--     end
+-- end
+
+-- UpdateView.handleRollBack1 = function(self, inData)
+--     self:closeInfo(nil)
+--     local reslibFileName = self._configMgr:getValue('RESLIB_FILENAME')
+--     local reslibTableNames = self._pcdbMgr:execute_sqlite3('select name from sqlite_master where type = \"table\" order by name', reslibFileName)
+--     --当前客户端版本号列表,直接切换到线上或者线上之前的一个版本,然后重新检查更新
+--     local dbContent = cjson.decode(reslibTableNames).content
+--     local status = 0
+--     for i = #dbContent, 1, -1 do
+--         local backNum = tonumber(string.sub(dbContent[i], 9, string.len(dbContent[i])))
+--         if backNum <= tonumber(inData.v.version) then
+--             -- self._appInformation:setCurrentVersion(tonumber(string.sub(dbContent[i], 9, string.len(dbContent[i]))))
+--             self._configMgr:setValue('APP_BUILD_NUM', backNum)
+--             self._configMgr:save()
+--             self._pcdbMgr:setCurrentVersion(backNum)
+--             status = 1
+--             break
+--         end
+--     end
+--     return status
+-- end
+
+-- UpdateView.handleRollBack = function(self, inData)
+--     if self:handleRollBack1(inData) == 1 then 
+--         self:updateRes(true)
+--     end
+-- end

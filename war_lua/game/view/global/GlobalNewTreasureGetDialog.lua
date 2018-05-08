@@ -1,0 +1,312 @@
+--
+-- Author: <wangguojun@playcrab.com>
+-- Date: 2016-11-09 23:02:04
+--
+--
+-- Author: huangguofang
+-- Date: 2016-08-25 16:16:54
+--
+local GlobalNewTreasureGetDialog = class("GlobalNewTreasureGetDialog",BasePopView)
+function GlobalNewTreasureGetDialog:ctor(param)
+    self.super.ctor(self)
+    self._gifts = param.gifts
+    self._callback = param.callback
+end
+
+-- 加载资源
+function GlobalNewTreasureGetDialog:getAsyncRes()
+    return 
+    {
+        {"asset/ui/treasureshop.plist", "asset/ui/treasureshop.png"},        
+    }
+end
+function GlobalNewTreasureGetDialog:getMaskOpacity()
+    return 230
+end
+-- 初始化UI后会调用, 有需要请覆盖
+function GlobalNewTreasureGetDialog:onInit()
+	self._closePanel = self:getUI("closePanel")
+    -- self._closePanel:setSwallowTouches(false)
+    self._isCloseClick = false
+    self._itemNames = {}
+    self._itemSps = {}
+    self._bg1 = self:getUI("bg.bg1")
+    self._bg1:setSwallowTouches(false)
+    self._touchLab = self:getUI("bg.touchLab")
+    self._touchLab:setVisible(true)
+    self._touchLab:setOpacity(0)
+
+    self._labels = {}
+    for i=0,2 do
+    	local label = self:getUI("bg.bg1.Label_29_" .. i)
+    	label:setFontName(UIUtils.ttfName)
+    	label:setVisible(false)
+    	table.insert(self._labels,label)
+    end
+
+end
+
+function GlobalNewTreasureGetDialog:animBegin(callback)
+   	-- 播放获得音效
+    audioMgr:playSound("ItemGain_1")
+
+    self._bg = self:getUI("bg")
+    local bgW,bgH = self._bg1:getContentSize().width,self._bg1:getContentSize().height
+
+ 	--撒碎纸片
+    -- local caidai = mcMgr:createViewMC("caidai_choubaowu", false,true)
+    -- caidai:setPosition(bgW/2,bgH+130)
+    -- self._bg1:addChild(caidai,5)
+    self:addPopViewTitleAnim(self._bg, "huodebaowu_huodetitleanim", 480, 480)
+    local Label_29_0 = self:getUI("bg.bg1.Label_29_0")
+    Label_29_0:setString("宝物兑换")
+    ScheduleMgr:delayCall(700, self, function( )
+        if self._bg then
+            --震屏
+            UIUtils:shakeWindow(self._bg)
+            ScheduleMgr:delayCall(200, self, function( )
+                if callback and self._bg1 then
+                    callback()
+                end
+            end)
+        end
+    end)
+   
+end
+
+-- 接收自定义消息
+function GlobalNewTreasureGetDialog:reflashUI(data)
+   
+	self.bgWidth,self.bgHeight = self._bg1:getContentSize().width,self._bg1:getContentSize().height
+	local gifts = self._gifts
+
+    local colMax = 5
+    local itemHeight,itemWidth = 155,147
+    local maxHeight = itemHeight * math.ceil( #gifts / colMax) + 80
+    local maxHeight = self._bg1:getContentSize().height
+
+    local x = 0
+    local y = 0
+
+    -- print("gifts===",#gifts)
+    local offsetX,offsetY = 0,0
+    local row = math.ceil( #gifts / colMax)
+    local col = #gifts
+    if col > colMax then
+        col = colMax
+    end
+
+    offsetX = (self.bgWidth-(col-1)*itemWidth)*0.5
+    --    矫正 - (row - 2) * 15  2行 +15 2行不加
+    offsetY = maxHeight/2 + row*itemHeight/2 - itemHeight/2 + 15  --maxHeight/2 - row * itemHeight/2 + (row -1) * itemHeight + itemHeight / 2 --offsetY + (row-1)*itemHeight +self.bgHeight/2 + 60
+    
+    x = x+offsetX-itemWidth
+    y = y+offsetY+60
+  
+  	--创建item
+    local showItems
+    showItems = function( idx )
+       -- print("=============idx=====",idx)
+       	if idx > #gifts then
+       		return
+       	end
+        x = x + itemWidth
+        if idx ~= 1 and (idx-1) % colMax == 0 then 
+            x =  offsetX
+            y = y - itemHeight
+        end
+        self:createItem(gifts[idx], x, y, idx,showItems)
+    end
+
+    local sizeSchedule
+    local step = 0.5
+    local stepConst = 30
+    local bg1Height = 200
+
+    self._bg1:setOpacity(0)
+    self:animBegin(function( )
+        self._bg1:setOpacity(255)
+        sizeSchedule = ScheduleMgr:regSchedule(1,self,function( )
+            stepConst = stepConst-step
+            if stepConst < 1 then 
+                stepConst = 1
+            end
+            bg1Height = bg1Height+stepConst
+            if bg1Height < maxHeight then
+                self._bg1:setContentSize(cc.size(self.bgWidth,bg1Height))
+            else
+                self._bg1:setContentSize(cc.size(self.bgWidth,maxHeight))
+                ScheduleMgr:unregSchedule(sizeSchedule)
+                self:addDecorateCorner()
+                self._touchLab:setPositionY(130)
+                -- title动画                
+            end
+        end)
+        --添加items 
+        showItems(1)
+    end)   
+
+    -- 自适应关闭label
+    self._touchLab:setPositionY(self._bg1:getPositionY() - self._bg1:getContentSize().height/2 - 30)
+
+end
+
+function GlobalNewTreasureGetDialog:createItem( data,x,y,index,nextFunc )
+    local itemData
+    local itemType = data[1] or data.type
+    local itemId = data[2] or data.typeId 
+    local itemNum = data[3] or data.num
+    if itemType ~= "tool" and itemType ~= "hero" and itemType ~= "team" then
+        itemId = iconIdMap[itemType]
+    end
+        
+    itemData = tab:Tool(itemId)
+    if itemData == nil then
+        print("==================itemID 不存在=====",itemId)
+    end
+    local item = IconUtils:createItemIconById({itemId = itemId,num = itemNum,itemData = itemData,effect = true,treasureCircle=false })  --effect = true 不加特效 --treasureCircle 不加内框
+    item:setSwallowTouches(true)
+    item:setAnchorPoint(cc.p(0,0))
+    item:setPosition(cc.p(x,y))
+    item:setScaleAnim(false)
+    -- item:setVisible(true)
+
+    -- local itemIcon = item:getChildByFullName("itemIcon")
+    -- itemIcon:setScale(0.85)
+
+    local newTag = ccui.ImageView:create()
+    newTag:loadTexture("treasureShop_NEW.png",1)
+    newTag:setPosition(0,50)
+    item:addChild(newTag,50)
+
+	local color = itemData.color or 2
+	--    local boxIcon = item:getChildByFullName("boxIcon")
+	--    boxIcon:setSwallowTouches(true)
+	-- if boxIcon ~= nil and itemData then 
+	-- 	boxIcon:loadTexture("treasureShop_color".. color ..".png", 1)
+	-- 	boxIcon:setContentSize(cc.size(116, 117))
+	-- end
+	-- local iconColor = item:getChildByFullName("iconColor")
+	-- if iconColor then
+	-- 	iconColor:setVisible(false)
+	-- end
+	-- local numLab = item:getChildByFullName("numLab")
+ --    numLab:setAnchorPoint(cc.p(0.5,0.5))
+	-- numLab:setPosition(numLab:getPositionX() + 5, numLab:getPositionY() + 2)
+
+
+	if 4 == color or 5 == color then
+		local sp = cc.Sprite:createWithSpriteFrameName("light_flashcard.png")
+		local action = cc.RepeatForever:create(cc.RotateBy:create(3.0, 360.0))
+		sp:setPosition(item:getContentSize().width/2,item:getContentSize().height/2)
+		sp:setScale(1.5)
+		sp:setName("light")
+		sp:runAction(action)
+		-- sp:setVisible(false)
+		table.insert(self._itemSps,sp)
+		item:addChild(sp,-2)
+	end
+
+    local itemNormalScale = 1 
+    if itemData and itemData.name then
+	    local itemName = ccui.Text:create()
+        itemName:setTextAreaSize(cc.size(100,50))
+        -- itemName:ignoreContentAdaptWithSize(false)
+        -- itemName:setContentSize(cc.size(50,100))
+        itemName:setTextHorizontalAlignment(1)
+        itemName:setTextVerticalAlignment(0)
+	    itemName:setString(lang(tostring(itemData.name)))
+	    itemName:setFontSize(20)
+        local color = ItemUtils.findResIconColor(itemId,itemNum)
+        itemName:setColor(UIUtils.colorTable["ccColorQuality" .. (color or 1)])
+        itemName:setFontName(UIUtils.ttfName)        
+        -- itemName:getVirtualRenderer():setLineHeight(100.0)
+        -- itemName:enableOutline(cc.c4b(0,0,0,255),2)
+        itemName:setAnchorPoint(cc.p(0.5,1))
+	    itemName:setPosition(cc.p(item:getContentSize().width/2,-10))
+	    item:addChild(itemName)
+        itemName:setVisible(false)
+        table.insert(self._itemNames,itemName)
+	end
+   
+    item:setAnchorPoint(cc.p(0.5,0.5))
+    self._bg1:addChild(item)
+
+    item:setOpacity(0)
+    item:setCascadeOpacityEnabled(true)
+    
+    --第一个item不需要延迟
+    local itemTime = (index -1) > 0 and 100 or 100
+    ScheduleMgr:delayCall(itemTime, self, function( )      
+        audioMgr:playSound("ItemGain_2")
+        -- if bgMc then
+        --     bgMc:setVisible(true)
+        -- end        
+        item:setScale(2.5)
+        if index == #self._gifts then
+            item:runAction(cc.Sequence:create(cc.Spawn:create(cc.FadeIn:create(0.15),cc.ScaleTo:create(0.1,itemNormalScale*0.7)),cc.CallFunc:create(function()
+            	local baowuguangMc = mcMgr:createViewMC("baowuguang_choubaowu", false, true)
+		        baowuguangMc:setPosition(item:getContentSize().width/2, item:getContentSize().height/2)
+		        baowuguangMc:setPlaySpeed(0.8)
+		        baowuguangMc:setScale(0.9)
+		        item:addChild(baowuguangMc,10)
+            end),
+            cc.ScaleTo:create(0.1,itemNormalScale),cc.CallFunc:create(function( )
+                --最后一个item播完动画，显示name
+                for k,v in pairs(self._itemNames) do
+                    v:setVisible(true)          
+                end  
+                for kk,vv in pairs(self._itemSps) do
+                    vv:setVisible(true)          
+                end              
+                -- item:setScaleAnim(true)
+            end)))
+        else        	
+            item:runAction(cc.Sequence:create(cc.Spawn:create(cc.FadeIn:create(0.15),cc.ScaleTo:create(0.1,itemNormalScale*0.8)),cc.CallFunc:create(function()
+            	local baowuguangMc = mcMgr:createViewMC("baowuguang_choubaowu", false, true)
+		        baowuguangMc:setPosition(item:getContentSize().width/2, item:getContentSize().height/2)
+		        baowuguangMc:setPlaySpeed(0.8)
+		        baowuguangMc:setScale(0.9)
+		        item:addChild(baowuguangMc,10)
+            end),
+            cc.ScaleTo:create(0.1,itemNormalScale),
+            cc.CallFunc:create(function( )
+            	-- item:setScaleAnim(true)
+            end)
+            ))
+        end
+          
+        if index == #self._gifts then
+        	--播完动画 注册关闭点击事件
+            ScheduleMgr:delayCall(120*index, self, function( )
+                self._touchLab:runAction(cc.FadeIn:create(0.1))
+                for k,v in pairs(self._labels) do
+                    v:setVisible(true)
+                end       
+                local hadClose
+                self:registerClickEventByName("closePanel", function()
+                    if not hadClose then
+                        -- print("=====================================================")
+                        hadClose = true
+                        local callback = self._callback
+                        if callback and type(callback) == "function" then
+                            callback()
+                        end                        
+                        if self.close then
+                            self.dontRemoveRes = true                       
+                            self:close(true)
+                        end
+                        UIUtils:reloadLuaFile("global.GlobalNewTreasureGetDialog")
+                    end
+                end)
+
+            end)
+        end     
+       	--继续创建  
+        nextFunc(index+1)
+
+    end) 
+
+end
+
+return GlobalNewTreasureGetDialog

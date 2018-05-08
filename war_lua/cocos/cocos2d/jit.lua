@@ -1,0 +1,1 @@
+if jit and (cc.Application:getInstance():getTargetPlatform() == 3 or cc.Application:getInstance():getTargetPlatform() == 0) then jit.off() jit.flush() end
