@@ -13,16 +13,16 @@ function NewFormationView:onInitEx()
     self._openLevelInfo = tab:Setting("G_CITYBATTLE_FORMATION_LV").value
     self._userModel = self._modelMgr:getModel("UserModel")
     self._cityBattleInfo = {}
-    self._cityBattleInfo._layer = self:getUI("bg.layer_information.info_left.city_battle_info")
+    self._cityBattleInfo._layer = self._layer_information:getChildByFullName("info_left.city_battle_info")
     self._cityBattleInfo._layer:setVisible(true)
     local screenSize = {width = MAX_SCREEN_WIDTH, height = MAX_SCREEN_HEIGHT}
     local isPad = (screenSize.width / screenSize.height) <= (3.0 / 2.0)
-    self._cityBattleInfo._bg = self:getUI("bg.layer_information.info_left.city_battle_info.city_battle_bg")
+    self._cityBattleInfo._bg = self._layer_information:getChildByFullName("info_left.city_battle_info.city_battle_bg")
     self._cityBattleInfo._bg:setPositionX(self._winSize.width / 2 - self._cityBattleInfo._bg:getContentSize().width / 2 + 60)
     if isPad then
         self._cityBattleInfo._bg:setPositionX(self._winSize.width / 2 - self._cityBattleInfo._bg:getContentSize().width / 2 + 120)
     end
-    self._cityBattleInfo._buttonSave = self:getUI("bg.layer_information.info_left.city_battle_info.button_save")
+    self._cityBattleInfo._buttonSave = self._layer_information:getChildByFullName("info_left.city_battle_info.button_save")
     self._cityBattleInfo._buttonSave:setPositionX(self._winSize.width - self._cityBattleInfo._buttonSave:getContentSize().width / 2 - 10)
     self:registerClickEvent(self._cityBattleInfo._buttonSave, function()
         self:onButtonSaveClicked()
@@ -31,15 +31,15 @@ function NewFormationView:onInitEx()
     for i = 1, 4 do
         self._cityBattleInfo._buttons[i] = {}
         self._cityBattleInfo._buttons[i]._formationId = self._formationModel.kFormationTypeCityBattle1 + i - 1
-        self._cityBattleInfo._buttons[i]._button = self:getUI("bg.layer_information.info_left.city_battle_info.city_battle_bg.city_battle_button_switch_" .. i)
+        self._cityBattleInfo._buttons[i]._button = self._layer_information:getChildByFullName("info_left.city_battle_info.city_battle_bg.city_battle_button_switch_" .. i)
         self:registerClickEvent(self._cityBattleInfo._buttons[i]._button, function()
             self:switchFormation(self._cityBattleInfo._buttons[i]._formationId)
         end)
-        self._cityBattleInfo._buttons[i]._name = self:getUI("bg.layer_information.info_left.city_battle_info.city_battle_bg.city_battle_button_switch_" .. i .. ".label_name")
+        self._cityBattleInfo._buttons[i]._name = self._layer_information:getChildByFullName("info_left.city_battle_info.city_battle_bg.city_battle_button_switch_" .. i .. ".label_name")
         self._cityBattleInfo._buttons[i]._name:setString("第" .. i .. "队")
         self._cityBattleInfo._buttons[i]._name:setFontName(UIUtils.ttfName)
-        self._cityBattleInfo._buttons[i]._state = self:getUI("bg.layer_information.info_left.city_battle_info.city_battle_bg.city_battle_button_switch_" .. i .. ".image_state")
-        --self._cityBattleInfo._buttons[i]._state = self:getUI("bg.layer_information.info_left.city_battle_info.city_battle_bg.city_battle_button_switch_" .. i .. ".label_state")
+        self._cityBattleInfo._buttons[i]._state = self._layer_information:getChildByFullName("info_left.city_battle_info.city_battle_bg.city_battle_button_switch_" .. i .. ".image_state")
+        --self._cityBattleInfo._buttons[i]._state = self._layer_information:getChildByFullName("info_left.city_battle_info.city_battle_bg.city_battle_button_switch_" .. i .. ".label_state")
         --self._cityBattleInfo._buttons[i]._state:setFontName(UIUtils.ttfName)
     end
 
@@ -484,19 +484,24 @@ function NewFormationView:getSaveRequiredInfo()
 end
 
 function NewFormationView:onButtonChangeTreasureClicked()
-    print("onButtonChangeTreasureClicked")
     if self:isFormationLocked() then return end
+
     local changeTFormFunc = function( )
         local formationData = self._layerLeft._teamFormation._data[self._context._formationId]
-        self._viewMgr:showDialog("treasure.TreasureSelectFormDialog",{
+        local pFormation = self._pokedexModel:getPFormation()
+        self._modelMgr:getModel("FormationModel"):showFormationEditView({
+            isShowTreasure = self:isShowTreasureInfo(),
+            isShowPokedex = self:isShowPokedexInfo(),
             tFormId = formationData.tid or 1,
             formationId = self._context._formationId,
-            callback = function( formId )
-                -- self._layerLeft._teamFormation._data = clone(self._formationModel:getFormationData())
-                -- self._layerLeft._teamFormation._allowLoadCount = self:getCurrentAllowLoadCount()
+            pokedexData = pFormation,
+            hireTeamData = self:getUsingHireTeamData(),
+            callback = function ( formId )
                 formationData.tid = formId
-                self:updateTreasureInfo()
-            end})
+                -- self:updatePokedexInfo(true)
+                -- self:updateTreasureInfo(true)
+            end
+        })
     end
     -- 改变宝物编组前先保存编组
     if self:getSaveRequiredInfo() then

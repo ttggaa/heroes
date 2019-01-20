@@ -57,7 +57,7 @@ function DialogCityBattleUserInfo:reflashUI(data)
 	end
 
     if not self._avatar then
-        self._avatar = IconUtils:createHeadIconById({avatar = data.avatar,level = data.lv or "0" ,tp = 4,avatarFrame=data["avatarFrame"]}) 
+        self._avatar = IconUtils:createHeadIconById({avatar = data.avatar,level = data.lv or "0" ,tp = 4,avatarFrame=data["avatarFrame"], plvl = data["plvl"]}) 
         -- self._avatar:getChildByFullName("iconColor"):loadTexture("globalImageUI6_headBg.png",1)
         self._avatar:setPosition(cc.p(-1,-1))
         self._heroHead:addChild(self._avatar)
@@ -113,6 +113,8 @@ function DialogCityBattleUserInfo:reflashUI(data)
     	detailData.talentData = data.talentData or data.talent
         detailData.uMastery = data.uMastery
         detailData.hSkin = data.hSkin
+        detailData.backups = data.backups
+        detailData.pTalents = data.pTalents
     	-- ViewManager:getInstance():showDialog("formation.NewFormationDescriptionView", { iconType = NewFormationIconView.kIconTypeArenaHero, iconId = data.formation.heroId}, true)
     	ViewManager:getInstance():showDialog("rank.RankHeroDetailView", {data=detailData}, true)
     end)
@@ -260,6 +262,8 @@ function DialogCityBattleUserInfo:createTeams( x,y,teamId,teamData )
     	detailData.treasures = self._palyerData.treasures
     	detailData.runes = self._palyerData.runes
     	detailData.heros = self._palyerData.heros
+    	detailData.battleArray = self._palyerData.battleArray
+        detailData.pTalents = self._palyerData.pTalents
     	ViewManager:getInstance():showDialog("rank.RankTeamDetailView", {data=detailData}, true)
     	-- ViewManager:getInstance():showDialog("formation.NewFormationDescriptionView", { iconType = NewFormationIconView.kIconTypeArenaTeam, iconId = teamId}, true)
     end})

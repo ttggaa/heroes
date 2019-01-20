@@ -758,7 +758,8 @@ function CrusadeView:onModelReflash()
     local labBg = self:getUI("Image_15.reset.Image_47")
     if isPrivOpen2 ~= 0 then
         sweepTips1:setVisible(true)
-        local passMax = math.max(math.ceil(lastFinCrusade*0.5) - tab.setting["G_CRUSADE_PEERAGE_2"].value, 0)
+        local tempNum = self:getSweepNum()
+        local passMax = math.max(math.ceil(lastFinCrusade*0.5) - tempNum, 0)
         lab2:setString(passMax)
         lab5:setString(math.ceil(lastFinCrusade*0.5))
         labBg:setContentSize(cc.size(390, 46))
@@ -941,7 +942,6 @@ function CrusadeView:activeCrusade()
     local activeCrusadeId = self._crusadeModel:getData().activeCrusadeId
     local lastFinCrusade = self._crusadeModel:getData().lastCrusade
 
-    -- print("%%%%%%%%")
     local lastCrusade = tab.crusadeMain[lastFinCrusade]
     if lastCrusade == nil then self._viewMgr:unlock(0) return end
     if lastCrusade.type ~= CrusadeConst.CRUSADE_TYPE.BATTLE then 
@@ -1590,9 +1590,10 @@ function CrusadeView:resetCrusade()
                 tipDes = lang("CRUSADE_TIPS_TRIG_8")
             end
 
+            local tempNum = self:getSweepNum()
             tipDes = string.gsub(tipDes, "${stage1}", math.floor(lastFinCrusade*0.5))
-            tipDes = string.gsub(tipDes, "${stage2}", math.max(math.ceil(lastFinCrusade*0.5) - tab.setting["G_CRUSADE_PEERAGE_2"].value, 0))
-            tipDes = string.gsub(tipDes, "${num}", tab.setting["G_CRUSADE_PEERAGE_2"].value)
+            tipDes = string.gsub(tipDes, "${stage2}", math.max(math.ceil(lastFinCrusade*0.5) - tempNum, 0))
+            tipDes = string.gsub(tipDes, "${num}", tempNum)
             table.insert(checkList, tipDes)
 
         else
@@ -2089,6 +2090,20 @@ function CrusadeView:showSweepView(inType)
             end)
         end
     end
+end
+
+function CrusadeView:getSweepNum()
+    local userData = self._userModel:getData()
+    local tempList = tab.setting["G_CRUSADE_SWEEP_LEVEL"].value
+    local tempNum = 0
+    for i,v in ipairs(tempList) do
+        if userData.lvl >= v[1] and userData.lvl < v[2] then
+            tempNum = v[3] or 0
+            break
+        end
+    end
+
+    return tempNum
 end
 
 function CrusadeView:onDestroy( )

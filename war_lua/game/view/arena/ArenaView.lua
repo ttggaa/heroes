@@ -123,7 +123,7 @@ function ArenaView:onInit()
     rankDes:setFontName(UIUtils.ttfName)
     local zhandouliLab = ccui.TextBMFont:create("0", UIUtils.bmfName_zhandouli_little)
     zhandouliLab:setAnchorPoint(cc.p(1,0))
-    zhandouliLab:setPosition(260,2)
+    zhandouliLab:setPosition(255,13)
     zhandouliLab:setScale(.5)
     self:getUI("bg.infoBg"):addChild(zhandouliLab,99)
     self._zhandouliLab = zhandouliLab
@@ -578,8 +578,10 @@ function ArenaView:detectNotice( )
     -- end
     -- self:reloadArenaTableData()
     local isFormationFull = formationModel:isFormationTeamFullByType(formationModel.kFormationTypeArenaDef)
+    local backupState = formationModel:isFormationBackupFullByType(formationModel.kFormationTypeArenaDef)
     print("teamIsfull....",isFormationFull)
-    self:addDot(formationBtn,isFormationFull and not isFullWeapons)
+    print("backupState....", backupState)
+    self:addDot(formationBtn, isFormationFull and not isFullWeapons and backupState == 0)
 
     -- 新战报红点
     local playerTodayModel = self._modelMgr:getModel("PlayerTodayModel")
@@ -889,14 +891,14 @@ function ArenaView:reflashMainBoad( data )
     end
 
     local userInfo = self._modelMgr:getModel("UserModel"):getData()
+    local headP = {avatar = userInfo.avatar,level = userInfo.lvl or 0 ,tp = 4, isSelf = true,
+                    avatarFrame = userInfo["avatarFrame"], tencetTp = tencetTp, plvl = userInfo.plvl}
     if not self._avatar then
-        self._avatar = IconUtils:createHeadIconById({avatar = userInfo.avatar,level = userInfo.lvl or "0" ,tp = 4, isSelf = true,avatarFrame = userInfo["avatarFrame"], tencetTp = tencetTp}) 
-        -- self._avatar:getChildByFullName("iconColor"):loadTexture("globalImageUI6_headBg.png",1)
+        self._avatar = IconUtils:createHeadIconById(headP) 
         self._avatar:setPosition(cc.p(-5,-3))
         self._headFrame:addChild(self._avatar,-1)
     else
-        IconUtils:updateHeadIconByView(self._avatar,{avatar = userInfo.avatar,level = userInfo.lvl or "0" ,tp = 4, isSelf = true, tencetTp = tencetTp})
-        -- self._avatar:getChildByFullName("iconColor"):loadTexture("globalImageUI6_headBg.png",1)
+        IconUtils:updateHeadIconByView(self._avatar, headP)
     end
        
     local awardGem,awardGold,awardCurrency = self:getRankAward(rank)
@@ -918,10 +920,24 @@ function ArenaView:reflashMainBoad( data )
     -- vip 
     local vip = self._modelMgr:getModel("VipModel"):getData().level or 0
     self:getUI("bg.infoBg.vipIcon"):loadTexture(("chatPri_vipLv".. vip ..".png"), 1)
-    local userInfo = self._modelMgr:getModel("UserModel"):getData()
-    local needExp = tab:UserLevel(userInfo.lvl).exp
+
+    local userModel = self._modelMgr:getModel("UserModel")
+    local userInfo = userModel:getData()
+    local progressBar = self:getUI("bg.infoBg.progressBar")
+    local needExp = nil
+    if userModel:isMaxParagonLevel() then
+        progressBar:loadTexture("expBar_pTalent_mainView.png", 1)  
+        needExp = tab:ParagonLevel(userInfo.plvl).exp
+
+    elseif userModel:isHaveParagonLevel() then
+        progressBar:loadTexture("expBar_pTalent_mainView.png", 1)
+        needExp = tab:ParagonLevel((userInfo.plvl or 0) + 1).exp
+    else
+        progressBar:loadTexture("expBar_mainView.png", 1)  
+        needExp = tab:UserLevel(userInfo.lvl).exp
+    end
     if needExp then
-        self:getUI("bg.infoBg.progressBar"):setPercent(userInfo.exp/needExp*100)
+        progressBar:setPercent(userInfo.exp/needExp*100)
     end
 end
 -- 获取奖励区间

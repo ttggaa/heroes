@@ -73,6 +73,16 @@ function BC.initTeamAttr_Common(team, hero, info, x, y, scale)
     team.label1 = teamD["label1"]
     team.volume = teamD["volume"]
     team.attackRange = 1
+    team.battleArray = info.battleArray
+    team.pTalents = info.pTalents
+
+    --是否有出生动画
+    team.playBornAnim = ((teamD["playBornAnim"] or 0) == 1) and true or false
+    --出生动画持续时间
+    team.bornDelay = (teamD["bornDelay"] or 0) * 0.001
+    --出生动画是否播放
+    team.isOneBirth = team.playBornAnim
+
     team.maxNumber = BC.VolumeNumber[team.volume]
     if scale then
         team.picScale = scale
@@ -81,12 +91,45 @@ function BC.initTeamAttr_Common(team, hero, info, x, y, scale)
     end
     team.scale = team.picScale * 2
     local res, res1
-    if info.jx then
-        res = teamD["jxart"]
-        res1 = teamD["jxart1"]
+
+    local GetChange = function(teamId)
+        if teamId == nil or tab.setting["TEAMSKIN_WHITELIST"] == nil then 
+            return false 
+        end
+        local changedIdList = tab.setting["TEAMSKIN_WHITELIST"].value
+        for i,v in pairs(changedIdList) do
+           if v == teamId then
+                return true      
+           end
+        end
+    end
+
+    local isChanged = GetChange(info.teamid)
+    if team.info.sId and tonumber(team.info.sId) ~= 0 then
+        local skinTable = tab.teamSkin[team.info.sId]
+        print("team.info.sId",team.info.sId,"team.D.id",team.D.id)
+        res = skinTable["skinart"]
+        res1 = skinTable["skinart1"]
+
+        local skinget = tab.teamSkin[team.info.sId]["skinget"] or 1
+        if tonumber(skinget) ~= 3 and isChanged then
+            if tonumber(skinget) == 2 then
+                res = teamD["jxart"]
+                res1 = teamD["jxart1"]
+            else
+                res = teamD["art"]
+                res1 = teamD["art1"]
+            end
+        end
+        team.sId = tonumber(team.info.sId)
     else
-        res = teamD["art"]
-        res1 = teamD["art1"]
+        if info.jx then
+            res = teamD["jxart"]
+            res1 = teamD["jxart1"]
+        else
+            res = teamD["art"]
+            res1 = teamD["art1"]
+        end
     end
     team.jx = info.jx
     -- radius 兵团的接战半径 (多少半径内不能有其他士兵)
@@ -160,9 +203,10 @@ function BC.initTeamAttr_Common(team, hero, info, x, y, scale)
 
     team.isMelee = team.atkType == EAtkTypeMELEE
     team.isFly = team.moveType == EMoveTypeAIR
+    team.ishelpteam = info.ishelpteam
 
     team:setState(ETeamState.MOVE)
-
+    
     team.skillLevels = info.skill
     BC.initTeamSkill(team, teamD, teamD["skill"], teamD["cs"], teamD["hideSkill"],  team.skillLevels, info)
     BC.initTeamSound(team)
@@ -185,6 +229,7 @@ function BC.initSoldiersAttr_Common(team, soldiers, info)
         _v = 1
     end
     local attrAdd = hero.attr[team.moveType][team.classLabel][_v]
+    local attrAdd5 = hero.attr5[team.moveType][team.classLabel][_v]
     local attrAdd1 = nil
     if team.label1 then
         attrAdd1 = hero.attr1[team.label1]
@@ -195,7 +240,8 @@ function BC.initSoldiersAttr_Common(team, soldiers, info)
     local camp = team.camp
     -- 基础属性
     -- teamid, star, stage, level, equip
-    local baseAttr, atkspeed = BattleUtils.getTeamBaseAttr(info[1], info[2], PokedexAttr[camp], BC.ClassCount[camp], BC.MoveTypeCount[camp], BC.Race1Count[camp], team.passives, BC.XCount and BC.XCount[camp])
+    local baseAttr, atkspeed = BattleUtils.getTeamBaseAttr(info[1], info[2], PokedexAttr[camp], BC.ClassCount[camp], BC.MoveTypeCount[camp], BC.Race1Count[camp], team.passives, BC.XCount and BC.XCount[camp], team.battleArray, team.pTalents)
+
 
     local volume = team.volume
     local classLabel = team.classLabel
@@ -221,11 +267,11 @@ function BC.initSoldiersAttr_Common(team, soldiers, info)
 
     if attrAdd1 then
         for a = 1, ATTR_COUNT do
-            baseAttr[a] = ceil(baseAttr[a] + attrAdd[a] + attrAdd1[a] + attrAdd2[a] + (attrAdd4_0[a] or 0)+ (attrAdd4_1[a] or 0))
+            baseAttr[a] = ceil(baseAttr[a] + attrAdd[a] + attrAdd1[a] + attrAdd2[a] + (attrAdd4_0[a] or 0)+ (attrAdd4_1[a] or 0) + (attrAdd5[a] or 0))
         end
     else
         for a = 1, ATTR_COUNT do
-            baseAttr[a] = ceil(baseAttr[a] + attrAdd[a] + attrAdd2[a] + (attrAdd4_0[a] or 0)+ (attrAdd4_1[a] or 0))
+            baseAttr[a] = ceil(baseAttr[a] + attrAdd[a] + attrAdd2[a] + (attrAdd4_0[a] or 0)+ (attrAdd4_1[a] or 0) + (attrAdd5[a] or 0))
         end
     end
 
@@ -324,6 +370,14 @@ function BC.initTeamAttr_Npc(team, hero, info, x, y, scale, isBuilding, summonAt
 
     if teamD then
         -- 为了优化NPC表字段
+
+        --是否有出生动画
+        team.playBornAnim = ((teamD["playBornAnim"] or 0) == 1) and true or false
+        --出生动画持续时间
+        team.bornDelay = (teamD["bornDelay"] or 0) * 0.001
+        --出生动画是否播放
+        team.isOneBirth = team.playBornAnim
+
         team.D = npcD
         team.DType = 2
         if npcD["race"] then
@@ -558,6 +612,7 @@ function BC.initSoldiersAttr_Npc(team, soldiers, info)
         _v = 1
     end
     local attrAdd = hero.attr[team.moveType][team.classLabel][_v]
+    local attrAdd5 = hero.attr5[team.moveType][team.classLabel][_v]
     local attrAdd1 = nil
     if team.label1 then
         attrAdd1 = hero.attr1[team.label1]
@@ -570,10 +625,11 @@ function BC.initSoldiersAttr_Npc(team, soldiers, info)
     local radius = team.radius
     local count = #soldiers
     local soldier
+    local summon = team.summon
     
     -- 把英雄的属性加到召唤物上
     if not team.building then
-        if team.summon then
+        if summon then
             if attrAdd1 then
                 for a = 1, ATTR_COUNT do
                     baseAttr[a] = baseAttr[a] + attrAdd[a] + attrAdd1[a] + attrAdd2[a] + attrAdd3[a]
@@ -586,11 +642,11 @@ function BC.initSoldiersAttr_Npc(team, soldiers, info)
         else
             if attrAdd1 then
                 for a = 1, ATTR_COUNT do
-                    baseAttr[a] = baseAttr[a] + attrAdd[a] + attrAdd1[a] + attrAdd2[a]
+                    baseAttr[a] = baseAttr[a] + attrAdd[a] + attrAdd1[a] + attrAdd2[a] + (attrAdd5[a] or 0)
                 end
             else
                 for a = 1, ATTR_COUNT do
-                    baseAttr[a] = baseAttr[a] + attrAdd[a] + attrAdd2[a]
+                    baseAttr[a] = baseAttr[a] + attrAdd[a] + attrAdd2[a] + (attrAdd5[a] or 0)
                 end
             end
         end
@@ -664,6 +720,20 @@ function BC.initSoldiersAttr_Npc(team, soldiers, info)
                 elseif condition >= 23 and condition <= 25 then
                     if xCount then
                         _count = xCount[26 - condition]
+                    end
+                elseif condition == 26 then
+                elseif condition >= 27 and condition <= 36 then
+                    if race1Count then
+                        local nReduce = 26
+                        if condition == 36 then
+                            nReduce = 24
+                        end
+                        _count = race1Count[condition - nReduce]
+                    end
+                    _count = _count >= 3 and 1 or 0
+                elseif condition == 37 then
+                    if race1Count then
+                        _count = race1Count[12]
                     end
                 else
                     if race1Count then
@@ -846,6 +916,63 @@ function BC.initTeamSkill(team, teamD, skill, classskill, hideskill, skillLevels
         end 
     end 
 
+    --战阵添加的技能 start
+    if team.battleArray and team.D and team.D.race then
+        --        if table.indexof
+        local battleArraySkill = {}
+        local battleArrayData = nil
+        for key, var in pairs(team.battleArray) do
+            if var and tonumber(key) == team.D.race[1] then
+                battleArrayData = var
+                break
+            end
+        end
+        if battleArrayData then
+            local _battleUp = tab.battleUp
+            if _battleUp then
+                for key, var in pairs(_battleUp) do
+                    if var and var.effect2 and var.battleId == team.D.race[1] and battleArrayData.lv >= var.battleLevel then
+                        for _key, _var in pairs(var.effect2) do
+                            if _var then
+                                battleArraySkill[#battleArraySkill + 1] = _var
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
+        if #battleArraySkill > 0 then
+            for key, var in ipairs(battleArraySkill) do
+                if var then
+                    if not skillmap[var[2]] then
+--                        print("\n======================\n", var[1], var[2], "\n======================\n")
+                        skillmap[var[2]] = 1
+                        insert(skills[var[1]], {var[2], 1})
+                    end
+                end
+            end
+        end
+    end
+    --战阵添加的技能 end
+
+    -- 专属武器技能 start
+    if team.info then
+        local exclusiveData = tab.exclusive[team.info.id]
+        local exStarLv = (team.info.zStar or 0) - 1
+        if exStarLv >= 0 and exclusiveData and exclusiveData.isOpen and exclusiveData.isOpen == 1 then
+            local effects = exclusiveData.effect
+            for i = 0, exStarLv do
+                local effect = effects[i + 1]
+                if effect[1] == 2 then
+                    -- 是技能，effect数据格式是{2,2,59044} [2,技能表,技能id]
+                    insert(skills[effect[2]], {effect[3], 1})
+                end
+            end
+        end
+    end
+    -- 专属武器技能 end
+
 
     -- 配置skill字段:基础技能
     skillD = skill
@@ -877,6 +1004,22 @@ function BC.initTeamSkill(team, teamD, skill, classskill, hideskill, skillLevels
         end
     end
 
+    --外挂技能主要用于兵团后期新加的技能，用于兵团给兵团添加技能，所以这个技能的生效条件一般和别的兵团有关只用于战斗，不加任何属性
+    if teamD["additionalTeamSkill"] then
+        for i,v in ipairs(teamD["additionalTeamSkill"]) do
+            if v then
+                if v[1] == 0 then
+                    insert(skills[v[2]], {v[3], 1})
+                    skillmap[v[3]] = 1
+                elseif skillLevels and skillLevels[v[1]] and skillLevels[v[1]] > 0 then
+                    insert(skills[v[2]], {v[3], 1})
+                    skillmap[v[3]] = 1
+                end
+            end
+        end
+    end
+
+
     local passiveTmp = skills[2]
     if passiveTmp then
         for i = 1, #passiveTmp do
@@ -905,18 +1048,20 @@ function BC.initTeamSkill(team, teamD, skill, classskill, hideskill, skillLevels
                     local value = skillPassiveD.value or 0
                     skillLevelUp(skillType, skillId, value)
 
-                    if info and info.jx and #jxSkill > 0 then
+                    if info and info.jx and #jxSkill > 0 and jxSkill[1] then
                         local skillType = jxSkill[1][1]
                         local skillId = jxSkill[1][2]
                         local value = skillPassiveD.value or 0
                         skillLevelUp(skillType, skillId, value)
                     end
                 elseif 22 == skillPassiveD.condition then
-                    for k = 1, 4 do
-                        local skillType = teamD["skill"][k][1]
-                        local skillId = teamD["skill"][k][2]
-                        local value = skillPassiveD.value or 0
-                        skillLevelUp(skillType, skillId, value)
+                    for k = 1, 7 do
+                        if teamD["skill"] and teamD["skill"][k] then
+                            local skillType = teamD["skill"][k][1]
+                            local skillId = teamD["skill"][k][2]
+                            local value = skillPassiveD.value or 0
+                            skillLevelUp(skillType, skillId, value)
+                        end
                     end
 
                     if info and info.jx and #jxSkill > 0 then
@@ -927,6 +1072,16 @@ function BC.initTeamSkill(team, teamD, skill, classskill, hideskill, skillLevels
                                 local value = skillPassiveD.value or 0
                                 skillLevelUp(skillType, skillId, value)
                             until true;
+                        end
+                    end
+                elseif 26 == skillPassiveD.condition then
+                    if skillPassiveD.conditionvalue then
+                        --被动技能属性控制buff字段(减少相应类型的buff持续时间)
+                        team.skillPassiveBuff = team.skillPassiveBuff or {}
+                        for key, var in ipairs(skillPassiveD.conditionvalue) do
+                            if var then
+                                team.skillPassiveBuff[var[1]] = var[2] + (team.skillPassiveBuff[var[1]] or 0)
+                            end
                         end
                     end
                 end
@@ -1023,6 +1178,19 @@ function BC.initTeamSkill(team, teamD, skill, classskill, hideskill, skillLevels
             insert(skills[_type], {_id, 1})
         end
     end
+
+    if not team.summon then
+        --排除召唤物，英雄专精添加的技能
+        addSkill = hero.monsterSkill6[team.moveType][team.classLabel][_v]
+        for _id, _type in pairs(addSkill) do
+            if not skillmap[_id] then
+                skillmap[_id] = 1
+                -- 技能id,技能等级
+                insert(skills[_type], {_id, 1})
+            end
+        end
+    end
+
     -- label1
     addSkill = hero.monsterSkill1[team.label1]
     if addSkill then
@@ -1085,12 +1253,25 @@ function BC.initTeamSkill(team, teamD, skill, classskill, hideskill, skillLevels
 
     local extraAtk = {}
     local extraDef = {}
+    local extraAp = {}
     local charactersAtk = {}
     local charactersDef = {}
     local characterD, ctype, linear
     local minkey, minvalue, maxkey, dkey, dvalue
     local leveladd
+    local maxDamagePro
+    local proImmuneTeamDamage
     -- 特性 {特性id, 特性等级}，当成技能理解就行
+    local function _getValue(_linear, _leveladd)
+        local _minkey, _minvalue, _maxkey, _dkey, _dvalue
+        _minkey = _linear[1][1]
+        _minvalue = _linear[1][2] + _linear[1][3] * _leveladd
+        _maxkey = _linear[2][1]
+        _dkey = _maxkey - _minkey
+        _dvalue = _linear[2][2] + _linear[2][3] * _leveladd - _minvalue
+        return _minkey, _minvalue, _maxkey, _dkey, _dvalue
+    end
+
     for k, v in pairs(skills[3]) do
         leveladd = v[2] - 1
         -- print(v[1])
@@ -1129,15 +1310,11 @@ function BC.initTeamSkill(team, teamD, skill, classskill, hideskill, skillLevels
                 for i = 1, #characterD["immune"] do
                     team.immuneBuff[characterD["immune"][i]] = true
                 end
-            elseif ctype == 18 then
-                -- 生写表 额外防御力
+            elseif ctype == 21 then
+                -- 生写表 额外法免
                 linear = characterD["linear"]
-                minkey = linear[1][1]
-                minvalue = linear[1][2] + linear[1][3] * leveladd
-                maxkey = linear[2][1]
-                dkey = maxkey - minkey
-                dvalue = linear[2][2] + linear[2][3] * leveladd - minvalue
-                insert(extraDef, {ctype, minkey, minvalue, maxkey, dvalue / dkey, linear[3], v[1]})  -- v[1] 是技能编号 debug
+                minkey, minvalue, maxkey, dkey, dvalue = _getValue(linear, leveladd)
+                insert(extraAp, {ctype, minkey, minvalue, maxkey, dvalue / dkey, linear[3], v[1]})  -- v[1] 是技能编号 debug
             elseif ctype == 19 then
                 -- 生写表 概率免疫buff
                 local immunes = characterD["immune"]
@@ -1146,14 +1323,28 @@ function BC.initTeamSkill(team, teamD, skill, classskill, hideskill, skillLevels
                     -- 1 buff类型 2 概率
                     team.proImmuneBuff[immune[1]] = immune[2]
                 end
+            elseif ctype == 18 or ctype == 20 or ctype == 22 or ctype == 23 then
+                -- 生写表 额外防御力,兵团伤害
+                linear = characterD["linear"]
+                minkey, minvalue, maxkey, dkey, dvalue = _getValue(linear, leveladd)
+                insert(extraDef, {ctype, minkey, minvalue, maxkey, dvalue / dkey, linear[3], v[1]})  -- v[1] 是技能编号 debug
+            elseif ctype == 24 then
+                -- 受到的伤害不能超过maxDamagePro
+                maxDamagePro = characterD["condition"][1] * 0.01
+            elseif ctype == 25 then
+                -- 概率免疫兵团伤害，buff的dot伤害不会免疫,不考虑优先级了，如果有两个相同效果的，后一个会顶掉前面的效果（注意 注意 注意 注意 注意 注意）
+                -- local _table = {}
+                -- _table[1] = characterD["condition"][1] or 1
+                -- _table[2] = characterD["condition"][1]
+                if  characterD["condition"] then
+                    proImmuneTeamDamage = {}
+                    proImmuneTeamDamage[1] = characterD["condition"][1] or -1
+                    proImmuneTeamDamage[2] = characterD["condition"][2] + characterD["condition"][3] * leveladd
+                end
             elseif ctype >= 3 then
                 -- 生写表 额外攻击力
                 linear = characterD["linear"]
-                minkey = linear[1][1]
-                minvalue = linear[1][2] + linear[1][3] * leveladd
-                maxkey = linear[2][1]
-                dkey = maxkey - minkey
-                dvalue = linear[2][2] + linear[2][3] * leveladd - minvalue
+                minkey, minvalue, maxkey, dkey, dvalue = _getValue(linear, leveladd)
                 insert(extraAtk, {ctype, minkey, minvalue, maxkey, dvalue / dkey, linear[3], v[1]})  -- v[1] 是技能编号 debug
             end
         end
@@ -1166,6 +1357,8 @@ function BC.initTeamSkill(team, teamD, skill, classskill, hideskill, skillLevels
     team.extraAtk = extraAtk
     -- 额外防御力
     team.extraDef = extraDef
+    -- 额外法免
+    team.extraAp = extraAp
     -- 主动技能
     team.skills = skills[1]
     -- 被动技能 : 修改士兵属性 
@@ -1183,6 +1376,12 @@ function BC.initTeamSkill(team, teamD, skill, classskill, hideskill, skillLevels
     team.skillmap = skillmap
 
     team.runeSkill = runeSkill
+
+    -- 受到的伤害不能超过maxDamagePro
+    team.maxDamagePro = maxDamagePro
+
+    -- 概率免疫兵团伤害
+    team.proImmuneTeamDamage = proImmuneTeamDamage
 end
 
 function BC.initTeamSound(team)

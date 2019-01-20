@@ -472,6 +472,8 @@ function IntanceEliteStageInfoView:wideEnterBtn(inTime, isMulti)
     end
 
     local oldUserPrePhysic = userModel:getData().physcal
+    local oldPlvl = userModel:getData().plvl or 0
+    local oldPTalentPoint = userModel:getData().pTalentPoint or 0
 
     local param = {id = self._curStageBaseId,num = inTime}
     self._serverMgr:sendMsg("StageServer", "sweepEliteStage", param, true, {}, function (result)
@@ -490,6 +492,8 @@ function IntanceEliteStageInfoView:wideEnterBtn(inTime, isMulti)
         local isAutoClose = false
         if self._oldUserLevel < newUserData.lvl then 
             isAutoClose =  true
+        elseif oldPlvl < newUserData.plvl then
+            isAutoClose = true
         end
         local function userUpdate()
             self._intanceWideRewardView = nil
@@ -502,6 +506,8 @@ function IntanceEliteStageInfoView:wideEnterBtn(inTime, isMulti)
                 self._viewMgr:checkLevelUpReturnMain(newUserData.lvl)
                 ViewManager:getInstance():showDialog("global.DialogUserLevelUp",{preLevel = tempOldUserLevel,level = newUserData.lvl,prePhysic = oldUserPrePhysic,physic = newUserData.physcal}, nil, nil, nil, false)
                 self._oldUserLevel = nil
+            elseif oldPlvl < newUserData.plvl then
+                ViewManager:getInstance():showDialog("global.DialogUserParagonLevelUp", {oldPlvl = oldPlvl, plvl = newUserData.plvl, pTalentPoint = (newUserData.pTalentPoint - oldPTalentPoint)}, true, nil, nil, false)
             end
         end
         local data = {type = 2, reward = tmpRewards, autoClose = isAutoClose, callback = userUpdate, againCallback = function()
@@ -806,7 +812,8 @@ function IntanceEliteStageInfoView:battleCallBack(inResult, inCallBack)
 
     local oldUserLevel = userModel:getData().lvl
     local oldUserPrePhysic = userModel:getData().physcal
-
+    local oldPlvl = userModel:getData().plvl or 0
+    local oldPTalentPoint = userModel:getData().pTalentPoint or 0
 
 
     self._serverMgr:sendMsg("StageServer", "atkAfterEliteStage", param, true, {}, function (result)
@@ -859,6 +866,10 @@ function IntanceEliteStageInfoView:battleCallBack(inResult, inCallBack)
             local gotoview = tab.userLevel[newUserData.lvl]["gotoview"]
             if gotoview and gotoview == 1 then
                 self._userUpdateReturnMain = true
+            end
+        elseif oldPlvl < newUserData.plvl then
+            self._userUpdateCallBack = function (  )
+                ViewManager:getInstance():showDialog("global.DialogUserParagonLevelUp", {oldPlvl = oldPlvl, plvl = newUserData.plvl, pTalentPoint = (newUserData.pTalentPoint - oldPTalentPoint)}, true, nil, nil, false)
             end
         else
             self._userUpdateCallBack = nil

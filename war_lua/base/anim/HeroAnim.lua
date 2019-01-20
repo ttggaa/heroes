@@ -306,6 +306,12 @@ function HeroAnim:setScaleX(scale)
     end
 end
 
+function HeroAnim:setScaleY(scale)
+    if self._node then
+        self._node:setScaleY(scale * mcScale)
+    end
+end
+
 function HeroAnim:getScale()
     if self._node then
         return self._node:getScaleX() / mcScale

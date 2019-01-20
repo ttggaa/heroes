@@ -114,7 +114,7 @@ end
 
 function PokedexSelectTeam:teamTypeTeamList(teamData)
     local pokedexName = {
-        "攻击","防御","突击","射手","魔法","城堡","壁垒","据点","墓园","地狱","塔楼","元素","地下城","要塞"
+        "攻击","防御","突击","射手","魔法","城堡","壁垒","据点","墓园","地狱","塔楼","元素","地下城","要塞","港口"
     }
     local teamModel = self._modelMgr:getModel("TeamModel")
     local posX = 11
@@ -271,7 +271,9 @@ function PokedexSelectTeam:teamTypeTeamList(teamData)
         -- end
 
             self:registerClickEvent(self._team[k].xiazhen, function()
-                local param = {pokedexId = self._selectPokedex, posId = tonumber(self._posId)}-- positionId = tonumber(self._posId), teamId = v.teamId}
+                local posIdsTab = {}
+                table.insert(posIdsTab,tonumber(self._posId))
+                local param = {pokedexId = self._selectPokedex, posIds = posIdsTab}-- positionId = tonumber(self._posId), teamId = v.teamId}
                 -- local teamFlag = pokedexModel:getTeamShow(param)
                 -- if teamFlag then
                 --     self:close()

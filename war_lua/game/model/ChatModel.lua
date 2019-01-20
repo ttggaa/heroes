@@ -22,6 +22,7 @@ function ChatModel:ctor()
 
     self._guildUnread = 0       --联盟未读数
     self._worldUnread = 0       --联盟未读数
+    self._godWarUnread = 0      --跨服诸神未读数
     self._unreadPir = {}        --私聊未读用户ID
      
     self._deleteRecord = {}     --删除数据记录
@@ -69,37 +70,59 @@ function ChatModel:setData(data)
 end
 
 --设置当前聊天玩家信息
-function ChatModel:setCacheUserData(userData)
+function ChatModel:checkInsertUserData(userData)
     if userData == nil then return end
 
     self._cacheUserData = userData
     local isHasChat = false
+    local currUser = {}
     local currPriData = self._data[ChatConst.CHAT_CHANNEL.PRIVATE]
+
+    --判断是否之前有聊过天
     for k,v in pairs(currPriData) do
         if v["user"].rid == userData.rid then
             isHasChat = true
-            local currUser = v
+            currUser = v
             table.remove(currPriData, k)
-            if ChatConst.IS_DEBUG_OPEN == true then
-                table.insert(currPriData, #currPriData, currUser)  --排序到列表第二位，顶部默认给debug反馈
-            else
-                table.insert(currPriData, #currPriData+1, currUser)
-            end
-            return
+            break
         end
     end
 
-    --判断是否之前有聊过天，没有则初始化一个空结构
+    --没有聊过则初始化一个空结构，有则更新玩家user数据
     if not isHasChat then
-        local insertInfo = {}
-        insertInfo["user"] = userData
-        insertInfo["chat"] = {}
-        if ChatConst.IS_DEBUG_OPEN == true then
-            table.insert(currPriData, #currPriData, insertInfo)  --排序到列表第二位，顶部默认给debug反馈
-        else
-            table.insert(currPriData, #currPriData+1, insertInfo)  
+        currUser["user"] = userData
+        currUser["chat"] = {}
+    else
+        currUser["user"] = userData
+    end
+
+    --移动玩家页签到顶部
+    if ChatConst.IS_DEBUG_OPEN == true then
+        table.insert(currPriData, #currPriData, currUser)  --排序到列表第二位，顶部默认给debug反馈
+    else
+        table.insert(currPriData, #currPriData+1, currUser)
+    end
+end
+
+function ChatModel:refreshPriUserData(data1, data2)
+    if not data1 and not data2 then
+        return
+    end
+    local curId = data1.rid or data2.rid
+    local priData = self._data[ChatConst.CHAT_CHANNEL.PRIVATE]
+    for k,v in pairs(priData) do
+        if v["user"].rid == curId then
+            for m, n in pairs(v["user"]) do
+                if data1[m] or data2[m] then
+                    n = data1[m] or data2[m]
+                end
+            end
+            v["user"]["plvl"] = data1["plvl"] or data2["plvl"]
+            break
         end
     end
+
+    self:reflashData("pri" .. "/user/" .. curId)
 end
 
 function ChatModel:setCacheUserID(userID)
@@ -113,7 +136,7 @@ function ChatModel:setCacheUserID(userID)
 end
 
 --获取当前聊天玩家信息
-function ChatModel:getCacheUserData(userID)
+function ChatModel:getCacheUserData()
     return self._cacheUserData
 end
 
@@ -121,92 +144,88 @@ function ChatModel:clearCacheUser()
     self._cacheUserData = {}
 end
 
-function ChatModel:updatDataByType(inType, data)
-    -- dump(data, "chat11", 10)
-    local loginTime = self._userModelData._lt or 0
-    local closeTime = self._userModelData.leaveTime or 0
 
-    local sortFunc = function(a, b) return a.id > b.id end      
+function ChatModel:updatDataByType(inType, data)
+    -- dump(data, "updatDataByType--"..inType)   --最早的消息index为0
     if inType == ChatConst.CHAT_CHANNEL.SYS then                --系统
-        for k,v in pairs(data) do
-            self:handleSysText(v)
-        end
-        self._data[inType] = data
-        table.sort(self._data[inType], sortFunc)
+        self:updateSysData(data, inType)
 
     elseif inType == ChatConst.CHAT_CHANNEL.PRIVATE then        --私聊
-        for i=#data, 1, -1 do
-            if data[i]["user"] then
-                data[i]["user"] = {}
-            end
-
-            local isNew = false  --数据是否完整
-            local chatData = data[i]["chat"]
-            local toId
-            for k=#chatData, 1, -1 do
-                local isFindUnread = false   --是否已设置过未读
-                if chatData[k]["message"] and chatData[k]["message"]["toData"] and chatData[k]["message"]["toData"].rid then
-                    local curPriData = chatData[k]["message"]
-                    --设置玩家user字段
-                    if not data[i]["user"] or next(data[i]["user"]) == nil then   
-                        if curPriData["toData"].rid == self._userModelData._id then
-                            data[i]["user"] = curPriData["udata"]
-                        else
-                            data[i]["user"] = curPriData["toData"]
-                        end
-                    end
-                    
-                    --设置未读数
-                    if isFindUnread ~= true and chatData[k]["t"] > closeTime and chatData[k]["t"] <= loginTime then
-                        if self._userModelData._id ~= curPriData["udata"]["rid"] then
-                            toId = curPriData["udata"]["rid"]
-
-                        elseif self._userModelData._id ~= curPriData["toData"]["rid"] then
-                            toId = curPriData["toData"]["rid"]
-                        end
-
-                        if toId then
-                            self:setPriUnread(toId, "login")
-                            isFindUnread = true
-                        end
-                    end
-                    
-                    isNew = true
-                else
-                    table.remove(chatData, k)
-                end
-            end
-
-            if isNew == false then
-                table.remove(data, i)
-            end
-        end
-
-        -- 黑名单数据清除
-        -- 插入bug反馈数据
-        for i=#data, 1, -1 do
-            local _id = data[i]["user"]["rid"] 
-            if self._friendModel:checkIsBlack(_id) then 
-                table.remove(data, i)  --黑名单
-            else
-                for k,msg in pairs(data[i]["chat"]) do
-                    self:handleEmoji(msg)
-                end
-                table.sort(data[i]["chat"], sortFunc)  
-            end
-        end
-
-        --聊天user排序  表末尾为最新数据
-        local userSort = function(a, b) return a["chat"][1].t < b["chat"][1].t end
-        self._data[inType] = data  
-        table.sort(self._data[inType], userSort) 
-        if ChatConst.IS_DEBUG_OPEN == true then
-            self:insertDebugData()  --插入debug数据至表顶
-        end
+        self:updatePriData(data, inType)
 
     elseif inType == ChatConst.CHAT_CHANNEL.WORLD then          --世界
-        local unreadNum = 0
-        for i=#data, 1, -1 do
+        self:undateWorldData(data, inType)
+
+    elseif inType == ChatConst.CHAT_CHANNEL.GODWAR then         --跨服诸神
+        self:updateCrossWarData(data,inType)
+        
+    elseif inType == ChatConst.CHAT_CHANNEL.FSERVER then        --全服
+        self:updateFullServerData(data,inType)
+
+    else                                                        --联盟
+        self:updateGuildData(data,inType)
+    end
+end
+
+function ChatModel:updateSysData(data, inType)
+    local sortFunc = function(a, b) return a.id > b.id end
+
+    for k,v in pairs(data) do
+        self:handleSysText(v)
+    end
+    self._data[inType] = data
+    table.sort(self._data[inType], sortFunc)
+end
+
+function ChatModel:undateWorldData(data, inType)
+    local loginTime = self._userModelData._lt or 0
+    local closeTime = self._userModelData.leaveTime or 0
+    local sortFunc = function(a, b) return a.id > b.id end 
+
+    local unreadNum = 0
+    for i=#data, 1, -1 do
+        if data[i]["message"] ~= nil then
+            --世界官方消息数据结构重组
+            if data[i]["message"]["idip"] and data[i]["message"]["idip"] == 1 and inType == ChatConst.CHAT_CHANNEL.WORLD then
+                _, _, data[i] = self:paramHandle("guanfang", data[i], false)
+            end
+
+            --黑名单/文字处理
+            if data[i]["message"]["udata"] and data[i]["message"]["udata"]["rid"] then
+                local _id = data[i]["message"]["udata"]["rid"]
+                if self._friendModel:checkIsBlack(_id) then 
+                    table.remove(data, i)  --黑名单
+                else
+                    self:handleEmoji(data[i])
+                    --未读数
+                    if data[i]["t"] > closeTime and data[i]["t"] <= loginTime then
+                        unreadNum = unreadNum + 1
+                    end
+
+                    --自己发言最近十条
+                    self:insertBannedList(data[i], true)   --最新的在数组最后
+                end
+            end
+        end
+    end
+    
+    self:setUnread(unreadNum, ChatConst.CHAT_CHANNEL.WORLD, true)
+    self._data[inType] = data
+    table.sort(self._data[inType], sortFunc)
+end
+
+function ChatModel:updateGuildData(data, inType)
+    local loginTime = self._userModelData._lt or 0
+    local closeTime = self._userModelData.leaveTime or 0
+    local sortFunc = function(a, b) return a.id > b.id end 
+
+    local guildLeave = self._userModelData.guildLeave or 0
+    local unreadNum = 0
+
+    for i=#data, 1, -1 do
+        if data[i]["t"] <= guildLeave then
+            table.remove(data, i)
+        else
             if data[i]["message"] ~= nil then
                 --世界官方消息数据结构重组
                 if data[i]["message"]["idip"] and data[i]["message"]["idip"] == 1 and inType == ChatConst.CHAT_CHANNEL.WORLD then
@@ -224,53 +243,158 @@ function ChatModel:updatDataByType(inType, data)
                         if data[i]["t"] > closeTime and data[i]["t"] <= loginTime then
                             unreadNum = unreadNum + 1
                         end
-
-                        --自己发言最近十条
-                        self:insertBannedList(data[i], true)   --最新的在数组最后
                     end
                 end
             end
         end
-        
-        self:setUnread(unreadNum, ChatConst.CHAT_CHANNEL.WORLD, true)
-        self._data[inType] = data
-        table.sort(self._data[inType], sortFunc)
-
-    else                                                        --联盟
-        local guildLeave = self._userModelData.guildLeave or 0
-        local unreadNum = 0
-
-        for i=#data, 1, -1 do
-            if data[i]["t"] <= guildLeave then
-                table.remove(data, i)
-            else
-                if data[i]["message"] ~= nil then
-                    --世界官方消息数据结构重组
-                    if data[i]["message"]["idip"] and data[i]["message"]["idip"] == 1 and inType == ChatConst.CHAT_CHANNEL.WORLD then
-                        _, _, data[i] = self:paramHandle("guanfang", data[i], false)
-                    end
-
-                    --黑名单/文字处理
-                    if data[i]["message"]["udata"] and data[i]["message"]["udata"]["rid"] then
-                        local _id = data[i]["message"]["udata"]["rid"]
-                        if self._friendModel:checkIsBlack(_id) then 
-                            table.remove(data, i)  --黑名单
-                        else
-                            self:handleEmoji(data[i])
-                            --未读数
-                            if data[i]["t"] > closeTime and data[i]["t"] <= loginTime then
-                                unreadNum = unreadNum + 1
-                            end
-                        end
-                    end
-                end
-            end
-        end
-        
-        self:setUnread(unreadNum, ChatConst.CHAT_CHANNEL.GUILD, true)
-        self._data[inType] = data
-        table.sort(self._data[inType], sortFunc)
     end
+    
+    self:setUnread(unreadNum, ChatConst.CHAT_CHANNEL.GUILD, true)
+    self._data[inType] = data
+    table.sort(self._data[inType], sortFunc)
+end
+
+function ChatModel:updatePriData(data, inType)
+    local loginTime = self._userModelData._lt or 0
+    local closeTime = self._userModelData.leaveTime or 0
+    local sortFunc = function(a, b) return a.id > b.id end 
+
+    for i=#data, 1, -1 do
+        if data[i]["user"] then
+            data[i]["user"] = {}
+        end
+
+        local isNew = false  --数据是否完整
+        local isFindUnread = false   --是否未读
+        local chatData = data[i]["chat"]
+        for k=#chatData, 1, -1 do
+            if chatData[k]["message"] and chatData[k]["message"]["toData"] and chatData[k]["message"]["toData"].rid then
+                local curPriData = chatData[k]["message"]
+                --设置玩家user字段
+                if not data[i]["user"] or next(data[i]["user"]) == nil then   
+                    if curPriData["toData"].rid == self._userModelData._id then
+                        data[i]["user"] = curPriData["udata"]
+                    else
+                        data[i]["user"] = curPriData["toData"]
+                    end
+                end
+                
+                --设置未读数
+                if not isFindUnread and chatData[k]["t"] > closeTime and chatData[k]["t"] <= loginTime then
+                    local toId
+                    if self._userModelData._id ~= curPriData["udata"]["rid"] then
+                        toId = curPriData["udata"]["rid"]
+
+                    elseif self._userModelData._id ~= curPriData["toData"]["rid"] then
+                        toId = curPriData["toData"]["rid"]
+                    end
+
+                    if toId then
+                        self:setPriUnread(toId, "login")
+                        isFindUnread = true
+                    end
+                end
+                
+                isNew = true
+            else
+                table.remove(chatData, k)
+            end
+        end
+
+        if isNew == false then
+            table.remove(data, i)
+        end
+    end
+
+    -- 黑名单数据清除
+    -- 插入bug反馈数据
+    for i=#data, 1, -1 do
+        local _id = data[i]["user"]["rid"] 
+        if self._friendModel:checkIsBlack(_id) then 
+            table.remove(data, i)  --黑名单
+        else
+            for k,msg in pairs(data[i]["chat"]) do
+                self:handleEmoji(msg)
+            end
+            table.sort(data[i]["chat"], sortFunc)  
+        end
+    end
+
+    --聊天user排序  表末尾为最新数据
+    local userSort = function(a, b) return a["chat"][1].t < b["chat"][1].t end
+    self._data[inType] = data  
+    table.sort(self._data[inType], userSort) 
+    if ChatConst.IS_DEBUG_OPEN == true then
+        self:insertDebugData()  --插入debug数据至表顶
+    end
+end
+
+function ChatModel:updateCrossWarData(data,inType)
+    local loginTime = self._userModelData._lt or 0
+    local closeTime = self._userModelData.leaveTime or 0
+    local sortFunc = function(a, b) return a.id > b.id end
+
+    local unreadNum = 0
+    for i=#data, 1, -1 do
+        if data[i]["message"] ~= nil then
+            --黑名单/文字处理
+            if data[i]["message"]["udata"] and data[i]["message"]["udata"]["rid"] then
+                local _id = data[i]["message"]["udata"]["rid"]
+                if self._friendModel:checkIsBlack(_id) then 
+                    table.remove(data, i)  --黑名单
+                else
+                    self:handleEmoji(data[i])
+                    --未读数
+                    if data[i]["t"] > closeTime and data[i]["t"] <= loginTime then
+                        unreadNum = unreadNum + 1
+                    end
+                end
+            end
+        end
+    end
+    
+    self:setUnread(unreadNum, ChatConst.CHAT_CHANNEL.GODWAR, true)
+    self._data[inType] = data
+    table.sort(self._data[inType], sortFunc)
+end
+
+function ChatModel:updateFullServerData(data,inType)
+    local loginTime = self._userModelData._lt or 0
+    local closeTime = self._userModelData.leaveTime or 0
+    local sortFunc = function(a, b) return a.id > b.id end
+    table.sort(data, sortFunc)
+
+    -- local unreadNum = 0
+    for i=#data, 1, -1 do
+        if data[i]["message"] ~= nil then
+            --黑名单/文字处理
+            if data[i]["message"]["udata"] and data[i]["message"]["udata"]["rid"] then
+                local _id = data[i]["message"]["udata"]["rid"]
+                local cellType = data[i]["message"]["udata"]["cellType"]
+                if self._friendModel:checkIsBlack(_id) or cellType == ChatConst.CELL_TYPE.FSERVER2 then
+                    table.remove(data, i)  --黑名单
+                else
+                    self:handleEmoji(data[i])
+                    --未读数
+                    -- if data[i]["t"] > closeTime and data[i]["t"] <= loginTime then
+                    --     unreadNum = unreadNum + 1
+                    -- end
+
+                    --计算两条消息之间的时间差
+                    if i == #data then
+                        data[i]["disT"] = 60 * 60 * 24 + 1
+                    else
+                        local lastT = data[i + 1]["t"]  --上一条
+                        local curT = data[i]["t"]       --当前
+                        data[i]["disT"] = math.max(0, curT - lastT)
+                    end
+                end
+            end
+        end
+    end
+    
+    -- self:setUnread(unreadNum, ChatConst.CHAT_CHANNEL.FSERVER, true)
+    self._data[inType] = data 
 end
 
 function ChatModel:getPrivateChatWithNum(inType)
@@ -354,7 +478,7 @@ end
 
 --服务器/手动推送
 function ChatModel:pushData(data)
-    -- dump(data, "push", 10)
+    dump(data, "push", 10)
 
     if data == nil then
         return
@@ -391,9 +515,18 @@ function ChatModel:pushData(data)
 
     elseif data.type == ChatConst.CHAT_CHANNEL.GUILD then       --联盟
         self:pushGuildData(data)
+
+    elseif data.type == ChatConst.CHAT_CHANNEL.GODWAR then     --跨服诸神
+        self:pushGodWarData(data)
         
     elseif data.type == ChatConst.CHAT_CHANNEL.WORLD then       --世界 
         self:pushWorldData(data) 
+
+    elseif data.type == ChatConst.CHAT_CHANNEL.FSERVER then     --全服
+        self:pushFullServerData(data) 
+
+    elseif data.type == ChatConst.CHAT_CHANNEL.FSERVER1 then    --全服喊话
+        self:pushFullServerData(data)
 
     elseif data.type == ChatConst.CHAT_CHANNEL.DEBUG then       --debug反馈
         self:pushPrivateData(data)
@@ -502,6 +635,15 @@ function ChatModel:replacePushText(inData)
 
                 inMsg.text = string.gsub(lang("REPLAY_ARENA"),"{$enemyname}",enemyName)
             end
+            
+        elseif cellType == ChatConst.CELL_TYPE.WORLD5 then
+            if inMsg.reportInfo and inMsg.reportInfo.enemyName then
+                --名字特殊字符替换
+                local enemyName = inMsg.reportInfo.enemyName
+                enemyName = self:replaceSepcialSignal(enemyName)
+
+                inMsg.text = string.gsub(lang("REPLAY_GLORYARENA"),"{$enemyname}",enemyName)
+            end
 
         --世界/私聊 联盟招募
         elseif cellType == ChatConst.CELL_TYPE.WORLD3 or 
@@ -567,6 +709,18 @@ function ChatModel:pushGuildData(data)
     self:reflashData(data.type)
 end
 
+--跨服诸神
+function ChatModel:pushGodWarData(data)
+    self:handleEmoji(data)
+    table.insert(self._data[data.type], 1, data)
+
+    if not self._isChatViewOpen or self._curChannel ~= ChatConst.CHAT_CHANNEL.GODWAR then
+        self._godWarUnread = self._godWarUnread + 1
+        self:reflashData("priUnread")  
+    end
+    self:reflashData(data.type)
+end
+
 --世界消息推送
 function ChatModel:pushWorldData(data)
     --官方世界消息重组
@@ -583,6 +737,75 @@ function ChatModel:pushWorldData(data)
         self:reflashData("priUnread")  
     end
     self:reflashData(data.type)
+end
+
+function ChatModel:pushFullServerData(data)
+    --喊话类型：在全服界面才接收push，不展示在聊天滚动区域
+    local typeCell = data.message.typeCell
+    if typeCell == ChatConst.CELL_TYPE.FSERVER2 and 
+     self._isChatViewOpen and self._curChannel == ChatConst.CHAT_CHANNEL.FSERVER then    
+        self:setCallChatData(data)
+        return
+    end
+
+    --添加时间差
+    local tempData = self._data[data.type]
+    local curT = data.t or 0
+    if #tempData == 0 then
+        data["disT"] = 60 *60 * 24 + 1
+    else
+        local lastT = tempData[1].t or 0
+        data["disT"] = math.max(0, curT - lastT)
+    end
+
+    self:handleEmoji(data)
+    table.insert(self._data[data.type], 1, data)
+
+    if not self._isChatViewOpen or self._curChannel ~= ChatConst.CHAT_CHANNEL.FSERVER then
+        local cellType = data["message"] and data["message"]["typeCell"]  --@类型
+        if cellType == ChatConst.CELL_TYPE.FSERVER3 and data["message"]["callId"] == self._userModel:getData()._id then
+            self:setConnectUserList(data)
+            self:reflashData("priUnread")  --外部红点
+        end
+        return
+    end
+    self:reflashData(data.type)  --界面红点   
+end
+
+function ChatModel:setConnectUserList(data)
+    if self._connectList and next(self._connectList) ~= nil then
+        return
+    end
+
+    self._connectList = {}
+    table.insert(self._connectList, data)
+    self:reflashData("priUnread")
+end
+
+function ChatModel:getConnectUserList()
+    return self._connectList or {}
+end
+
+function ChatModel:clearConnectUserList()
+    self._connectList = {}
+    self:reflashData("priUnread")
+end
+
+function ChatModel:setCallChatData(data)
+    if self._callChats == nil then
+        self._callChats = {}
+    end
+
+    self._callChats = data
+    self:reflashData("CallChat")
+end
+
+function ChatModel:getCallChatData()
+    return self._callChats or {}
+end
+
+function ChatModel:clearCallChatData()
+    self._callChats = {}
 end
 
 --私聊消息推送
@@ -675,10 +898,17 @@ end
 --文字处理
 function ChatModel:handleSysText(data)
     local context = ""
+    local notSepcialStr = false   --无需特殊处理的字段标识
     if data.type and data.type == "guild" then
         context = lang(data.message.text)
     elseif data.message.id == "GUANGBO_AWAKING" then
         context = lang("GUANGBO_11")
+    elseif data.message.id == "GUANGBO_13_1_1" or data.message.id == "GUANGBO_13_1_2"
+        or data.message.id == "GUANGBO_13_1_3" or data.message.id == "GUANGBO_13_2"
+        or data.message.id == "GUANGBO_13_3" then
+
+        context = lang(data.message.id)
+        notSepcialStr = true
     else
         context = lang(data.message.id .. "_3")
     end
@@ -688,7 +918,7 @@ function ChatModel:handleSysText(data)
         if #releaceData == 2 then
             local name = releaceData[2]
             local key = releaceData[1]
-            if string.find(key, '$teamId') ~= nil then                
+            if string.find(key, '$teamId') ~= nil then            
                 local sysTeam = tab:Team(tonumber(releaceData[2]))
                 if data.message.id == "GUANGBO_AWAKING" then   --兵团觉醒
                     key = "$awakingName"
@@ -709,6 +939,11 @@ function ChatModel:handleSysText(data)
             if count1 > 0 then 
                 context = uresult
             end
+            --无需特殊处理的字段，只需要按照value数组中的key替换语言表中对应的key
+            if notSepcialStr then
+                context = string.gsub(context,key,name)
+            end
+
         end
     end
     data.message.text = context
@@ -746,9 +981,12 @@ function ChatModel:setUnread(num, inType, isLogin)
 
     elseif inType == ChatConst.CHAT_CHANNEL.GUILD then
         self._guildUnread = num
+
+    elseif inType == ChatConst.CHAT_CHANNEL.GODWAR then
+        self._godWarUnread = num
     end
 
-    if isLogin == nil or isLogin == false then
+    if not isLogin then
         self:reflashData("priUnread")
     end 
 end
@@ -759,7 +997,15 @@ function ChatModel:getUnread(inType)
 
     elseif inType == ChatConst.CHAT_CHANNEL.GUILD then
         return self._guildUnread or 0 
+
+    elseif inType == ChatConst.CHAT_CHANNEL.GODWAR then
+        return self._godWarUnread or 0 
+
+    elseif inType == ChatConst.CHAT_CHANNEL.FSERVER then
+        return #(self._connectList or {}) 
     end
+
+    return 0
 end
 
 --未读数  私聊
@@ -861,113 +1107,58 @@ end
 
 --登录游戏加载数据
 function ChatModel:checkUnloginData(data)
-    if self._loginNum == nil then
-        self._loginNum = 1
-    else
-        self._loginNum = self._loginNum + 1
-        if self._loginNum > 3 then
-            return
+    -- local function debugCallback()  --手动获取debug反馈信息  
+    --     self:getReortlist( function(data)
+    --         if not data or type(data) ~= "table" then
+    --             data = {}
+    --         end
+    --         self._debugData = data
+    --         local debugUnread = 0
+    --         for p, debug in ipairs(data) do
+    --             debug.id = tostring(p) .. tostring(os.time())
+    --         end
+    --     end )
+    -- end
+
+    local function crossWarCallback()
+        local isSysOpen, toBeOpen, level = SystemUtils["enableCrossGuild"]
+        local isOpen = self._modelMgr:getModel("CrossGodWarModel"):matchIsOpen()
+        if not isSysOpen or isOpen ~= 0 then  --0是 1不是
+           data = {}
         end
     end
 
-    --手动获取debug反馈信息  
+    local function fSerCallback()
+        local isSysOpen, toBeOpen, level = SystemUtils["enableWeChat"]
+        if not isSysOpen then
+           data = {}
+        end
+    end
+
+    
+    self._loginNum = (self._loginNum or 0) + 1
     if self._loginNum == 2 then
-        -- self:getReortlist( function(data)
-        --     if not data or type(data) ~= "table" then
-        --         data = {}
-        --     end
-        --     self._debugData = data
-        --     local debugUnread = 0
-        --     for p, debug in ipairs(data) do
-        --         debug.id = tostring(p) .. tostring(os.time())
-        --     end
-        -- end )
-    end
-
-    if next(data) == nil then
-        if self._loginNum == 1 then  --pri  因为debug返回有延迟，所以进私聊时重新load数据
-            self:setLoadDataByChannel(ChatConst.CHAT_CHANNEL.PRIVATE)
-            self:updatDataByType(ChatConst.CHAT_CHANNEL.PRIVATE, {})
-        elseif self._loginNum == 2 then     --guild
-            self:setLoadDataByChannel(ChatConst.CHAT_CHANNEL.GUILD)
-            self:updatDataByType(ChatConst.CHAT_CHANNEL.GUILD, {})
-        elseif self._loginNum == 3 then     --all
-            self:setLoadDataByChannel(ChatConst.CHAT_CHANNEL.WORLD)
-            self:updatDataByType(ChatConst.CHAT_CHANNEL.WORLD, {})
-        end
-        
+        -- debugCallback()
+    elseif self._loginNum == 4 then
+        crossWarCallback()
+    elseif self._loginNum == 5 then
+        fSerCallback()
+    elseif self._loginNum > 5 then
         return
     end
-    
-    local loginTime = self._userModelData._lt or 0
-    local closeTime = self._userModelData.leaveTime or 0
 
-    --------------------------------------------------------
-    --登录检查  挪到updatDataByType方法里，红点和黑名单一起处理
-    --联盟
-    if data[1] and data[1].type and data[1].type == "guild" then
-        -- local guildLeave = self._userModelData.guildLeave or 0
-        -- local unreadNum = 0
-
-        -- for i=#data, 1, -1 do
-        --     if data[i]["t"] <= guildLeave then
-        --         table.remove(data, i)
-        --     else
-        --         if data[i]["t"] > closeTime and data[i]["t"] <= loginTime then
-        --             unreadNum = unreadNum + 1
-        --         end
-        --     end
-        -- end
-        -- self:setUnread(unreadNum, ChatConst.CHAT_CHANNEL.GUILD, true)
-        --设置已获取过消息
-        self:setLoadDataByChannel(ChatConst.CHAT_CHANNEL.GUILD)
-        self:updatDataByType(ChatConst.CHAT_CHANNEL.GUILD, data)
-    end
-
-    --世界
-    if data[1] and data[1].type and data[1].type == "all" then
-        -- local unreadNum = 0
-        -- for i=1, #data, 1 do
-        --     --自己发言最近十条
-        --     self:insertBannedList(data[i])
-
-        --     if data[i]["t"] > closeTime and data[i]["t"] <= loginTime then
-        --         unreadNum = unreadNum + 1
-        --     end
-        -- end
-        -- self:setUnread(unreadNum, ChatConst.CHAT_CHANNEL.WORLD, true)
-        --设置已获取过消息
-        self:setLoadDataByChannel(ChatConst.CHAT_CHANNEL.WORLD)
-        self:updatDataByType(ChatConst.CHAT_CHANNEL.WORLD, data)
-    end
-
-    --私聊
-    if data[1] and data[1]["chat"] and data[1]["chat"][1] and data[1]["chat"][1].type and data[1]["chat"][1].type == "pri" then 
-        -- for p,chat in pairs(data) do
-        --     local toId
-        --     for i,v in ipairs(chat["chat"]) do
-        --         if v["t"] > closeTime and v["t"] <= loginTime then
-        --             if v["message"] and v["message"]["udata"] and v["message"]["toData"] then
-        --                 local curId = self._userModel:getData()._id
-        --                 if curId ~= v["message"]["udata"]["rid"] then
-        --                     toId = v["message"]["udata"]["rid"]
-
-        --                 elseif curId ~= v["message"]["toData"]["rid"] then
-        --                     toId = v["message"]["toData"]["rid"]
-        --                 end
-        --             end
-
-        --             if toId then
-        --                 self:setPriUnread(toId, "login")
-        --                 break
-        --             end
-        --         end
-        --     end
-        -- end
-        -- --设置已获取过消息
-        self:setLoadDataByChannel(ChatConst.CHAT_CHANNEL.PRIVATE)
-        self:updatDataByType(ChatConst.CHAT_CHANNEL.PRIVATE, data)
-    end
+    --登录检查  
+    --1.挪到updatDataByType方法里，红点和黑名单一起处理
+    --2.因为debug返回有延迟，所以进私聊时会重新load数据
+    local typeList = {
+        ChatConst.CHAT_CHANNEL.PRIVATE,     --pri  
+        ChatConst.CHAT_CHANNEL.GUILD,       --guild
+        ChatConst.CHAT_CHANNEL.WORLD,       --all
+        ChatConst.CHAT_CHANNEL.GODWAR,      --诸神
+        ChatConst.CHAT_CHANNEL.FSERVER,     --全服
+    }
+    self:setLoadDataByChannel(typeList[self._loginNum])
+    self:updatDataByType(typeList[self._loginNum], data or {})
 end
 
 --获取debug数据 并插入到私聊最顶端
@@ -1048,7 +1239,7 @@ function ChatModel:removeBlackChatUser(inID, isReflush, isWorld, isGuild, isPri)
     end
     
     if isReflush == true then
-        self:reflashData("blackRemove")
+        self:reflashData("BlackRemove")
     end
 end
 
@@ -1063,14 +1254,15 @@ end
 function ChatModel:paramHandle(inType, inData, isSend)
     local param = {}
     local userData = self._userModel:getData()
-    local VipData = self._modelMgr:getModel("VipModel"):getData()
+    local curVip = self._modelMgr:getModel("VipModel"):getLevel() or 0
 
     -- 客户端拼的udata
     local udataFake = {
         rid = userData._id, 
         usid = userData.usid, 
         lvl = userData.lvl,
-        vipLvl = VipData.level or 0,
+        plvl = userData.plvl,
+        vipLvl = curVip,
         guildName = userData.guildName or "",
         roleGuild = userData.roleGuild and userData.roleGuild.pos or 3,
         avatar = userData.avatar,
@@ -1079,11 +1271,25 @@ function ChatModel:paramHandle(inType, inData, isSend)
         sec = GameStatic.sec,
     }
 
+    --获取被发送用户数据(字段名不同单独处理)
+    local function getToUserData(inData)
+        return {
+            avatar = inData.avatar,
+            avatarFrame = inData.avatarFrame or 1000,
+            lvl = inData.lvl or 0,
+            plvl = inData.plvl,
+            name = inData.name or "",
+            rid = inData.rid, 
+            roleGuild = inData.roleGuild or 3,
+            usid = inData.usid,
+            vipLvl = inData.vipLvl or 0,
+            sec = inData.sec,
+        }  
+    end
+
     --隐藏vip功能
     if self._userModel:isHideVip("chat") == true then
         udataFake["vipLvl"] = 0
-    else
-        udataFake["vipLvl"] = VipData.level or 0
     end
 
     -- send
@@ -1123,6 +1329,12 @@ function ChatModel:paramHandle(inType, inData, isSend)
         param.type                  = ChatConst.CHAT_CHANNEL.WORLD
         param.message.reportInfo    = inData.reportInfo
 
+    --世界【荣耀竞技战斗回放】
+    elseif inType == ChatConst.CELL_TYPE.WORLD5 then        
+        param.message.typeCell      = ChatConst.CELL_TYPE.WORLD5
+        param.type                  = ChatConst.CHAT_CHANNEL.WORLD
+        param.message.reportInfo    = inData.reportInfo
+
     --世界【招募(联盟)】
     elseif inType == ChatConst.CELL_TYPE.WORLD3 then 
         param.message.typeCell  = ChatConst.CELL_TYPE.WORLD3
@@ -1146,39 +1358,7 @@ function ChatModel:paramHandle(inType, inData, isSend)
 
     --联盟【日志/红包/地图战报】手动push
     elseif inType == ChatConst.CELL_TYPE.GUILD2 then
-        param = {
-            id = inData["infoType"] .. os.time() ..(math.random() * 10),
-            message = {
-                id = inData["infoType"],
-                text = "",
-                value = {}
-            },
-            t = os.time(), 
-            type = ChatConst.CHAT_CHANNEL.GUILD,
-            typeCell = ChatConst.CELL_TYPE.GUILD2,
-            isManual = true   --是否是手动
-        }
-
-        if inData["infoType"] == "GUILD_RED_BOX" then           --红包
-            param["message"]["text"] = "LIANMENG_1"
-            param["message"]["value"] = {
-                [1] = "$name::" .. inData["infoName"]
-            }
-
-        elseif inData["infoType"] == "GUILD_MAP_REPORT" then    --联盟地图战报
-            local str = lang(tab:GuildMapReport(inData.infoData.type)["report"])
-            for k,v in pairs(inData.infoData.params) do
-                v = self:replaceSepcialSignal(v)
-                str = string.gsub(str, "{$" .. k .. "}", v)
-            end
-            if string.find(str, "color=") == nil then
-                str = "[color=3d1f00]"..str.."[-]"
-            end  
-            param["message"]["text"] = str
-
-        else                                                    --联盟战报
-            param["message"]["text"] = inData["info"]
-        end
+        param = self:paramHandleForGuildRed(inData, param)
 
     --联盟秘境邀请
     elseif inType == ChatConst.CELL_TYPE.GUILD3 then            --联盟秘境
@@ -1186,19 +1366,30 @@ function ChatModel:paramHandle(inType, inData, isSend)
         param.type              = ChatConst.CHAT_CHANNEL.GUILD
         param.message.famData   = inData.famData
 
+    --跨服诸神
+    elseif inType == ChatConst.CELL_TYPE.GODWAR1 then
+        param.message.typeCell      = _typeCell or ChatConst.CELL_TYPE.GODWAR1  
+        param.type                  = ChatConst.CHAT_CHANNEL.GODWAR
+        if param.message.text then
+            param.message.text = self:replaceUserSendText(param.message.text)
+        end
+
+    --全服
+    elseif inType == ChatConst.CELL_TYPE.FSERVER1 then
+        param = self:paramHandleForFServer(param, _typeCell)
+
+    --全服喊话
+    elseif inType == ChatConst.CELL_TYPE.FSERVER2 then
+        param = self:paramHandleForFServer2(param, _typeCell)
+
+    --全服@人
+    elseif inType == ChatConst.CELL_TYPE.FSERVER3 then
+        param = self:paramHandleForFServer3(param, _typeCell, inData)
+
     --私聊
     elseif inType == ChatConst.CELL_TYPE.PRI1 then
         local toUserData = self._cacheUserData
-        param["message"]["toData"] = {
-            avatar = toUserData.avatar,
-            avatarFrame = toUserData.avatarFrame or 1000,
-            lvl = toUserData.lvl,
-            name = toUserData.name,
-            rid = toUserData.rid, 
-            roleGuild = toUserData.roleGuild or 3,
-            usid = toUserData.usid,
-            vipLvl = toUserData.vipLvl or 0,
-        }  
+        param["message"]["toData"]  = getToUserData(toUserData)
         param.message.typeCell      = _typeCell
         param.type                  = ChatConst.CHAT_CHANNEL.PRIVATE
         param.to                    = inData and inData.toID or ""
@@ -1232,17 +1423,8 @@ function ChatModel:paramHandle(inType, inData, isSend)
     --私聊【好友切磋战报】手动加udata
     elseif inType == ChatConst.CELL_TYPE.PRI4 then
         local toUserData = inData.toData
-        param["message"]["toData"] = {
-            avatar = toUserData.avatar,
-            avatarFrame = toUserData.avatarFrame or 1000,
-            lvl = toUserData.lv or 0,
-            name = toUserData.name or "",
-            rid = toUserData.rid, 
-            roleGuild = toUserData.roleGuild or 3,
-            usid = toUserData.usid,
-            vipLvl = toUserData.vipLvl or 0,
-            sec = inData.sec
-        }
+        param["message"]["toData"]  = getToUserData(toUserData)
+        param["message"]["toData"]["lvl"] = toUserData.lv or 0
         param.message.typeCell      = ChatConst.CELL_TYPE.PRI4
         param.type                  = ChatConst.CHAT_CHANNEL.PRIVATE
         param.message.reportInfo    = inData.reportInfo
@@ -1251,17 +1433,7 @@ function ChatModel:paramHandle(inType, inData, isSend)
     --私聊【联盟招募】
     elseif inType == ChatConst.CELL_TYPE.PRI5 or inType == ChatConst.CELL_TYPE.PRI6 then
         local toUserData = self._cacheUserData
-        param["message"]["toData"] = {
-            avatar = toUserData.avatar,
-            avatarFrame = toUserData.avatarFrame or 1000,
-            lvl = toUserData.lvl,
-            name = toUserData.name,
-            rid = toUserData.rid, 
-            roleGuild = toUserData.roleGuild or 3,
-            usid = toUserData.usid,
-            vipLvl = toUserData.vipLvl or 0,
-        } 
-
+        param["message"]["toData"]  = getToUserData(toUserData)
         if inType == ChatConst.CELL_TYPE.PRI6 then
             param.message.udata = udataFake
             param.isManual  = true   --是否是手动
@@ -1286,10 +1458,82 @@ function ChatModel:paramHandle(inType, inData, isSend)
             param.message.udata = udataFake
         end
         param.isManual = true   --是否是手动
-        return false, true, param
+        return false, isInfoBanned, param
     end
 
-    return false, false, param    --timeBanned, infoBanned, data
+    return false, isInfoBanned, param    --timeBanned, infoBanned, data
+end
+
+function ChatModel:paramHandleForGuildRed(inData, param)
+    param = {
+        id = inData["infoType"] .. os.time() ..(math.random() * 10),
+        message = {
+            id = inData["infoType"],
+            text = "",
+            value = {}
+        },
+        t = os.time(), 
+        type = ChatConst.CHAT_CHANNEL.GUILD,
+        typeCell = ChatConst.CELL_TYPE.GUILD2,
+        isManual = true   --是否是手动
+    }
+
+    if inData["infoType"] == "GUILD_RED_BOX" then           --红包
+        param["message"]["text"] = "LIANMENG_1"
+        param["message"]["value"] = {
+            [1] = "$name::" .. inData["infoName"]
+        }
+
+    elseif inData["infoType"] == "GUILD_MAP_REPORT" then    --联盟地图战报
+        local str = lang(tab:GuildMapReport(inData.infoData.type)["report"])
+        for k,v in pairs(inData.infoData.params) do
+            v = self:replaceSepcialSignal(v)
+            str = string.gsub(str, "{$" .. k .. "}", v)
+        end
+        if string.find(str, "color=") == nil then
+            str = "[color=3d1f00]"..str.."[-]"
+        end  
+        param["message"]["text"] = str
+
+    else                                                    --联盟战报
+        param["message"]["text"] = inData["info"]
+    end
+
+    return param 
+end
+
+function ChatModel:paramHandleForFServer(param, _typeCell)
+    param.message.typeCell      = _typeCell or ChatConst.CELL_TYPE.FSERVER1  
+    param.type                  = ChatConst.CHAT_CHANNEL.FSERVER
+
+    if param.message.text then
+        param.message.text = self:replaceUserSendText(param.message.text)
+    end  
+
+    return param
+end
+
+function ChatModel:paramHandleForFServer2(param, _typeCell)
+    param.message.typeCell      = _typeCell or ChatConst.CELL_TYPE.FSERVER2  
+    param.type                  = ChatConst.CHAT_CHANNEL.FSERVER1
+
+    if param.message.text then
+        param.message.text = self:replaceUserSendText(param.message.text)
+    end  
+
+    return param
+end
+
+function ChatModel:paramHandleForFServer3(param, _typeCell, inData)
+    param.message.typeCell      = _typeCell or ChatConst.CELL_TYPE.FSERVER3  
+    param.type                  = ChatConst.CHAT_CHANNEL.FSERVER
+    param.message.callId   = inData.callId
+
+    if param.message.text then
+        param.message.text = self:replaceUserSendText(param.message.text)
+    end  
+
+    return param
 end
 
 -- 联盟申请状态记录(防止需审批加入联盟时，多次请求服务器)
@@ -1574,6 +1818,15 @@ function ChatModel:getGiftId(inData)
     end
 
     return itemId,gift[1],gift[3]
+end
+
+function ChatModel:checkIsShowTime(inData)
+    local disT = inData["disT"] or 60*60*24+1
+    if disT > 60 then
+       return true
+    end
+
+    return false
 end
 
 return ChatModel

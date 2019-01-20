@@ -13,9 +13,9 @@ function TeamServer:ctor(data)
 end
 
 function TeamServer:onGetTeams(result, error)
-	if error ~= 0 then 
-		return
-	end
+    if error ~= 0 then 
+        return
+    end
     -- dump("debug",result,"TeamServer:onGetTeams")
     local d = self._teamModel:setData(result["teams"])
     self:callback()
@@ -106,7 +106,6 @@ function TeamServer:onUpgradeStageEquip(result, error)
 end
 
 function TeamServer:onUpgradeTeam(result, error)
-    -- dump("debug",result,"TeamServer:upgradeTeam")
     if error ~= 0 then 
         return
     end
@@ -209,6 +208,37 @@ function TeamServer:onTakeRune(result, error)
     self:callback(result)
 end
 
+-- 更换兵团皮肤
+function TeamServer:onSwitchSkin(result, error)
+    if error ~= 0 then 
+        return
+    end
+    self:handAboutServerData(result)
+    self:callback(result)
+end
+
+function TeamServer:onSwitchSpecialSkill( result, error )
+    if error ~= 0 then
+        return
+    end
+    self:handAboutServerData(result)
+    self:callback(result)
+end
+
+function TeamServer:onUpExclusiveLv( result, error )
+    if error ~= 0 then return end
+    -- dump(result)
+    self:handAboutServerData(result)
+    self:callback(result)
+end
+
+function TeamServer:onUpExclusiveStar( result, error )
+    if error ~= 0 then return end
+    -- dump(result)
+    self:handAboutServerData(result)
+    self:callback(result)
+end
+
 function TeamServer:handAboutServerData(result)
     if result == nil or result["d"] == nil then 
         return 
@@ -225,7 +255,6 @@ function TeamServer:handAboutServerData(result)
         local removeItems = itemModel:handelUnsetItems(result["unset"])
         itemModel:delItems(removeItems, true)
     end
-
     if result["d"]["teams"] ~= nil  then 
         local teamModel = self._modelMgr:getModel("TeamModel")
         teamModel:updateTeamData(result["d"]["teams"])

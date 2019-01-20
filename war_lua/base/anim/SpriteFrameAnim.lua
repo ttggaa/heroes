@@ -368,6 +368,12 @@ function SpriteFrameAnim:setOpacity(o)
     end
 end
 
+function SpriteFrameAnim:lSetOpacity(o)
+    if self._sp then
+        self._sp:setOpacity(o)
+    end
+end
+
 function SpriteFrameAnim:setScale(scale)
     if self._sp then
         self._sp:setScale(scale)

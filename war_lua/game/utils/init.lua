@@ -46,5 +46,6 @@ WakeUpUtils = require "game.utils.WakeUpUtils"
 GodWarUtil = require "game.utils.GodWarUtil"
 CrossUtils = require "game.utils.CrossUtils"
 LordManagerUtils = require "game.utils.LordManagerUtils"
+AcBtnEventUtils = require "game.utils.AcBtnEventUtils"
 
 

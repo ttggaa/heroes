@@ -239,7 +239,7 @@ function HeroSkillInformationView:onInit()
     self._skillDesBg2:setVisible(false)
     local skillNextLevel = self:getUI("bg.layer.layer_skill.layer_right.skill_des_title_bg_2.label_next_skill_level")
     -- skillNextLevel:setFontName(UIUtils.ttfName_Title)
-    local skillCurrentPro = self:getUI("bg.layer.layer_skill.layer_right.skill_des_title_bg_3.label_skill_level_pro")
+    self._skillCurrentPro = self:getUI("bg.layer.layer_skill.layer_right.skill_des_title_bg_3.label_skill_level_pro")
     self._slotExDes = self:getUI("bg.layer.layer_skill.layer_right.skill_des_title_bg_3.label_skill_slot_exdes")
     self._slotExDes:setVisible(false)
     --skillCurrentPro:enableOutline(cc.c3b(60, 30, 10), 1)
@@ -291,6 +291,7 @@ function HeroSkillInformationView:onInit()
     self._skillStudyToolValue:getVirtualRenderer():setAdditionalKerning(2)
     --self._skillStudyToolValue:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor,1)
     self._skillStudyLevelLimited = self:getUI("bg.layer.layer_skill.layer_right.skill_des_title_bg_3.level_limited")
+    self._skillMaxLevelTip = self:getUI("bg.layer.layer_skill.layer_right.skill_des_title_bg_3.max_level")
     --self._skillLabelStudy = self:getUI("bg.layer.layer_skill.layer_right.skill_des_title_bg_3.btn_study.label_study")
     --self._skillLabelStudy:enableOutline(cc.c4b(0, 0, 0,255), 1)
     self._image_add = self:getUI("bg.layer.layer_skill.layer_right.skill_des_title_bg_3.layer_tool_get.image_add")
@@ -706,6 +707,7 @@ function HeroSkillInformationView:updateSkillDetails()
     local skillCurrentExp = self._heroData["se" .. index]
     local skillCurrentTotalExp = tab:PlayerSkillExp(math.min(skillMaxLevel-1,skillLevel)).skexp
     local userLevel = self._modelMgr:getModel("UserModel"):getData().lvl
+    local curMaxLevel = tab:Setting("MAX_LV").value --当前版本最高等级
 
     local skillType = skillTableData.type
     local color = UIUtils.colorTable["ccUIHeroSkillColor" .. skillType]
@@ -766,25 +768,32 @@ function HeroSkillInformationView:updateSkillDetails()
     self._imageUnderline1:setVisible((cdAddition < 1 or isReplaced or resultNoTalent ~= result))
     print("skillLLLLevellll",skillLevel)
     local labelDiscription = self._skillEffectDes
+    local originContentSize = labelDiscription:getContentSize()
     local spTalent = self._modelMgr:getModel("SkillTalentModel"):getTalentDataInFormat()
     local desc = "[color=645252, fontsize=20]" .. BattleUtils.getDescription(BattleUtils.kIconTypeSkill, skillTableData.id, self._attributeValues, index,nil,nil,spTalent) .. "[-]"
     local richText = labelDiscription:getChildByName("descRichText")
     if richText then
         richText:removeFromParentAndCleanup()
     end
-    richText = RichTextFactory:create(desc, labelDiscription:getContentSize().width, labelDiscription:getContentSize().height - 5)
+    richText = RichTextFactory:create(desc, 340, originContentSize.height - 5)
     richText:formatText()
     richText:enablePrinter(true)
-    richText:setPosition(labelDiscription:getContentSize().width / 2, labelDiscription:getContentSize().height - richText:getInnerSize().height / 2)
+    local richRealSize = richText:getRealSize()
+    local _h = math.max(richRealSize.height,originContentSize.height)
+    labelDiscription:setInnerContainerSize(cc.size(originContentSize.width,_h))
+    richText:setPosition(labelDiscription:getContentSize().width / 2 - 10, labelDiscription:getInnerContainerSize().height - richText:getInnerSize().height / 2)
     richText:setName("descRichText")
     labelDiscription:addChild(richText)
+    labelDiscription:setTouchEnabled(richRealSize.height > originContentSize.height)
 
-    if skillLevel < skillMaxLevel then 
+    local levelLimited = tab:PlayerSkillExp(math.min(skillMaxLevel-1,skillLevel)).lvlim[index]
+    if skillLevel < skillMaxLevel and levelLimited <= curMaxLevel then 
         --self._layerEffect:setVisible(true)
         --self._skillTopLevel:setVisible(false)
         --self._skillDesBg2:setVisible(true)
         self._skillDesBg3:setVisible(true)
         self._skillMaxLevel:setVisible(false)
+        self._skillProgressBarFrame:setVisible(true)
         --[[
         local labelDiscription = self._skillNextLevelEffectDes
         local desc = "[color=4d4d4d, fontsize=18]" .. BattleUtils.getDescription(BattleUtils.kIconTypeSkill, skillTableData.id, self._nextLevelAttributeValues, index) .. "[-]"
@@ -957,6 +966,8 @@ function HeroSkillInformationView:updateSkillDetails()
         self._skillBtnStudy10:setVisible(userLevel >= 36)
         self._skillStudyToolValue:setVisible(true)
         self._skillStudyLayerTool:setVisible(true)
+        self._skillMaxLevelTip:setVisible(false)
+        self._skillCurrentPro:setVisible(true)
     else
         -- self._skillDesBg2:setVisible(false)
         -- self._skillDesBg3:setVisible(false)
@@ -989,6 +1000,9 @@ function HeroSkillInformationView:updateSkillDetails()
         self._skillStudyGoldValue:setVisible(false)
         self._skillStudyImageGlod:setVisible(false)
         self._skillMaxLevel:setVisible(true)
+        self._skillMaxLevelTip:setVisible(true)
+        self._skillCurrentPro:setVisible(false)
+        self._skillProgressBarFrame:setVisible(false)
     end
     --[=[
     local index = self._currentSkillIndex or 1
@@ -1146,6 +1160,7 @@ function HeroSkillInformationView:updateSlotSkillDetails()
     local skillCurrentExp = self._heroData.slot.e or 0 --["se" .. index]
     local skillCurrentTotalExp = tab:PlayerSkillExp(math.min(skillMaxLevel-1,skillLevel)).skexp
     local userLevel = self._modelMgr:getModel("UserModel"):getData().lvl
+    local curMaxLevel = tab:Setting("MAX_LV").value --当前版本最高等级
 
     local skillType = skillTableData.type
     local color = UIUtils.colorTable["ccUIHeroSkillColor" .. skillType]
@@ -1245,7 +1260,8 @@ function HeroSkillInformationView:updateSlotSkillDetails()
     richText:setName("descRichText")
     labelDiscription:addChild(richText)
 
-    if skillLevel < skillMaxLevel then 
+    local levelLimited = tab:PlayerSkillExp(math.min(skillMaxLevel-1,skillLevel)).lvlim[index]
+    if skillLevel < skillMaxLevel and levelLimited <= curMaxLevel then 
         self._skillDesBg3:setVisible(true)
         self._skillMaxLevel:setVisible(false)
         local labelDiscription = self._labelEffectDes3
@@ -1400,6 +1416,10 @@ function HeroSkillInformationView:updateSlotSkillDetails()
         self._skillBtnStudy10:setVisible(userLevel >= 36)
         self._skillStudyToolValue:setVisible(true)
         self._skillStudyLayerTool:setVisible(true)
+        self._skillMaxLevelTip:setVisible(false)
+        self._skillCurrentPro:setVisible(true)
+        self._skillProgressBarFrame:setVisible(true)
+        self._slotExDes:setVisible(true)
     else
         -- self._skillDesBg2:setVisible(false)
         -- self._skillDesBg3:setVisible(false)
@@ -1432,6 +1452,10 @@ function HeroSkillInformationView:updateSlotSkillDetails()
         self._skillStudyGoldValue:setVisible(false)
         self._skillStudyImageGlod:setVisible(false)
         self._skillMaxLevel:setVisible(true)
+        self._skillMaxLevelTip:setVisible(true)
+        self._skillCurrentPro:setVisible(false)
+        self._skillProgressBarFrame:setVisible(false)
+        self._slotExDes:setVisible(false)
     end
 
 end
@@ -1483,7 +1507,8 @@ function HeroSkillInformationView:updateStudyRateEffect(rate, isUpgrade, isStudy
         studyText:setString("精修进度+" .. rate)
         studyText:setColor(cc.c4b(255, 46, 46, 255))
         studyText:enableOutline(cc.c4b(81, 19, 0, 255), 2)
-        studyText:setPosition(cc.p(self._skillProgressBarFrame:getContentSize().width - 30, self._skillProgressBarFrame:getContentSize().height - 10))
+        studyText:setPosition(cc.p(self._skillProgressBarFrame:getContentSize().width - 30, self._skill
+        ProgressBarFrame:getContentSize().height - 10))
         self._skillProgressBarFrame:addChild(studyText)
         studyText:runAction(cc.Sequence:create({cc.Spawn:create({cc.EaseOut:create(cc.MoveBy:create(0.4, cc.p(0, 15)), 3), cc.FadeOut:create(0.4)}), cc.CallFunc:create(function()
             studyText:removeFromParent()
@@ -1645,6 +1670,7 @@ end
 
 function HeroSkillInformationView:updateUI(index, force)
     if index == self._currentSkillIndex and not force then return end
+    self._slotExDes:setVisible(index == 5)
     if index ~= 5 then
         self._currentSkillIndex = index
         skillDefaultIndex = index
@@ -1661,7 +1687,6 @@ function HeroSkillInformationView:updateUI(index, force)
         self:updateSlotSkillDetails()
         --]]
     end
-    self._slotExDes:setVisible(index == 5)
 end
 
 -- 更新法术书槽

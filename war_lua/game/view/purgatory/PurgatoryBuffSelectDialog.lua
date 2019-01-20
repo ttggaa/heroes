@@ -37,7 +37,9 @@ function PurgatoryBuffSelectDialog:onInit(  )
 		self:registerClickEvent(btn_root, function (  )
 			self._serverMgr:sendMsg("PurgatoryServer", "quickSwitch", {}, true, {}, function ( result )
 				self._buffDataList = {}
-				self:close()
+				if self.close then
+            		self:close()
+            	end
 				self:showBuffFloatTips()
 			end, function ( errorId )
 			    
@@ -85,68 +87,74 @@ function PurgatoryBuffSelectDialog:initBuffView(  )
 		local buffCell = buffBG:getChildByFullName('buffCell_' .. i)
 		local buffID = self._buffs[tostring(i)]
 		local buffData = buffCfg[buffID]
-
-		--buff des
-		local itemNameBg = buffCell:getChildByName("itemNameBg")
-	    local str = lang(buffData.des)
-	    local buffNum = buffData.pro[1][2]
-	    str = self:tsplit(str, buffNum)
-	    local result, count = string.gsub(str, "$num", buffNum)
-	    if count > 0 then 
-	        str = result
-	    end
-	    
-	    local richText = itemNameBg.richText
-	    if richText then
-	        richText:removeFromParent()
-	    end
-	    richText = RichTextFactory:create(str, 170, 40)
-	    richText:setName("richText")
-	    richText:formatText()
-	    richText:setPosition(itemNameBg:getContentSize().width/2 + (itemNameBg:getContentSize().width - richText:getRealSize().width)/2+3, itemNameBg:getContentSize().height/2)
-	    itemNameBg:addChild(richText)
-	    itemNameBg.richText = richText
-
-	    --buff name
-	    local buffName = buffCell:getChildByFullName('tname')
-	    buffName:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
-	    buffName:setString(lang(buffData.name))
-
-	    --buff icon
-	    local iconBg = buffCell:getChildByFullName("iconBg")
-		if iconBg then
-		    iconBg:setVisible(true)
-		    local buffIcon = iconBg:getChildByName("buffIcon")
-		    local param = {image = buffData.icon .. ".png", quality = 5, scale = 0.90, bigpeer = true}
-		    if buffIcon then
-		        IconUtils:updatePeerageIconByView(buffIcon, param)
-		        buffIcon:setSwallowTouches(false)
-		    else
-		        local buffIcon = IconUtils:createPeerageIconById(param)
-		        buffIcon:setPosition(-10, -5)
-		        buffIcon:setName("buffIcon")
-		        iconBg:addChild(buffIcon)
-		        buffIcon:setSwallowTouches(false)
+		if buffData == nil then
+			buffCell:setVisible(false)
+		else
+			buffCell:setVisible(true)
+			--buff des
+			local itemNameBg = buffCell:getChildByName("itemNameBg")
+		    local str = lang(buffData.des)
+		    local buffNum = buffData.pro[1][2]
+		    str = self:tsplit(str, buffNum)
+		    local result, count = string.gsub(str, "$num", buffNum)
+		    if count > 0 then 
+		        str = result
 		    end
+		    
+		    local richText = itemNameBg.richText
+		    if richText then
+		        richText:removeFromParent()
+		    end
+		    richText = RichTextFactory:create(str, 170, 40)
+		    richText:setName("richText")
+		    richText:formatText()
+		    richText:setPosition(itemNameBg:getContentSize().width/2 + (itemNameBg:getContentSize().width - richText:getRealSize().width)/2+3, itemNameBg:getContentSize().height/2)
+		    itemNameBg:addChild(richText)
+		    itemNameBg.richText = richText
+
+		    --buff name
+		    local buffName = buffCell:getChildByFullName('tname')
+		    buffName:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
+		    buffName:setString(lang(buffData.name))
+
+		    --buff icon
+		    local iconBg = buffCell:getChildByFullName("iconBg")
+			if iconBg then
+			    iconBg:setVisible(true)
+			    local buffIcon = iconBg:getChildByName("buffIcon")
+			    local param = {image = buffData.icon .. ".png", quality = 5, scale = 0.90, bigpeer = true}
+			    if buffIcon then
+			        IconUtils:updatePeerageIconByView(buffIcon, param)
+			        buffIcon:setSwallowTouches(false)
+			    else
+			        local buffIcon = IconUtils:createPeerageIconById(param)
+			        buffIcon:setPosition(-10, -5)
+			        buffIcon:setName("buffIcon")
+			        iconBg:addChild(buffIcon)
+			        buffIcon:setSwallowTouches(false)
+			    end
+			end
+
+			--buff effect
+	        local title = mcMgr:createViewMC("fuweuqiguang2_kaiqi", true, false)
+	        title:setPosition(iconBg:getContentSize().width*0.5, iconBg:getContentSize().height*0.5+10)
+	        title:setCascadeOpacityEnabled(true)
+	        title:setOpacity(150)
+	        iconBg:addChild(title, -1)
+
+			--buff select
+			local btn_select = buffCell:getChildByFullName('Button_55')
+			self:registerClickEvent(btn_select, function()
+				self._serverMgr:sendMsg("PurgatoryServer", "switchBuff", {stageId = self._buffData.stageId, buffIdx = i}, true, {}, function ( result )
+					if self.close then
+                		self:close()
+                	end
+					self:showBuffFloatTips()
+				end, function ( errorId )
+				    
+				end)
+	    	end) 
 		end
-
-		--buff effect
-        local title = mcMgr:createViewMC("fuweuqiguang2_kaiqi", true, false)
-        title:setPosition(iconBg:getContentSize().width*0.5, iconBg:getContentSize().height*0.5+10)
-        title:setCascadeOpacityEnabled(true)
-        title:setOpacity(150)
-        iconBg:addChild(title, -1)
-
-		--buff select
-		local btn_select = buffCell:getChildByFullName('Button_55')
-		self:registerClickEvent(btn_select, function()
-			self._serverMgr:sendMsg("PurgatoryServer", "switchBuff", {stageId = self._buffData.stageId, buffIdx = i}, true, {}, function ( result )
-				self:close()
-				self:showBuffFloatTips()
-			end, function ( errorId )
-			    
-			end)
-    	end) 
 	end
 end
 

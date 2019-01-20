@@ -32,6 +32,9 @@ function ActivityCarnivalModel:ctor()
     self._weaponsModel = self._modelMgr:getModel("WeaponsModel")
     self._skillTalentModel = self._modelMgr:getModel("SkillTalentModel")
     self._pokedexModel = self._modelMgr:getModel("PokedexModel")
+    self._purModel = self._modelMgr:getModel("PurgatoryModel")
+    self._battleArrayModel = self._modelMgr:getModel("BattleArrayModel")
+    self._backupModel = self._modelMgr:getModel("BackupModel")
     -- self:initData(clone(tab.activity901))
 
     --活动开启表里面是否有嘉年华的活动
@@ -880,6 +883,101 @@ function ActivityCarnivalModel:getConByType81(data,lvl,statis)
     if cond and cond[1] then  
         canGet = self._weaponsModel:getWeaponLockById(cond[1])
     end
+    return canGet, num,targetNum
+end
+
+-- 拥有X个Y级M品质圣徽
+function ActivityCarnivalModel:getConByType83(data,lvl,statis)
+    local num = -2
+    local targetNum = -1
+    local canGet = false
+
+    local cond = data.condition
+     
+    if cond and cond[1] then  
+        local lvl = cond[2] and (tonumber(cond[2]) + 1) or nil
+        local q = cond[3]
+        num = self._teamModel:getHolyNumByLvlQuality(lvl, q) or 0
+        targetNum = cond[1]
+        canGet = num >= targetNum
+    end
+    return canGet, num,targetNum
+end
+--通关无尽炼狱第X层
+function ActivityCarnivalModel:getConByType84(data,lvl,statis)
+    local num = -2
+    local targetNum = -1
+    local canGet = false
+
+    local cond = data.condition
+     
+    if cond and cond[1] then  
+        num,_ = self._purModel:getHistoryMaxStageId()
+        targetNum = cond[1]
+        canGet = num >= targetNum
+    end
+    return canGet, num,targetNum
+end
+
+-- X个阵营战阵战力达到Y
+function ActivityCarnivalModel:getConByType86(data,lvl,statis)
+    local num = -2
+    local targetNum = -1
+    local canGet = false
+
+    local cond = data.condition
+    if cond and cond[1] then  
+        num = self._battleArrayModel:getRateFightReachNum(cond[2])
+        targetNum = cond[1]
+        canGet = num >= targetNum
+    end
+    return canGet, num,targetNum
+end
+
+--拥有X个Y级后援阵型
+function ActivityCarnivalModel:getConByType87(data,lvl,statis)
+    local num = -2
+    local targetNum = -1
+    local canGet = false
+
+    local cond = data.condition    
+    if cond and cond[1] then  
+        num = self._backupModel:getBackupLevelReachNum(cond[2])
+        targetNum = cond[1]
+        canGet = num >= targetNum
+    end
+    
+    return canGet, num,targetNum
+end
+
+--拥有X个Y级后援战场技能
+function ActivityCarnivalModel:getConByType88(data,lvl,statis)
+    local num = -2
+    local targetNum = -1
+    local canGet = false
+
+    local cond = data.condition  
+    if cond and cond[1] then  
+        num = self._backupModel:getSkillLevelReachNum1(cond[2])
+        targetNum = cond[1]
+        canGet = num >= targetNum
+    end
+    
+    return canGet, num,targetNum
+end
+--拥有X个Y级后援全局特效技能
+function ActivityCarnivalModel:getConByType89(data,lvl,statis)
+    local num = -2
+    local targetNum = -1
+    local canGet = false
+
+    local cond = data.condition
+    if cond and cond[1] then  
+        num = self._backupModel:getSkillLevelReachNum2(cond[2])
+        targetNum = cond[1]
+        canGet = num >= targetNum
+    end
+    
     return canGet, num,targetNum
 end
 

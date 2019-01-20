@@ -15,7 +15,7 @@ VipView.kVipViewStatusKeep = 11
 VipView.kVipViewStatusRollLeft = 12
 VipView.kVipViewStatusRollRight = 13
 
-VipView.kMaxVipLevel = 15
+VipView.kMaxVipLevel = 18
 
 VipView.kGiftItemTag = 1000
 
@@ -527,17 +527,16 @@ function VipView:updateUI(viewType)
     self._top._vipImageDoubleMC:setVisible(self._data.level >= 10)
 
     if self._data.level < VipView.kMaxVipLevel then
+        local nextVip, nextExp = self:getNextVipNum()
         self._top._vipInfo:setVisible(true)
-        self._top._nextLabel:setString("v"..self._data.level + 1)
-        -- self._top._nextLabel:setString("v15")
-        self._top._countLabel:setString(self._vip._tableData[self._data.level + 1].exp - self._data.currentTotalExp)
-        local percent = self._data.currentTotalExp / self._vip._tableData[self._data.level + 1].exp
+        self._top._nextLabel:setString("v"..nextVip)
+        self._top._countLabel:setString(math.max(0, nextExp - self._data.currentTotalExp))
+        local percent = self._data.currentTotalExp / nextExp
         self._top._pro:setPositionX((self._top._maskContentSize.width + 5) * percent - self._top._maskContentSize.width / 2 - 5)
-        self._top._proLabel:setString(string.format("%d/%d", self._data.currentTotalExp, self._vip._tableData[self._data.level + 1].exp))
+        self._top._proLabel:setString(string.format("%d/%d", self._data.currentTotalExp, nextExp))
     else
         self._top._vipInfo:setVisible(false)
         self._top._nextLabel:setString("v"..VipView.kMaxVipLevel)
-         -- self._top._nextLabel:setString("v15")
         self._top._countLabel:setString(self._vip._tableData[VipView.kMaxVipLevel].exp)
         local percent = 1
         self._top._pro:setPositionX((self._top._maskContentSize.width + 5) * percent - self._top._maskContentSize.width / 2 - 5)
@@ -912,32 +911,23 @@ function VipView:updateGiftLayer( layer,index )
         vipGiftItem:setVisible(true)
         local itemIcon = vipGiftItem:getChildByTag(self.kGiftItemTag)
         if itemIcon then itemIcon:removeFromParent() end
-        
+        local iconScale = 0.69
         if giftContain[i][1] ~= "tool" and staticConfigTableData[giftContain[i][1]] then
-
-            -- 8888 钻石扫光
             if staticConfigTableData[giftContain[i][1]] == 39992 then
                 print("钻石")
                 itemIcon = IconUtils:createItemIconById({itemId = staticConfigTableData[giftContain[i][1]], num = giftContain[i][3],effect = false})
                 -- 添加一个扫光效果
                 -- local bgMcName1 = "saoguangshang_itemeffectcollection"
                 -- 添加三个特效 hgf
-                bgMc = IconUtils:addEffectByName({"tongyongdibansaoguang_itemeffectcollection"}) -- "wupinguang_itemeffectcollection",,"wupinkuangxingxing_itemeffectcollection"
-                -- local sacleNum = 0.98
-                -- bgMc:setPosition(cc.p(itemIcon:getContentSize().width/2,itemIcon:getContentSize().height/2))
-                -- bgMc:setScale(sacleNum)
+                bgMc = IconUtils:addEffectByName({"tongyongdibansaoguang_itemeffectcollection"})
                 bgMc:setName("bgMc")
                 bgMc:setPosition(-5, -5)
-                local effectParent = itemIcon:getChildByFullName("iconColor") --or itemIcon
+                local effectParent = itemIcon:getChildByFullName("iconColor")
                 effectParent:addChild(bgMc,10)
             else 
                 itemIcon = IconUtils:createItemIconById({itemId = staticConfigTableData[giftContain[i][1]], num = giftContain[i][3],effect = true})
             end
-            --[=[
-            self:registerTouchEvent(vipGiftItem, function(x, y)
-                    self:startClock(vipGiftItem, staticConfigTableData[giftContain[i][1]])
-                end,function(x, y) end, function(x, y) self:endClock() end, function(x, y) self:endClock() end)
-            ]=]
+          
         elseif giftContain[i][1] == "tool" then
             local toolData = tab:Tool(giftContain[i][2])
             if toolData.tabId == 1 then
@@ -952,14 +942,16 @@ function VipView:updateGiftLayer( layer,index )
                 end})
             else
                 itemIcon = IconUtils:createItemIconById({itemId = giftContain[i][2], num = giftContain[i][3],effect = false})
-                --[[
-                self:registerTouchEvent(vipGiftItem, function(x, y)
-                        self:startClock(vipGiftItem, giftContain[i][2])
-                    end,function(x, y) end, function(x, y) self:endClock() end, function(x, y) self:endClock() end)
-                ]]    
-            end            
+               
+            end 
+        elseif giftContain[i][1] == "avatarFrame" then
+            local rewardId = giftContain[i][2]
+            local toolD = tab:AvatarFrame(rewardId)
+            local param = {itemId = rewardId, itemData = toolD}
+            itemIcon = IconUtils:createHeadFrameIconById(param)  
+            iconScale = 0.57    
         end
-        itemIcon:setScale(0.69)
+        itemIcon:setScale(iconScale)
         itemIcon:setTag(self.kGiftItemTag)
         vipGiftItem:addChild(itemIcon)
         itemIcon:setOpacity(255)
@@ -1266,6 +1258,24 @@ function VipView:onBtnRightClicked()
     self._vip._vipCurrentIndex = self._vip._vipCurrentIndex + 1
     self._vip._vipCurrentStatus = VipView.kVipViewStatusRollRight
     self:updateVipUI()
+end
+
+function VipView:getNextVipNum()
+    local maxVip = self:getVipPageCount()
+    local curVip, curExp = self._data.level, self._data.currentTotalExp
+    local nextVip, nextExp = maxVip, self._vip._tableData[maxVip].exp
+
+    if curVip < maxVip then
+        for i=curVip + 1, maxVip, 1 do
+            if curExp <= self._vip._tableData[i].exp then
+                nextVip = i
+                nextExp = self._vip._tableData[i].exp
+                break
+            end
+        end
+    end
+    
+    return nextVip, nextExp
 end
 
 function VipView:onDestroy()

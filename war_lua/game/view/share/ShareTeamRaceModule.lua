@@ -14,10 +14,10 @@ local ShareBaseView = require("game.view.share.ShareBaseView")
 -- end
 
 function ShareBaseView:transferData(data)
-    local tempRaceData1 = {101, 102, 104, 103, 105, 106, 107, 108, 109}
+    local tempRaceData1 = {101, 102, 104, 103, 105, 106, 107, 108, 109, 112}
     local tempRaceData2 = {
         [101] = 101, [102] = 102, [104] = 104, [103] = 103, 
-        [105] = 105, [106] = 106, [107] = 107, [108] = 108, [109] = 109}
+        [105] = 105, [106] = 106, [107] = 107, [108] = 108, [109] = 109, [112] = 112}
     if data.raceId ~= nil then
         self._raceId = tempRaceData1[data.raceId]
     elseif data.race ~= nil then
@@ -38,6 +38,7 @@ function ShareBaseView:updateModuleView()
     sysRaceTeams[107] = {701, 702, 703, 704, 705, 706, 707}
     sysRaceTeams[108] = {801, 802, 803, 804, 805, 806, 807}
     sysRaceTeams[109] = {901, 902, 903, 904, 905, 906, 907}
+    sysRaceTeams[112] = {9901,9902,9903,9904,9905,9906,9907}
 
     local niubility = {[203] = 1, [205] = 1}
     local userRaceTeams = teamModel:getTeamWithRace(self._raceId)
@@ -81,8 +82,9 @@ function ShareBaseView:getShareBgName()
     plistGroups[105] = "share_group_2"
     plistGroups[106] = "share_group_3"
     plistGroups[107] = "share_group_4"
-    plistGroups[108] = "share_group_4"
+    plistGroups[108] = "share_group_5"
     plistGroups[109] = "share_group_3"
+    plistGroups[112] = "share_group_4"
     self._plistName = plistGroups[self._raceId]
     
     cc.SpriteFrameCache:getInstance():addSpriteFrames("asset/uiother/share/" .. self._plistName .. ".plist", "asset/uiother/share/" .. self._plistName .. ".png")

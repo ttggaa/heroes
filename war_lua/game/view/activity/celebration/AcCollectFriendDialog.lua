@@ -81,7 +81,8 @@ function AcCollectFriendDialog:onInit()
 	self._nameTxt = self:getUI("bg.nameBg.nameTxt")
 	local nameStr = self._friendData[1] and self._friendData[1].name or ""
     local levelStr = self._friendData[1] and "Lv." .. self._friendData[1].lvl or ""
-    self._nameTxt:setString(nameStr .. "  " .. levelStr)
+    local inParam = {lvlStr = nameStr .. "  " .. levelStr, lvl = self._friendData[1].lvl, plvl = self._friendData[1].plvl}
+	UIUtils:adjustLevelShow(self._nameTxt, inParam, 1)
 
     self._currFriendData = self._friendData[1]
 

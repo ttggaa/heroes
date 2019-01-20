@@ -7,23 +7,23 @@
 
 local DialogFriendHandle = class("DialogFriendHandle",BasePopView)
 
-
 function DialogFriendHandle:ctor(data)
-    -- dump(data, "", 10)
     self.super.ctor(self)
     self._currData = data
     self.callBack = data.callback
     self._openType = data.openType
     self._isFakeNpc = data.isFakeNpc
-
     self._detailData = data.detailData or {}
-
-    -- self._userData = self._currData.uiData.message.udata
+    self._uiData = data.uiData or {}
+    if self._currData.uiData and self._currData.uiData.message and self._currData.uiData.message.udata then
+        self._uiData = self._currData.uiData.message.udata
+    end
+    
     self._friendModel = self._modelMgr:getModel("FriendModel")
     self._chatModel = self._modelMgr:getModel("ChatModel")
     self._userModel = self._modelMgr:getModel("UserModel")
     self._guildModel = self._modelMgr:getModel("GuildModel")
-    -- dump(self._userData, "userData", 10)
+    -- dump(self._uiData, "userData", 10)
     -- dump(self._detailData, "userData", 10)
 end
 
@@ -37,13 +37,11 @@ function DialogFriendHandle:onInit()
 	self._bg1 = self:getUI("bg.bg1")
     self._titleLab = self:getUI("bg._titlebg.Label_35")
     UIUtils:setTitleFormat(self._titleLab, 1)
-    -- self._titleLab:setFontName(UIUtils.ttfName)
-    -- self._titleLab:enableOutline(cc.c4b(60,30,10,255), 2)
-    
+
+    --按钮显隐
     self:setBtnState()
-
-	self:showUpUI()   --上部UI
-
+    --上部UI
+	self:showUpUI()   
     -- 初始化英雄兵团信息
     self:initInfoPanel()
 
@@ -53,160 +51,65 @@ function DialogFriendHandle:onInit()
 		end) 
 
 	self:registerClickEvent(self._privateBtn, function()
-        local checkId = self._detailData["usid"] or self._detailData["rid"]
-        if self._friendModel:checkIsBlack(checkId) then
-            self._viewMgr:showTip("玩家在黑名单列表中，不能进行私聊")
-            return
-        end
-        self._serverMgr:sendMsg("UserServer", "getTargetUser", {rid = self._detailData.rid}, true, {}, function (result)
-            self:onGetTargetUserFinish(result)
-        end)
+        self:privateBtnFunc()
     end)
     	
 	self:registerClickEvent(self._shieldBtn, function()
-        local friendModel = self._modelMgr:getModel("FriendModel")
-        local isFriOpen, tipDes = friendModel:isFriendOpen()
-        if isFriOpen == false then
-            self._viewMgr:showTip(tipDes)
-            return
-        end
-
-        if self._detailData["usid"] == nil then
-            self._viewMgr:showTip("id不能为空")
-            return
-        end
-        if self._friendModel:checkIsBlack(self._detailData["rid"]) then
-            self._viewMgr:showTip("已在黑名单列表中")
-            return
-        end
-		local function shieldFunc(inData)
-            self._shieldBtn:setSaturation(-180)
-            self._shieldBtn:setTouchEnabled(false)
-            self._shieldBtn:setTitleText("已屏蔽")
-            self._viewMgr:showTip("已加入黑名单")
-            self._modelMgr:getModel("FriendModel"):addFriendToBlack(inData)
-        end
-
-        if self._isFakeNpc == true then
-            self._detailData["isFakeNpc"] = true
-            shieldFunc(self._detailData)
-
-            if self.callBack and self.callBack["shieldBtn"] then        --私聊调界面方法删除
-                self.callBack["shieldBtn"]()
-            end
-        else
-            self._serverMgr:sendMsg("GameFriendServer", "addBlackList", {usid = self._detailData["usid"]}, true, {}, function (result)
-                -- dump(result, "123", 10)
-                shieldFunc(result["d"])
-                if self._openType == "private" then
-                    if self.callBack and self.callBack["shieldBtn"] then        --私聊调界面方法删除
-                        self.callBack["shieldBtn"]()
-                    end
-                else
-                    self._chatModel:removeBlackChatUser(self._detailData["rid"], true, true, true, true)
-                end
-            end)
-        end
+        self:shieldBtnFunc()
 		end)
 
 	self:registerClickEvent(self._addBtn, function()
-        local friendModel = self._modelMgr:getModel("FriendModel")
-        local isFriOpen, tipDes = friendModel:isFriendOpen()
-        if isFriOpen == false then
-            self._viewMgr:showTip(tipDes)
-            return
-        end
-
-		if self._detailData["usid"] == nil then
-            self._viewMgr:showTip("id不能为空")
-            return
-        end
-        if self._friendModel:checkIsFriend(self._detailData["rid"]) then
-            self._viewMgr:showTip("已在好友列表中")
-            return
-        end
-        if self._friendModel:checkIsBlack(self._detailData["rid"]) then
-            self._viewMgr:showTip("已在黑名单列表中")
-            return
-        end
-        if self._isFakeNpc == true then
-            self._viewMgr:showTip("好友申请已发送")
-        else
-            self._serverMgr:sendMsg("GameFriendServer", "applyGameFriend", {usid = self._detailData["usid"]}, true, {}, function (result)
-                self._viewMgr:showTip("好友申请已发送")
-                self._modelMgr:getModel("FriendModel"):applyAddFriend(self._detailData["usid"])
-            end)    
-        end 	
+        self:addBtnFunc()	
 		end)
 
-    --联盟招募
 	self:registerClickEvent(self._zhaomuBtn, function()
-        local guildId = self._userModel:getData().guildId
-        if not guildId or guildId == 0 then
-            self._viewMgr:showTip("您已被踢出联盟！")
-            return true
-        end
-
-        local flag, showTimeStr = self._guildModel:getGuildJoinCDTime()
-        if flag == true then
-            local allianceD = self._guildModel:getAllianceDetail()
-            local param1 = {
-                zhaomu = {
-                    guildId = allianceD.guildId or -1, 
-                    guildLevel = allianceD.level or 0,
-                    guildName = allianceD.name or "", 
-                    lvlimit = allianceD.lvlimit or 0}
-                }
-
-            if self._isFakeNpc == true then     --排行榜NPC
-                local _, _,sendData = self._chatModel:paramHandle("fakePriZhaomu", param1)
-                self._chatModel:pushData(sendData)
-            else                                   
-                param1.toID = self._detailData["rid"]
-                local _, _,sendData = self._chatModel:paramHandle("priZhaomu", param1)
-                self._serverMgr:sendMsg("ChatServer", "sendPriMessage", sendData, true, {}, function (result)  end)
-                self._viewMgr:showTip(lang("GUILD_RECRUIT_TIP_1"))
-            end
-            
-        else
-            local tempStr = string.gsub(lang("GUILD_RECRUIT_TIP_2"), "{$cd}", showTimeStr)
-            self._viewMgr:showTip(tempStr)
-        end	
+        self:zhaomuBtnFunc()
 		end)
 end
 
 function DialogFriendHandle:setBtnState()
-    self._zhaomuBtn:setVisible(false)
-
     local bg = self:getUI("bg")
     local wid, hei = bg:getContentSize().width, bg:getContentSize().height
-    if self._openType == "private" then
-        self._privateBtn:setVisible(false)
+    
+    local btnPosX = {
+        [1] = {wid * 0.5}, 
+        [2] = {wid * 0.5 - 100, wid * 0.5 + 100},
+        [3] = {wid * 0.5 - 180, wid * 0.5, wid * 0.5 + 180}}
 
-        local guildId = self._userModel:getData().guildId
-        if guildId and guildId ~= 0 and (not self._detailData.guildName or self._detailData.guildName == "") then  --自己有联盟而对方没有
-            self._zhaomuBtn:setVisible(true)
-            self._shieldBtn:setPositionX(177)
-            self._addBtn:setPositionX(503)
-        else
-            self._shieldBtn:setPositionX(wid * 0.5 - 100)
-            self._addBtn:setPositionX(wid * 0.5 + 100)
-        end
-    else
-        self._shieldBtn:setPositionX(177)
-        self._addBtn:setPositionX(503)
-    end
-end
+    local showBtns = {}
+    self._privateBtn:setVisible(false)
+    self._shieldBtn:setVisible(false)
+    self._addBtn:setVisible(false)
+    self._zhaomuBtn:setVisible(false)
+    
+    local guildId = self._userModel:getData().guildId
+    local secId = self._userModel:getData().sec
 
-function DialogFriendHandle:onGetTargetUserFinish(result)
-    local isPriOpen, tipDes = self._chatModel:isPirChatOpen()
-    if isPriOpen == false then
-        self._viewMgr:showTip(tipDes)
-        return
+    --屏蔽
+    if not self._uiData["sec"] or self._uiData["sec"] == secId then
+        table.insert(showBtns, self._shieldBtn)
     end
 
-    self._viewMgr:showDialog("chat.ChatPrivateView", {userData = result, oldUI = self._currData.oldUI, viewtType = "pri", isHasLoadAsy = true}, true)
-    self:close(false)
+    --联盟招募 自己有联盟而对方没有
+    if not self._uiData["sec"] or self._uiData["sec"] == secId and self._openType == "private" and guildId and guildId ~= 0 and 
+        (not self._detailData.guildName or self._detailData.guildName == "") then
+        table.insert(showBtns, self._zhaomuBtn)
+    end
+
+    --私聊
+    if self._openType ~= "private" then
+        table.insert(showBtns, self._privateBtn)
+    end
+
+    --加好友
+    if not self._uiData["sec"] or self._uiData["sec"] == secId then
+        table.insert(showBtns, self._addBtn)
+    end
+
+    for i,v in ipairs(showBtns) do
+        v:setVisible(true)
+        v:setPositionX(btnPosX[#showBtns][i])
+    end
 end
 
 --初始化上部UI数据
@@ -216,7 +119,8 @@ function DialogFriendHandle:showUpUI()
 	end
 	
 	--headIcon
-	self._avatar = IconUtils:createHeadIconById({avatar = self._detailData.avatar,level = self._detailData.lv or 0, tp = 4,avatarFrame=self._detailData["avatarFrame"]}) 
+    local headP = {avatar = self._detailData.avatar,level = self._detailData.lv or 0, tp = 4,avatarFrame=self._detailData["avatarFrame"], plvl = self._detailData.plvl}
+	self._avatar = IconUtils:createHeadIconById(headP) 
     self._avatar:setAnchorPoint(0, 0.5)
     self._avatar:setPosition(0, self._bg1:getContentSize().height/2+8)
     self._bg1:addChild(self._avatar, 2)
@@ -238,7 +142,6 @@ function DialogFriendHandle:showUpUI()
     vipLabel:setPosition(105 + self._nameLab:getContentSize().width+10 , 100)
     self._bg1:addChild(vipLabel, 2)
     local isHideVip = UIUtils:isHideVip(self._detailData.hideVip,"userInfo")
-    -- dump(self._currData,"self._detailData......")
     if not self._detailData.vipLvl or self._detailData.vipLvl == 0 or isHideVip == true then
         vipLabel:setVisible(false)
     end
@@ -248,11 +151,6 @@ function DialogFriendHandle:showUpUI()
     self._nameBg:setAnchorPoint(0, 0)
     self._nameBg:setCapInsets(cc.rect(19, 16, 1, 1))
     self._nameBg:setPosition(45 , 68)
-    -- self._nameBg:setOpacity(150)
-
-    -- local dis = math.max(self._nameLab:getContentSize().width - 141, 0) + 20
-    -- self._nameBg:setContentSize(230 + dis, 34)
-    -- self._bg1:addChild(self._nameBg)
 
     --属性
     self._guildDes = cc.Label:createWithTTF("", UIUtils.ttfName, 22)
@@ -278,24 +176,14 @@ function DialogFriendHandle:showUpUI()
     self._guildLab:setString(rankStr)
     self._bg1:addChild(self._guildLab)
 
-    --vip
-    -- if self._detailData.vipLvl and self._detailData.vipLvl ~= 0 then
-    --     local lvBg = cc.Sprite:createWithSpriteFrameName("chatPri_vipLv"..math.max(1, self._detailData.vipLvl)..".png")  
-    --     lvBg:setAnchorPoint(0, 1)
-    --     lvBg:setPosition(math.max(105 + self._nameLab:getContentSize().width + 20, 165) , 85)
-    --     self._bg1:addChild(lvBg)
-    -- end
-
     -- 显示最高战力
     local score = self._detailData.hScore or self._detailData.score
     local fightLabel = cc.Label:createWithBMFont(UIUtils.bmfName_zhandouli_little, "a" .. (score or 0))
-    -- fightLabel:setAdditionalKerning(-22)
     fightLabel:setName("fightLabel")
     fightLabel:setScale(0.5)
     fightLabel:setAnchorPoint(cc.p(0, 1))
     fightLabel:setPosition(cc.p(105, 40))
     self._bg1:addChild(fightLabel, 2)
-
 end
 
 -- 初始化英雄兵团信息  hgf
@@ -338,6 +226,8 @@ function DialogFriendHandle:initInfoPanel()
         detailData.talentData = self._detailData.talentData or self._detailData.talent
         detailData.uMastery = self._detailData.uMastery
         detailData.hSkin = self._detailData.hSkin
+        detailData.backups = self._detailData.backups
+        detailData.pTalents = self._detailData.pTalents
         ViewManager:getInstance():showDialog("rank.RankHeroDetailView", {data=detailData}, true)
     end)
     heroFrame:addChild(icon)
@@ -420,6 +310,8 @@ function DialogFriendHandle:createTeams( x,y,teamId,teamData )
         detailData.treasures = self._detailData.treasures
         detailData.runes = self._detailData.runes
         detailData.heros = self._detailData.heros
+        detailData.battleArray = self._detailData.battleArray
+        detailData.pTalents = self._detailData.pTalents
         ViewManager:getInstance():showDialog("rank.RankTeamDetailView", {data=detailData}, true)
     end})
     return teamIcon
@@ -459,7 +351,6 @@ function DialogFriendHandle:createGrid(x,y,isLocked)
         bagGrid:addChild(lockImg,2)
     end
     return bagGrid
-
 end
 
 -- 添加器械信息
@@ -470,9 +361,8 @@ function DialogFriendHandle:initWeaponsPanel(weaponPanel,weaponsData)
     local offsetx,offsety = 5,18
     local iconSize = 76
     local item
-    -- local levelD = tab.systemOpen["Weapon"]
-    -- local level = levelD and levelD[1] or 1000
-    local isOpen = true --self._palyerData.lv >= tonumber(level)
+    
+    local isOpen = true
     for i=1,3 do
         local weaponID = weaponIDs[i]
         local weaponTemp = weaponD[weaponID] or {}
@@ -525,4 +415,143 @@ function DialogFriendHandle:initWeaponsPanel(weaponPanel,weaponsData)
         x = x + iconSize
     end
 end
+
+function DialogFriendHandle:privateBtnFunc()
+    local checkId = self._detailData["usid"] or self._detailData["rid"]
+    if self._friendModel:checkIsBlack(checkId) then
+        self._viewMgr:showTip("玩家在黑名单列表中，不能进行私聊")
+        return
+    end
+    self._serverMgr:sendMsg("UserServer", "getTargetUser", {rid = self._detailData.rid, tsec = self._uiData["sec"]}, true, {}, function (result)
+        self:onGetTargetUserFinish(result)
+    end)
+end
+
+function DialogFriendHandle:onGetTargetUserFinish(result)
+    local isPriOpen, tipDes = self._chatModel:isPirChatOpen()
+    if isPriOpen == false then
+        self._viewMgr:showTip(tipDes)
+        return
+    end
+
+    if not result["sec"] then
+        result["sec"] = self._uiData["sec"]
+    end
+    if not result["plvl"] then
+        result["plvl"] = self._detailData["plvl"] or self._uiData["plvl"]
+    end
+    self._viewMgr:showDialog("chat.ChatPrivateView", {userData = result, oldUI = self._currData.oldUI, viewtType = "pri", isHasLoadAsy = true}, true)
+    self:close(false)
+end
+
+function DialogFriendHandle:shieldBtnFunc()
+    local friendModel = self._modelMgr:getModel("FriendModel")
+    local isFriOpen, tipDes = friendModel:isFriendOpen()
+    if isFriOpen == false then
+        self._viewMgr:showTip(tipDes)
+        return
+    end
+
+    if self._detailData["usid"] == nil then
+        self._viewMgr:showTip("id不能为空")
+        return
+    end
+    if self._friendModel:checkIsBlack(self._detailData["rid"]) then
+        self._viewMgr:showTip("已在黑名单列表中")
+        return
+    end
+    local function shieldFunc(inData)
+        self._shieldBtn:setSaturation(-180)
+        self._shieldBtn:setTouchEnabled(false)
+        self._shieldBtn:setTitleText("已屏蔽")
+        self._viewMgr:showTip("已加入黑名单")
+        self._modelMgr:getModel("FriendModel"):addFriendToBlack(inData)
+    end
+
+    if self._isFakeNpc == true then
+        self._detailData["isFakeNpc"] = true
+        shieldFunc(self._detailData)
+
+        if self.callBack and self.callBack["shieldBtn"] then        --私聊调界面方法删除
+            self.callBack["shieldBtn"]()
+        end
+    else
+        self._serverMgr:sendMsg("GameFriendServer", "addBlackList", {usid = self._detailData["usid"]}, true, {}, function (result)
+            -- dump(result, "123", 10)
+            shieldFunc(result["d"])
+            if self._openType == "private" then
+                if self.callBack and self.callBack["shieldBtn"] then        --私聊调界面方法删除
+                    self.callBack["shieldBtn"]()
+                end
+            else
+                self._chatModel:removeBlackChatUser(self._detailData["rid"], true, true, true, true)
+            end
+        end)
+    end
+end
+
+function DialogFriendHandle:addBtnFunc()
+    local friendModel = self._modelMgr:getModel("FriendModel")
+    local isFriOpen, tipDes = friendModel:isFriendOpen()
+    if isFriOpen == false then
+        self._viewMgr:showTip(tipDes)
+        return
+    end
+
+    if self._detailData["usid"] == nil then
+        self._viewMgr:showTip("id不能为空")
+        return
+    end
+    if self._friendModel:checkIsFriend(self._detailData["rid"]) then
+        self._viewMgr:showTip("已在好友列表中")
+        return
+    end
+    if self._friendModel:checkIsBlack(self._detailData["rid"]) then
+        self._viewMgr:showTip("已在黑名单列表中")
+        return
+    end
+    if self._isFakeNpc == true then
+        self._viewMgr:showTip("好友申请已发送")
+    else
+        self._serverMgr:sendMsg("GameFriendServer", "applyGameFriend", {usid = self._detailData["usid"]}, true, {}, function (result)
+            self._viewMgr:showTip("好友申请已发送")
+            self._modelMgr:getModel("FriendModel"):applyAddFriend(self._detailData["usid"])
+        end)    
+    end
+end
+
+function DialogFriendHandle:zhaomuBtnFunc()
+    local guildId = self._userModel:getData().guildId
+    if not guildId or guildId == 0 then
+        self._viewMgr:showTip("您已被踢出联盟！")
+        return true
+    end
+
+    local flag, showTimeStr = self._guildModel:getGuildJoinCDTime()
+    if flag == true then
+        local allianceD = self._guildModel:getAllianceDetail()
+        local param1 = {
+            zhaomu = {
+                guildId = allianceD.guildId or -1, 
+                guildLevel = allianceD.level or 0,
+                guildName = allianceD.name or "", 
+                lvlimit = allianceD.lvlimit or 0}
+            }
+
+        if self._isFakeNpc == true then     --排行榜NPC
+            local _, _,sendData = self._chatModel:paramHandle("fakePriZhaomu", param1)
+            self._chatModel:pushData(sendData)
+        else                                   
+            param1.toID = self._detailData["rid"]
+            local _, _,sendData = self._chatModel:paramHandle("priZhaomu", param1)
+            self._serverMgr:sendMsg("ChatServer", "sendPriMessage", sendData, true, {}, function (result)  end)
+            self._viewMgr:showTip(lang("GUILD_RECRUIT_TIP_1"))
+        end
+        
+    else
+        local tempStr = string.gsub(lang("GUILD_RECRUIT_TIP_2"), "{$cd}", showTimeStr)
+        self._viewMgr:showTip(tempStr)
+    end
+end
+
 return DialogFriendHandle

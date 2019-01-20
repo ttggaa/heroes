@@ -7,7 +7,7 @@
 
 -- local AnimAP = require "base.anim.AnimAP"
 local TeamStarShowDialog = class("TeamStarShowDialog", BasePopView)
-
+local AnimAp = require "base.anim.AnimAP"
 function TeamStarShowDialog:ctor(param)
     TeamStarShowDialog.super.ctor(self)
     if not param then
@@ -87,9 +87,8 @@ function TeamStarShowDialog:reflashUI()
     local teamArt = teamD.art 
 
     -- dump(AnimAp, "AnimAp==========")
-    local teamSpine = {107, 205, 207, 307, 405, 406, 407, 507, 607, 703, 704, 707, 807, 906, 907}
     local teamScale = {906}
-    if table.indexof(teamSpine, teamId) ~= false then
+    if AnimAp["mcList"][teamD.art] then
         MovieClipAnim.new(bg1, teamD.art, function (_sp) 
             _sp:setPosition(bg1:getContentSize().width*0.5, 130)
             _sp:changeMotion(1)
@@ -100,7 +99,7 @@ function TeamStarShowDialog:reflashUI()
             end
             _sp:play()
             self._teamRole = _sp
-        end, false, nil, nil, false) 
+        end, false, nil, nil, false)
     else
         SpriteFrameAnim.new(bg1, teamD.art, function (_sp)
             _sp:setPosition(bg1:getContentSize().width*0.5, 130)
@@ -109,7 +108,6 @@ function TeamStarShowDialog:reflashUI()
             self._teamRole = _sp
         end)
     end
-
     local mc2 = mcMgr:createViewMC("qiannengguangxiao_teamqianneng", true, false)
     mc2:setScale(teamD.artzoom*0.01)
     mc2:setPosition(bg1:getContentSize().width*0.5, 170)

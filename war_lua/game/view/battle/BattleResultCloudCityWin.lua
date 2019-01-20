@@ -128,19 +128,32 @@ function BattleResultCloudCityWin:onInit()
             team:setAnchorPoint(0.5, 0.5)
             -- team:setScale(0.5)
             -- 如果有专精变身替换icon
-            if curHeroId then
-                local isAwaking, _ = TeamUtils:getTeamAwaking(teamData)
-                local art,changeId = TeamUtils.changeArtForHeroMastery(curHeroId,id)
-                if changeId and art then
-                    -- 觉醒优先
-                    if isAwaking then
-                        local tData = tab:Team(changeId)
-                        art = tData.jxart1
-                    end
-                    local teamIcon = team:getChildByFullName("teamIcon")
-                    teamIcon:loadTexture(art .. ".jpg",1)
+
+                local teampData = clone(teamData)
+                teampData.teamId = id
+
+                local art = nil
+                local changeId = nil
+                if curHeroId then 
+                    art,changeId = TeamUtils.changeArtForHeroMastery(curHeroId,id)
                 end
-            end
+                local _,art = TeamUtils:getTeamAwakingTab(teamData,changeId,false)
+                local teamIcon = team:getChildByFullName("teamIcon")
+                teamIcon:loadTexture(art .. ".jpg",1)
+            
+            -- if curHeroId then
+            --     local isAwaking, _ = TeamUtils:getTeamAwaking(teamData)
+            --     local art,changeId = TeamUtils.changeArtForHeroMastery(curHeroId,id)
+            --     if changeId and art then
+            --         -- 觉醒优先
+            --         if isAwaking then
+            --             local tData = tab:Team(changeId)
+            --             art = tData.jxart1
+            --         end
+            --         local teamIcon = team:getChildByFullName("teamIcon")
+            --         teamIcon:loadTexture(art .. ".jpg",1)
+            --     end
+            -- end
             if i % 4 == 0 then
                 team:setPosition(beginX, beginY)
                 beginX = invW * 0.5
@@ -293,12 +306,13 @@ function BattleResultCloudCityWin:animBegin()
         local teamModel = self._modelMgr:getModel("TeamModel")
         local tdata,_idx = teamModel:getTeamAndIndexById(lihuiId)
         local isAwaking,_ = TeamUtils:getTeamAwaking(tdata)
-        local teamName, art1, art2, art3 = TeamUtils:getTeamAwakingTab(tdata, tdata.id)
-        if isAwaking then 
-            -- 结算例会单独处理 读配置
-            imgName = teamData.jxart2
-            artUrl = "asset/uiother/team/"..imgName..".png"
-        end
+        local teamName, art1, art2, art3 = TeamUtils:getTeamAwakingTab(tdata, self._lihuiId)
+        -- if isAwaking then 
+        --     -- 结算例会单独处理 读配置
+        --     imgName = teamData.jxart2
+        --     artUrl = "asset/uiother/team/"..imgName..".png"
+        -- end
+        artUrl = "asset/uiother/team/".. art2 ..".png"
 
         if  teamData["jisuan"] then
             local teamX ,teamY = teamData["jisuan"][1], teamData["jisuan"][2]
@@ -450,7 +464,7 @@ function BattleResultCloudCityWin:animNext(mc2)
                                     bestOutImg:runAction(cc.Sequence:create(cc.ScaleTo:create(0.1, 0.8), cc.ScaleTo:create(0.1, 1)))
                                     team:addChild(bestOutImg, 10)
                                     team:setZOrder(10)
-                                    --   	local mc = mcMgr:createViewMC("zuijiashuchu_commonresultbest", false,false)
+                                    --      local mc = mcMgr:createViewMC("zuijiashuchu_commonresultbest", false,false)
                                     --    mc:setPosition(team:getContentSize().width - 15, team:getContentSize().height - mc:getContentSize().height/2-18)
                                     -- team:addChild(mc,10)
                                     -- team:setZOrder(10)

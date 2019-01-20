@@ -3,97 +3,114 @@
 -- Date: 2018-03-19 15:35:38
 --
 
-local AcLuckyLotteryShopDialog = class("AcLuckyLotteryShopDialog",BasePopView)
+local AcLuckyLotteryShopDialog = class("AcLuckyLotteryShopDialog",BaseView)
 
 local _costType = "soulRime"
 
 function AcLuckyLotteryShopDialog:ctor(param)
     AcLuckyLotteryShopDialog.super.ctor(self)
-	self._goodsNode = {}
-	self._shopModel = self._modelMgr:getModel("ShopModel")
-	self._runeLotteryModel = self._modelMgr:getModel("RuneLotteryModel")
-	self._userModel = self._modelMgr:getModel("UserModel")
+    self._goodsNode = {}
+    self._shopModel = self._modelMgr:getModel("ShopModel")
+    self._runeLotteryModel = param.viewType==1 and self._modelMgr:getModel("RuneLotteryModel") or self._modelMgr:getModel("RuneLotteryProModel")
+	self._viewType = param.viewType
+    self._userModel = self._modelMgr:getModel("UserModel")
     self._grids = {}
     self._items = {}
 end
 
+function AcLuckyLotteryShopDialog:getBgName()
+    return "bg_007.jpg"
+end
+
 function AcLuckyLotteryShopDialog:onInit()
-	local closeBtn = self:getUI("bg.mainBg.closeBtn")
-	self:registerClickEvent( closeBtn, function()
-		self:close()
-	end)
+
+    local closeBtn = self:getUI("closeBtn")
+    self:registerClickEvent( closeBtn, function()
+		if OS_IS_WINDOWS then
+			UIUtils:reloadLuaFile("activity.acLuckyLottery.AcLuckyLotteryShopDialog")
+		end
+        self:close()
+    end)
 
     self._serverData = self._runeLotteryModel:getLotteryData() or {}
-	self._shopTbData = self._runeLotteryModel:getShopData()
-	
+    self._shopTbData = self._runeLotteryModel:getShopData()
+    
 	self._scroll = self:getUI("bg.mainBg.scrollView")
 	self._scrollItem = self:getUI("bg.item")
 	self._scrollItem:setVisible(false)
-	
-	
+
+
 	local mainBg = self:getUI("bg.mainBg")
 	self._downArrow = mcMgr:createViewMC("youjiantou_teamnatureanim", true, false)
-    self._downArrow:setPosition(mainBg:getContentSize().width*0.5,58)
-    self._downArrow:setRotation(90)
-    self._downArrow:setVisible(false)
-    mainBg:addChild(self._downArrow, 1)
-    self._scroll:addEventListener(function(sender, eventType)
-        if eventType == 6 or eventType == 1 then
-            self._downArrow:setVisible(false)
-        else
-			local innerContainerHeight = self._scroll:getInnerContainerSize().height
-			local contentHeight = self._scroll:getContentSize().height
-            self._downArrow:setVisible(innerContainerHeight>contentHeight)
-        end
-    end)
-	
+	self._downArrow:setPosition(mainBg:getContentSize().width - 30,mainBg:getContentSize().height*0.5)
+	self._downArrow:setVisible(false)
+	mainBg:addChild(self._downArrow, 1)
+	self._scroll:addEventListener(function(sender, eventType)
+		-- print("=========eventType=====",eventType)
+		if eventType == 3 or eventType == 1 then
+			self._downArrow:setVisible(false)
+		else
+			local innerContainerWidth = self._scroll:getInnerContainerSize().width
+			local contentWidth = self._scroll:getContentSize().width
+			self._downArrow:setVisible(innerContainerWidth>contentWidth)
+		end
+	end)
+
 	self._userData = self._userModel:getData()
 	self._haveNum = self:getUI("bg.mainBg.backTexture.haveNum")
 	self._haveNum:setString(self._userData[_costType] or 0)
-	
+
 	local resImg = self:getUI("bg.mainBg.backTexture.costImg")--设置图片icon
 	resImg:loadTexture(IconUtils.resImgMap[_costType], 1)
-	
+
 	self:createShopItem()
 
 	self:listenReflash("UserModel", function()
-        self:updateShopItem()
-    end)
+		self:updateShopItem()
+	end)
 end
 
 
 function AcLuckyLotteryShopDialog:createShopItem()
-	local tbItem = self._shopTbData
-	
-	local itemSizeX,itemSizeY = 180,192
-	local offsetX,offsetY = 0,0
-	
-	local row = math.ceil(#tbItem/4)
-	local col = 4 
+    local tbItem = self._shopTbData
+    
+    local itemSizeX,itemSizeY = 239,418
+    local offsetX,offsetY = 0,0
+    
+    -- local row = math.ceil(#tbItem/4)
+    -- local col = 4 
+    local col = #tbItem
 
-	local containerHeight = row*itemSizeY
-	local scrollWidth = self._scroll:getContentSize().width
-	self._scroll:setBounceEnabled(row>2)
-	self._scroll:setInnerContainerSize(cc.size(scrollWidth, containerHeight))
-	self._scroll:jumpToTop()
-	if containerHeight>self._scroll:getContentSize().height then
-		self._downArrow:setVisible(true)
-	end
-	for i,v in pairs(self._grids) do
-		v:removeFromParent()
+    -- local containerHeight = row*itemSizeY
+    local containerWith = col * itemSizeX
+    local scrollWidth = self._scroll:getContentSize().width
+    local scrollHeight = self._scroll:getContentSize().height
+    -- self._scroll:setBounceEnabled(col>4)
+    if containerWith < scrollWidth then
+        containerWith = scrollWidth
+    end
+    self._scroll:setInnerContainerSize(cc.size(containerWith, scrollHeight))
+    -- self._scroll:jumpToTop()
+    if containerWith > scrollWidth then
+        self._downArrow:setVisible(true)
+    end
+    for i,v in pairs(self._grids) do
+        v:removeFromParent()
         v = nil
-	end
-	for i=1,8 do
-		local itemData = tbItem[i]
-		x = (i-1) % col * itemSizeX + offsetX + itemSizeX * 0.5
-        y = containerHeight/2 - math.floor((i-1)/col) * itemSizeY + offsetY + itemSizeY * 0.5
-		if itemData then
-			self:createItem( i, itemData, x, y )
-		else
-			self:createGrid(x, y, i)
-		end
-	end
-	
+    end
+    for i=1,col do
+        local itemData = tbItem[i]
+        -- x = (i-1) % col * itemSizeX + offsetX + itemSizeX * 0.5
+  --       y = containerHeight/2 - math.floor((i-1)/col) * itemSizeY + offsetY + itemSizeY * 0.5
+        x = (i-1)* itemSizeX
+        y = 40 
+        if itemData then
+            self:createItem( i, itemData, x, y )
+        else
+            self:createGrid(x, y, i)
+        end
+    end
+    
 end
 
 function AcLuckyLotteryShopDialog:updateShopItem()
@@ -134,7 +151,7 @@ function AcLuckyLotteryShopDialog:updateShopItem()
                 if buyNum >= tonumber(buyCount) then
                     soldOut:setVisible(true)
                     self:setNodeColor(item, cc.c4b(128, 128, 128,255),nil,true)
-                    exchangeBtn = item:getChildByFullName("exchangeBtn")
+                    local exchangeBtn = item:getChildByFullName("exchangeBtn")
                     if exchangeBtn then
                         self:registerClickEvent(exchangeBtn, function(sender)
                             self._viewMgr:showTip("兑换次数已用尽！")
@@ -142,13 +159,13 @@ function AcLuckyLotteryShopDialog:updateShopItem()
                     end
                 end
             end 
-            local priceLab = self._items[i]:getChildByFullName("costNum")
+            local priceLab = self._items[i]:getChildByFullName("exchangeBtn.costNum")
             if priceLab then 
                 priceLab:setString(ItemUtils.formatItemCount(costNum) or "")
                 if haveNum < costNum then
                     priceLab:setColor(UIUtils.colorTable.ccUIBaseColor6)
                 else
-                    priceLab:setColor(UIUtils.colorTable.ccUIBaseTextColor2)
+                    priceLab:setColor(UIUtils.colorTable.ccUIBaseColor1)
                 end
             end
         end
@@ -205,22 +222,21 @@ function AcLuckyLotteryShopDialog:createItem(index, data, x, y)
         itemId = IconUtils.iconIdMap[rType]
         local toolD = tab:Tool(tonumber(itemId))
         itemData = toolD
-        icon = IconUtils:createItemIconById({itemId = itemId,itemData = toolD,num = reward[3]})
-        
+        icon = IconUtils:createItemIconById({itemId = itemId,itemData = toolD,num = reward[3]})    
     end
     --icon
     local itemIcon = item:getChildByFullName("itemIcon")
     itemIcon:setSwallowTouches(false)
     itemIcon:removeAllChildren()
-   	icon:setContentSize(80, 80)
-    icon:setScale(0.8)
+    -- icon:setScale(0.8)
+    icon:setPosition(6, 6)
     itemIcon:addChild(icon)
 
     -- name
     local itemName = item:getChildByFullName("itemName")
     itemName:setString(lang(itemData.name) or "没有名字")
     itemName:setFontName(UIUtils.ttfName)
-    itemName:enableOutline(UIUtils.colorTable.titleOutLineColor, 1)
+    -- itemName:enableOutline(UIUtils.colorTable.titleOutLineColor, 1)
 
     --cost
     local userData = self._userData
@@ -229,31 +245,50 @@ function AcLuckyLotteryShopDialog:createItem(index, data, x, y)
     local haveNum = userData[costType] or 0
     local costNum = data.costNum[3]
    
-    local priceLab = item:getChildByFullName("costNum")
+    local priceLab = item:getChildByFullName("exchangeBtn.costNum")
     priceLab:setString(ItemUtils.formatItemCount(costNum) or "")
+    priceLab:enableOutline(UIUtils.colorTable.ccUICommonBtnOutLine5,1)
     if haveNum < costNum then
         priceLab:setColor(UIUtils.colorTable.ccUIBaseColor6)
     else
-        priceLab:setColor(UIUtils.colorTable.ccUIBaseTextColor1)
+        priceLab:setColor(UIUtils.colorTable.ccUIBaseColor1)
     end
 
     -- costIcon
-    local buyIcon = item:getChildByFullName("costImg")
+    local buyIcon = item:getChildByFullName("exchangeBtn.costImg")
     buyIcon:loadTexture(IconUtils.resImgMap[costType], 1)
 
     local scaleNum = math.floor((28 / buyIcon:getContentSize().width) * 100)
     buyIcon:setScale(scaleNum / 100)
+    -- 提示文字
+    local recommengTxt = ccui.Text:create()
+    recommengTxt:setFontSize(22)
+    recommengTxt:setFontName(UIUtils.ttfName)
+    recommengTxt:setString(lang(data.recommeng))
+    recommengTxt:setColor(cc.c4b(70,40,0,255))
+    recommengTxt:setPosition(120, 140)
+    item:addChild(recommengTxt,2)    
+
+    --click
+    item._data = data
+    local exchangeBtn = item:getChildByFullName("exchangeBtn")
+    exchangeBtn._data = data
+    self:registerClickEvent(exchangeBtn, function(sender)
+        -- 
+        print("================兑换商品================")
+        self:exchangeItem(sender)
+    end)
 
     local iconW = buyIcon:getContentSize().width * scaleNum / 100
     local labelW = priceLab:getContentSize().width
-    local itemW = item:getContentSize().width - 5
-    buyIcon:setPositionX(itemW / 2 - labelW / 2 - 3)
-    priceLab:setPositionX(itemW / 2 + iconW / 2 - labelW / 2 - 3)
+    local exchangeBtnW = exchangeBtn:getContentSize().width - 5
+    buyIcon:setPositionX(exchangeBtnW / 2 - labelW / 2 - 3)
+    priceLab:setPositionX(exchangeBtnW / 2 + iconW / 2 - labelW / 2 - 3)
 
-    UIUtils:center2Widget(buyIcon, priceLab, itemW/2, 5)
+    UIUtils:center2Widget(buyIcon, priceLab, exchangeBtnW/2, 5)
 
     --discount
-    local discountBg = item:getChildByFullName("discountImg")
+    local discountBg = item:getChildByFullName("exchangeBtn.discountImg")
     if data.discount and data.discount > 0 then
         local color = "r"
         if data.discount > 5 then 
@@ -272,17 +307,8 @@ function AcLuckyLotteryShopDialog:createItem(index, data, x, y)
         discountBg:setVisible(false)
     end
 
-    --click
-    item._data = data
-    local exchangeBtn = item:getChildByFullName("exchangeBtn")
-    exchangeBtn._data = data
-    self:registerClickEvent(exchangeBtn, function(sender)
-        -- 
-        print("================兑换商品================")
-        self:exchangeItem(sender)
-    end)
-
     --soldout
+    local leftTime = item:getChildByFullName("leftTime")
     local buyData = self._serverData.buy or {}
     local buyCount = data.buyLottery
     local buyNum = buyData[tostring(data.id)] or 0
@@ -292,8 +318,10 @@ function AcLuckyLotteryShopDialog:createItem(index, data, x, y)
     if not buyCount then
         local soldOut = item:getChildByFullName("soldOut")
         soldOut:setVisible(false)
+        leftTime:setString("无限购买")
     else
         -- 有次数兑换，根据次数判断是否可以兑换
+        leftTime:setString("限购" .. buyNum .. "/" ..buyCount)
         if buyNum >= tonumber(buyCount) then
             soldOut:setVisible(true)
             self:setNodeColor(item, cc.c4b(128, 128, 128,255),nil,true)
@@ -317,9 +345,9 @@ function AcLuckyLotteryShopDialog:createGrid(posX, posY, index)
     self._grids[index] = item
 
     local name = item:getChildByFullName("itemName")
-    local diamondImg = item:getChildByFullName("costImg")
-    local discountBg = item:getChildByFullName("discountImg")
-    local priceLab = item:getChildByFullName("costNum")
+    local diamondImg = item:getChildByFullName("exchangeBtn.costImg")
+    local discountBg = item:getChildByFullName("exchangeBtn.discountImg")
+    local priceLab = item:getChildByFullName("exchangeBtn.costNum")
     name:setVisible(false)
     diamondImg:setVisible(false)
     discountBg:setVisible(false)
@@ -335,21 +363,31 @@ function AcLuckyLotteryShopDialog:exchangeItem(sender)
         self._viewMgr:showTip("幸运夺宝活动已结束")
         return
     end
-	local data = sender._data
+    local data = sender._data
     local costType = data.costNum[1]    
     local haveNum = self._userData[costType] or 0
     local costNum = data.costNum[3]
     -- print(costType,haveNum,"====================",costNum,self._userData[_costType])
     if haveNum < costNum then
-    	self._viewMgr:showTip("灵魂结晶不足！")
+        self._viewMgr:showTip("灵魂结晶不足！")
     else
-    	self._serverMgr:sendMsg("RuneLotteryServer", "buyRune", {id=data.id}, true, {}, function(data)
-            if data["reward"] then 
-                DialogUtils.showGiftGet({ gifts = data["reward"], hide = self, callback = function()                    
-                    
-                end,notPop = false})
-            end 
-        end) 
+		if self._viewType==1 then
+			self._serverMgr:sendMsg("RuneLotteryServer", "buyRune", {id=data.id}, true, {}, function(data)
+				if data["reward"] then 
+					DialogUtils.showGiftGet({ gifts = data["reward"], hide = self, callback = function()                    
+						
+					end,notPop = false})
+				end 
+			end)
+		else
+			self._serverMgr:sendMsg("RuneLotteryProServer", "buyRune", {id=data.id}, true, {}, function(data)
+				if data["reward"] then 
+					DialogUtils.showGiftGet({ gifts = data["reward"], hide = self, callback = function()                    
+						
+					end,notPop = false})
+				end 
+			end)
+		end
     end
 end
 

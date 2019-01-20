@@ -64,6 +64,9 @@ function GuildMapModel:setData(data)
             tempFogs.fogs = data.fogs
             data.fogs = nil
         end
+		if self._data.tMap ~= nil and not data.tMap then
+			self:clearTreasureState()
+		end
         self._data = data
         self:interceptFogs(tempFogs)
         self._data.isReflashMap = true
@@ -691,7 +694,14 @@ function GuildMapModel:getShowElementDataByGridKey(inGridKey)
     local thisEle
     local mapData = self._data.mapList[inGridKey]
     if mapData[GuildConst.ELEMENT_TYPE.GUILD] ~= nil then 
-        thisEle = mapData[GuildConst.ELEMENT_TYPE.GUILD]   
+        thisEle = mapData[GuildConst.ELEMENT_TYPE.GUILD]
+		if thisEle.eid==9001 then--秘境，有藏宝图时要返回藏宝图数据
+			if mapData[GuildConst.ELEMENT_TYPE.MY]--有个人点数据
+					and mapData[GuildConst.ELEMENT_TYPE.MY].tmKey~=nil--根据tmKey和tType字段判断是不是藏宝图
+					and mapData[GuildConst.ELEMENT_TYPE.MY].tType~=nil then
+				thisEle = mapData[GuildConst.ELEMENT_TYPE.MY]--返回藏宝图数据
+			end
+		end
     elseif mapData[GuildConst.ELEMENT_TYPE.COMMON] ~= nil then
         thisEle = mapData[GuildConst.ELEMENT_TYPE.COMMON]
     elseif mapData[GuildConst.ELEMENT_TYPE.MY] ~= nil then
@@ -1127,6 +1137,41 @@ function GuildMapModel:getCommanderAcTime()
 	if self._data.jxRewardSt and self._data.jxRewardSt.actime then
 		return self._data.jxRewardSt.actime
 	end
+end
+
+--藏宝图
+function GuildMapModel:clearTreasureState()--清空藏宝图数据（已寻宝或放弃操作）
+	self._data.tMap = nil
+	self:reflashData("UpdateTreasure")
+end
+
+function GuildMapModel:getTreasureData()
+	return self._data.tMap
+end
+
+function GuildMapModel:setTreasureData(data)
+	if data then
+		self._data.tMap = data
+		self:reflashData("UpdateTreasure")
+	end
+end
+
+function GuildMapModel:getTreasureState()--获取当前是否有正在寻宝的藏宝图
+	return self._data.tMap~=nil
+end
+
+function GuildMapModel:setTreasureReward(reward)
+	if reward and table.nums(reward)>0 then
+		self._treasureReward = reward
+	end
+end
+
+function GuildMapModel:getTreasureReward()
+	return self._treasureReward
+end
+
+function GuildMapModel:clearTreasureReward()
+	self._treasureReward = nil
 end
 
 function GuildMapModel:clear()

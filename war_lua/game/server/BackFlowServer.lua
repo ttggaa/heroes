@@ -17,6 +17,7 @@ function BackFlowServer:onGetBackFlowInfo(result, error)
     if error ~= 0 then 
         return
     end
+    -- dump(result,"result==>",5)
     if result and result["backFlow"] then
         self._backflowModel:setData(result["backFlow"])
         self._backflowModel:setBackflowOpen(true)
@@ -25,6 +26,7 @@ function BackFlowServer:onGetBackFlowInfo(result, error)
 end
 
 -- 回归祝福许愿
+--[[
 function BackFlowServer:onBlessWishing(result, error)
     if error ~= 0 then 
         return
@@ -36,6 +38,7 @@ function BackFlowServer:onBlessWishing(result, error)
     self:handAboutServerData(result)
     self:callback(result)
 end
+]]
 
 -- 领取每日登录奖励
 function BackFlowServer:onReceiveLoginWelFare(result, error)
@@ -51,7 +54,37 @@ function BackFlowServer:onReceiveLoginWelFare(result, error)
     self:callback(result)
 end
 
+-- 任务奖励
+function BackFlowServer:onFinishTask( result, error)
+    if error ~= 0 then 
+        return
+    end
+    dump(result,"result==>",10)
+    if result and result["d"] and result["d"].backFlow then
+        self._backflowModel:updateTaskData(result["d"].backFlow)
+        result["d"].backFlow = nil
+    end
+    
+    self:handAboutServerData(result)
+    self:callback(result)
+end
+-- 积分奖励
+function BackFlowServer:onGetScoreReward( result, error)
+    if error ~= 0 then 
+        return
+    end
+    dump(result,"result==>",10)
+    if result and result["d"] and result["d"].backFlow then
+        self._backflowModel:updateTaskData(result["d"].backFlow)
+        result["d"].backFlow = nil
+    end
+    
+    self:handAboutServerData(result)
+    self:callback(result)
+end
+
 -- 领取活跃奖励
+--[[
 function BackFlowServer:onGetActiveReward(result, error)
     if error ~= 0 then 
         return
@@ -64,7 +97,7 @@ function BackFlowServer:onGetActiveReward(result, error)
     self:handAboutServerData(result)
     self:callback(result)
 end
-
+]]
 -- 购买特卖商品
 function BackFlowServer:onBuyReturnSaleGoods(result, error)
     if error ~= 0 then 

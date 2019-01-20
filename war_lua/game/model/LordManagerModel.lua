@@ -28,6 +28,10 @@
 313-元素位面-混乱
 314-船坞派驻
 315-船坞领取
+315-炼金工坊
+401-竞技场
+402-王国联赛
+403-荣耀竞技场
 ]]--
 
 
@@ -40,7 +44,7 @@ local rewardNum = LordManagerUtils.expArray
 local donateCostNum = LordManagerUtils.costArray
 local totalRespNum = 0
 local curRespNum   = 0
-
+local MFMAX_NUM = 7
 function LordManagerModel:ctor()
     LordManagerModel.super.ctor(self) 
 
@@ -54,6 +58,8 @@ function LordManagerModel:ctor()
     self._cModel = self._modelMgr:getModel("CloudCityModel")
     self._guildModel = self._modelMgr:getModel("GuildModel")
     self._playerTodayModel = self._modelMgr:getModel("PlayerTodayModel")
+    self._arenaModel = self._modelMgr:getModel("ArenaModel")
+    self._crossModel = self._modelMgr:getModel("CrossModel")
     self._rewards = {}
     self:collectModelData()
     self._uuid = self._userModel:getUUID()
@@ -74,6 +80,9 @@ function LordManagerModel:ctor()
         self._serverMgr:sendMsg("BossServer", "getBossInfo", {}, true, {}, function(success)
             self:reflashData("reflashView")
         end)
+        self._serverMgr:sendMsg("LordManagerServer", "getLordManagerData",{},true,{},function()
+            self:reflashData("reflashView")
+        end)
     end)
 end
 
@@ -82,7 +91,7 @@ end
 ]]--
 
 function LordManagerModel:collectModelData( ... )
-    self._data = {{},{},{}}
+    self._data = {{},{},{},{}}
     for k,v in pairs(tab.lordManager) do
         -- local data = clone(v)
         if v.subType ~= 203 then
@@ -100,7 +109,9 @@ function LordManagerModel:getDataByType(type)
         end
     end
     table.sort(array,function (a,b)
-        return a.idx < b.idx
+        local aa = tab.lordManager[tonumber(a.idx.."01")]
+        local bb = tab.lordManager[tonumber(b.idx.."01")]
+        return aa.sequence < bb.sequence
     end)
     --[[
         未完成>完成
@@ -108,6 +119,8 @@ function LordManagerModel:getDataByType(type)
         未解锁>完成
     ]]
     table.sort(array,function (a,b)
+        local aa = tab.lordManager[tonumber(a.idx.."01")]
+        local bb = tab.lordManager[tonumber(b.idx.."01")]
         if a.hTimes ~= b.hTimes and a.hTimes == 0 then
             return false
         elseif a.hTimes ~= b.hTimes and b.hTimes == 0 then
@@ -119,23 +132,14 @@ function LordManagerModel:getDataByType(type)
             if a.isPass ~= b.isPass and b.isPass == true then
                 return false
             end
-            return a.idx < b.idx
+            return aa.sequence < bb.sequence
         elseif a.hTimes == 0 and b.hTimes == 0 then
-            return a.idx < b.idx
+            return aa.sequence < bb.sequence
         end
         return false
     end)
 
     return array
-end
-
-function LordManagerModel:getData( ... )
-    -- body
-end
-
-function LordManagerModel:setData(data)
-    self._data = {{},{},{}}
-
 end
 
 --[[
@@ -383,7 +387,7 @@ function LordManagerModel:getDataByIdx(idx)
     elseif idx == 314 then
         if level >= tab:MfOpen(1)["lv"] then
             data.isPass = true
-            for i=1,6 do
+            for i=1,MFMAX_NUM do
                 if level < tab:MfOpen(1)["lv"] then
                     data.maxTimes = i - 1
                 else
@@ -403,7 +407,7 @@ function LordManagerModel:getDataByIdx(idx)
     elseif idx == 315 then
         if level >= tab:MfOpen(1)["lv"] then
             data.isPass = true
-            for i=1,6 do
+            for i=1,MFMAX_NUM do
                 if level < tab:MfOpen(1)["lv"] then
                     data.maxTimes = i - 1
                 else
@@ -421,6 +425,66 @@ function LordManagerModel:getDataByIdx(idx)
         else
             data.isOpen = false
         end  
+    elseif idx == 316 then
+        --炼金工坊
+        local openLevel = tab:SystemOpen("Alchemy")[1]
+        if level >= openLevel  then
+            data.isPass = true
+            local num = #self._modelMgr:getModel("AlchemyModel"):getLibData()
+            data.hTimes = 0
+            if num ~= 0 then
+                data.hTimes = 1
+            end
+            data.maxTimes = 1
+        else
+            data.isOpen = false 
+        end 
+    elseif idx == 401 then
+        local openLevel = tab:SystemOpen("Arena")[1]
+        if level < openLevel then 
+            data.isOpen = false
+            return data
+        end
+        local arenaData = self._arenaModel:getData().arena or {}
+        local isHave = self._arenaModel:haveChanllengeNum()
+        data.hTimes = arenaData.num or 0
+        data.maxTimes = 5
+        local enemy = self._arenaModel:getSweepEnemy()
+        if isHave and enemy then
+            data.isPass = true
+        end
+    elseif idx == 402 then
+        --是否开启功能
+        --是否在活动时间
+        local openLevel = tab:SystemOpen("CrossPK")[1]
+        if level < openLevel then data.isOpen = false  return data end
+        local crossConst = self._userModel:getCrossPKConstData()
+        if (not crossConst) or (crossConst.open == 0) then
+            data.isOpen = false  
+            return data
+        end
+        --30天的时候正好在周日 导致没有数据
+        if next(self._crossModel:getData()) == nil then
+            data.isOpen = false
+            return data
+        end
+        local state = self._crossModel:getOpenState()
+        local freeTimes = tab:Setting("CROSSPK_FIGHTCOUNT_FREE").value
+        local dayinfo = self._playerTodayModel:getData()
+        local day76 = dayinfo["day76"] or 0
+        local day77 = dayinfo["day77"] or 0
+        data.hTimes = freeTimes - day76 + day77
+        data.maxTimes = freeTimes
+        data.isPass = true
+    elseif idx == 403 then
+        local isOpen = self._modelMgr:getModel("GloryArenaModel"):lIsOpen()
+        if not isOpen then data.isOpen = false end
+        local num = self._modelMgr:getModel("GloryArenaModel"):lGetSelfAttackCount().num or 0
+        data.hTimes = num
+        data.maxTimes = 5
+        data.isPass = true
+    else
+        data.isOpen = false
     end
     return data
 end
@@ -569,7 +633,7 @@ function LordManagerModel:getAllReward(idx)
             if idx == 3 then
                 if v.isPass then
                     local t = times.hTimes or 0
-                    if (v.idx == 301 or v.idx == 302 or v.idx == 315 or v.idx == 314 ) and t > 0 then
+                    if (v.idx == 301 or v.idx == 302 or v.idx == 315 or v.idx == 314 or v.idx == 316 ) and t > 0 then
                         if v.idx == 315 and state == 2 then
                         else
                             self:sendMsg(v.idx,t,state)
@@ -1060,12 +1124,13 @@ function LordManagerModel:sendMsg(subType,idx,mfState)
         local level = self._modelMgr:getModel("UserModel"):getPlayerLevel()
         local function getAvailableIdx()
             local array = {}
-            for i=1,6 do
+            for i=1,MFMAX_NUM do
                 local mfData = self._mfModel:getTasksById(i)
                 if level >= tab:MfOpen(i)["lv"] and mfData.finishTime == nil then
                     table.insert(array,i)
                 end
             end
+
             return array
         end
         local array = getAvailableIdx()
@@ -1139,6 +1204,15 @@ function LordManagerModel:sendMsg(subType,idx,mfState)
                 self:timeoutCallback()
             end)
         end
+    elseif subType == 316 then
+        local data = self._modelMgr:getModel("AlchemyModel"):getLibData()[1]
+        if data == nil then
+            return
+        end
+        self._serverMgr:sendMsg("AlchemyServer", "getTool", {gid = data.gridId}, true, {}, function(result)
+            curRespNum = curRespNum + 1
+            self:dealWithRewardResult(result.reward,subType)
+        end)
     elseif subType == 210 then
         self._serverMgr:sendMsg("GuildServer", "getDailyAward", {id = idx}, true, {}, function (result)
             if result.rewards then
@@ -1292,6 +1366,11 @@ function LordManagerModel:calcSendTimes(subType,idx)
             totalRespNum = totalRespNum + 1
         end
     elseif subType == 210 then
+    elseif subType == 316 then
+        local libData = self._modelMgr:getModel("AlchemyModel"):getLibData()
+        if #libData ~= 0 then
+            totalRespNum = totalRespNum + 1
+        end
     else
     end
 end
@@ -1397,15 +1476,22 @@ function LordManagerModel:checkNeedRedPoint()
         if (not self:isSave(v.subType)) or v.subType == 203 then
         else
             local data = self:getDataByIdx(v.subType)
-            if data.isOpen and data.hTimes > 0 then
+            if data.isOpen and data.hTimes and data.hTimes > 0 then
                 if v.type == 3 then
                     if data.isPass then
                         isNeed = true
                     end
                 else
-                    isNeed = true
+                    --王国联赛未开启或者结束以后没有红点提示
+                    if v.subType == 402 then
+                        if self._crossModel:getOpenState() == 2 then
+                            isNeed = true
+                        end
+                    else
+                        isNeed = true
+                    end
+                    
                 end
-                
             end
         end
     end
@@ -1444,6 +1530,210 @@ end
 
 function LordManagerModel:reflashMainView()
     self:reflashData("reflashView")
+end
+
+--获取当前热点宝物
+function LordManagerModel:getHotSpotTreasure()
+
+    local nowTime = self._modelMgr:getModel("UserModel"):getCurServerTime()
+    local serverWeek = self._userModel:getData().week
+    local weekday = tonumber(TimeUtils.date("%w",nowTime)) or 1
+    local hour  = tonumber(TimeUtils.date("%H",nowTime) or 0) or 0
+    local week = TimeUtils.date("%W",nowTime) or 0
+    print(weekday,"weekday----------------",hour,week)
+    if weekday == 1 then
+        if hour < 5 then
+            nowTime = nowTime-7*86400
+            hour = 5
+            week = week-1
+        end
+    elseif weekday == 0 then
+        weekday = 7
+    end    
+    local year = TimeUtils.date("%Y",nowTime) or 2017
+    local month = TimeUtils.date("%m",nowTime - (weekday-1)*86400) or 1
+    local day  = TimeUtils.date("%d",nowTime) or 1
+    local weekBegin = TimeUtils.date("%d",nowTime - (weekday-1)*86400) or day - weekday + 1
+    print("weekday",weekday)
+    local weekIndex = weekday 
+    if weekday == 0 then weekIndex = 7 end
+    local weekEnd = TimeUtils.date("%d",nowTime+(7-weekIndex+1)*86400) or 1
+    local monthEnd = TimeUtils.date("%m",nowTime+(7-weekIndex+1)*86400) or 1
+    if week == 0 then week = 1 end
+    local showIndex = serverWeek or year .. string.format("%02d",week)
+    local showD = tab.scrollHotSpot[tonumber(showIndex)]
+    local index = showD.drawTreasure or 1
+    local drawD = tab.drawTreasureTe[index]
+    local treasureImgs = {
+        ("lord_"..drawD.image2 or "globalImageUI6_meiyoutu") .. ".png",
+        ("lord_"..drawD.image1 or "globalImageUI6_meiyoutu") .. ".png",
+    }
+    return treasureImgs
+end
+
+--获取当前热点法术
+function LordManagerModel:getHotSpotSkillCard()
+    local curServerTime = self._userModel:getCurServerTime()
+    local serverWeek = self._userModel:getData().week
+    local beginTime,endTime = TimeUtils.getWeekBeginAndEnd(curServerTime)
+    local hour = tonumber(TimeUtils.date("%H",curServerTime))
+    if hour < 5 then
+        curServerTime = curServerTime - 86400
+    end
+    local year = TimeUtils.date("%Y",curServerTime)
+    local dmonth = TimeUtils.date("%W",curServerTime)
+    local id = serverWeek or tonumber(string.format("%02d%02d",tonumber(year),tonumber(dmonth)))
+    local hotData1 = tab:ScrollHotSpot(tonumber(id))
+    local scrollShow1 = hotData1.scrollShow
+
+    local hotDataBefore = tab:ScrollHotSpot(id+1)
+    local id = hotDataBefore and hotDataBefore.scrollTemplate or 1
+
+    local giftId = hotData1 and hotData1.scrollTemplate or 1
+    local giftData = tab:ScrollTemplate(giftId).art
+    return giftData[1]
+end
+
+--其他玩法 特殊领奖方式
+function LordManagerModel:getOtherReward(idx,hTimes)
+    if idx == 401 then
+        if hTimes <= 0 then
+            self:sendBuyChallengeNumMsg()
+            return
+        end
+        local param = {}
+        local enemyData = self._arenaModel:getSweepEnemy()
+        if not enemyData then return end
+        param.defId = enemyData.rid
+        param.defRankId = enemyData.rank
+        param.num = self._arenaModel:getData().arena.num or 0
+        self._serverMgr:sendMsg("ArenaServer", "oneKeySwapEnemy", param, true, {}, function(result)
+            DialogUtils.showGiftGet( {gifts = result.rewards})
+            self:reflashData("reflashView")
+        end)
+    elseif idx == 402 then
+        if hTimes <= 0 then
+            self:sendBuyCrossPkNumMsg()
+            return
+        end
+        self._serverMgr:sendMsg("CrossPKServer", "oneKeySweepPK", {}, true, {}, function(result)
+            DialogUtils.showGiftGet( {gifts = result.reward})
+            self:reflashData("reflashView")
+        end)
+    elseif idx == 403 then
+        if hTimes <= 0 then
+            self:sendBuyGloryArenaChangeNumMsg()
+            return
+        end
+        self._serverMgr:sendMsg("CrossArenaServer", "oneKeySweep", {num = hTimes}, true, {}, function(result)
+            DialogUtils.showGiftGet( {gifts = result.rewards})
+            self:reflashData("reflashView")
+        end)
+    end
+end
+
+--王国联赛挑战次数购买
+function LordManagerModel:sendBuyCrossPkNumMsg()
+    local dayinfo = self._playerTodayModel:getData()
+    local day76 = dayinfo["day76"] or 0
+    local day77 = dayinfo["day77"] or 0
+    local viplvl = self._modelMgr:getModel("VipModel"):getData().level
+    local buyCrossPk = tab:Vip(viplvl).buyCrossPk
+    if day77 < buyCrossPk then
+        local userData = self._userModel:getData()
+        local gemNum = userData.gem
+        local nums = day77 + 1
+        local costGem = tab:ReflashCost(nums).costCrossPk
+        if gemNum < costGem then
+            print("钻石不足")
+            DialogUtils.showNeedCharge({callback1=function( )
+                local viewMgr = ViewManager:getInstance()
+                viewMgr:showView("vip.VipView", {viewType = 0})
+            end})
+        else
+            print("购买挑战次数")
+            local nextCost = costGem -- math.ceil(tab:ReflashCost(costIdx).costArena*self:getActivityDiscount())
+            local canBuyNum = buyCrossPk - day77 
+            local canBuyDes = lang("TIPS_ARENA_12")
+            canBuyDes = string.gsub(canBuyDes,"{$resetlim}",canBuyNum)
+            DialogUtils.showBuyDialog({costNum = nextCost,goods = "购买一次挑战次数(" .. canBuyDes .. ")",callback1 = function( )
+                self._serverMgr:sendMsg("CrossPKServer", "buyCrossPKTimes", {}, true, {}, function(result)
+                    self:reflashData("reflashView")
+                end)
+            end})
+        end
+    else
+        self._viewMgr:showDialog("global.GlobalResTipDialog",{},true)
+    end
+end
+
+-- 竞技场挑战次数购买
+function LordManagerModel:sendBuyChallengeNumMsg()
+    local buyNum = self._arenaModel:getArena().buyNum
+    local vip = self._modelMgr:getModel("VipModel"):getData().level
+
+    local canBuyNum = tonumber(tab:Vip(vip).buyArena) 
+    if buyNum >= canBuyNum then
+        self._viewMgr:showDialog("global.GlobalResTipDialog",{},true)
+        return 
+    end
+    local actModel = self._modelMgr:getModel("ActivityModel")
+    local actCostLess = actModel:getAbilityEffect(actModel.PrivilegIDs.PrivilegID_15)
+    local activityDiscount = (1+actCostLess)
+
+    local costIdx = math.min(self._arenaModel:getArena().buyNum+1,#tab.reflashCost)-- tab:Setting("G_ARENA_BUY_GEM").value
+    local nextCost = math.ceil(tab:ReflashCost(costIdx).costArena*activityDiscount)
+
+    local gem = self._modelMgr:getModel("UserModel"):getData()["gem"]
+    if nextCost < gem then
+        local canBuyNum = self._arenaModel:canBuyChanllengeNum()
+        local canBuyDes = lang("TIPS_ARENA_12")
+        canBuyDes = string.gsub(canBuyDes,"{$resetlim}",canBuyNum)
+        DialogUtils.showBuyDialog({costNum = nextCost,goods = "购买一次挑战次数(" .. canBuyDes .. ")",callback1 = function( )
+            local param = {}
+            self._serverMgr:sendMsg("ArenaServer", "buyChallengeNum", param, true, {}, function(result) 
+                self:reflashData("reflashView")
+            end)    
+        end})
+    else
+        DialogUtils.showNeedCharge({callback1=function( )
+            local viewMgr = ViewManager:getInstance()
+            viewMgr:showView("vip.VipView", {viewType = 0})
+        end})
+    end
+end
+
+function LordManagerModel:sendBuyGloryArenaChangeNumMsg(data, nType)
+    local buyNum = self._modelMgr:getModel("GloryArenaModel"):lGetSelfAttackCount().buyNum
+    local vip = self._modelMgr:getModel("VipModel"):getData().level
+
+    local canBuyNum = tonumber(tab:Vip(vip).refreshHonorArena) 
+    if buyNum >= canBuyNum then
+        -- self._viewMgr:showTip("已达购买上限！")
+        self._viewMgr:showDialog("global.GlobalResTipDialog",{},true)
+        return 
+    end
+    -- local buySetting = 
+    local costIdx = math.min(self._modelMgr:getModel("GloryArenaModel"):lGetSelfAttackCount().buyNum+1, #tab.reflashCost)-- tab:Setting("G_ARENA_BUY_GEM").value
+--    local nextCost = math.ceil(tab:ReflashCost(costIdx).costArena*self:getActivityDiscount())
+    local nextCost = tab:ReflashCost(costIdx).refreshHonorArena
+    local gem = self._modelMgr:getModel("UserModel"):getData()["gem"]
+    if nextCost < gem then
+        local canBuyNum = self._modelMgr:getModel("GloryArenaModel"):canBuyChanllengeNum()
+        local canBuyDes = lang("TIPS_ARENA_12")
+        canBuyDes = string.gsub(canBuyDes,"{$resetlim}",canBuyNum)
+        DialogUtils.showBuyDialog({costNum = nextCost,goods = "购买一次挑战次数(" .. canBuyDes .. ")",callback1 = function( )
+            local param = {}
+            self._serverMgr:sendMsg("CrossArenaServer", "buyChallengeNum", param, true, {}, function(result) 
+                self:reflashData("reflashView")
+            end)    
+        end})
+    else
+        DialogUtils.showNeedCharge({callback1=function( )
+            local viewMgr = ViewManager:getInstance()
+            viewMgr:showView("vip.VipView", {viewType = 0})
+        end})
+    end
 end
 
 function LordManagerModel:dtor()

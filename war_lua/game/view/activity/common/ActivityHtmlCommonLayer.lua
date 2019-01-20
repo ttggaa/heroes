@@ -15,7 +15,7 @@ end
 
 function ActivityHtmlCommonLayer:ctor(data)
     self.super.ctor(self)
-    -- print("=============================",data.activityId)
+    print("=============================",data.activityId)
     self._activityId = tonumber(data.activityId) or 98
     self._activityData = {}
     
@@ -29,6 +29,7 @@ end
     99991 权利游戏
     99989 腾讯大王卡
     99986 华夏银行
+    2203  主播活动
 ]]
 function ActivityHtmlCommonLayer:onInit()
     self.super.onInit(self)
@@ -203,6 +204,37 @@ end
 function ActivityHtmlCommonLayer:jumpToView99986() 
     print("==huaxiaBankUrl==",GameStatic.huaxiaBankUrl)   
     sdkMgr:loadUrl({url = GameStatic.huaxiaBankUrl})
+end
+
+-- 主播活动
+function ActivityHtmlCommonLayer:jumpToView2203()
+    local acData = self._activityModel:getAcShowDataByType(41)
+    local userModel = self._modelMgr:getModel("UserModel")
+    local dayInfo = self._modelMgr:getModel("PlayerTodayModel"):getData() or {}
+    local currTime = userModel:getCurServerTime()
+    local startTime = acData.start_time or 0
+    local endTime = acData.end_time or 0
+    local disappearT = acData.disappear_time or 0
+
+    print( dayInfo.day88,currTime,"============,startTime======",startTime,endTime,disappearT)
+    if currTime >= startTime and currTime < disappearT then
+        if not (dayInfo and dayInfo.day88 == 1) then
+            self._serverMgr:sendMsg("ActivityServer", "getShowActReward", {}, true, {}, function(success, data)
+                if not success then return end
+                if data.reward then
+                    DialogUtils.showGiftGet( {gifts = data.reward,notPop = true})
+                end
+            end)
+        end
+        if currTime < endTime then
+            print("==activityZhuboUrl==",GameStatic.activityZhuboUrl)
+            sdkMgr:loadUrl({url = GameStatic.activityZhuboUrl})
+        else
+            self._viewMgr:showTip("直播已结束")
+        end  
+    else
+          self._viewMgr:showTip("活动还没开始，请稍后再进")
+    end
 end
 
 return ActivityHtmlCommonLayer

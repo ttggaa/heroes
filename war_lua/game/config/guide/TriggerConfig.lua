@@ -26,6 +26,10 @@ local triggerPoint =
 		["purgatory.PurgatoryView"] = "44",
 		["team.TeamHolyView"] = "46",
 		["starCharts.StarChartsView"] = "48",
+		["backup.BackupGrowView"] = "49",
+		["battleArray.BattleArrayView"] = "50",
+		["MF.MFAlchemyView"] = "51",
+		["gloryArena.GloryArenaView"] = "54",
 	},	-- 第一次按下某按钮触发列表
 	btn = 
 	{	
@@ -33,6 +37,10 @@ local triggerPoint =
 	["siegeDaily.SiegeDailySelectView.root.bg.defendBtn"] = "40",
 	["spellbook.SpellBookCaseView.root.bg.ruleBtn"] = "43",
 	["team.TeamHolyView.root.bg.breakBtn"] = "47",
+	["team.TeamView.root.bg1.rightSubBg.team.TeamExclusiveNode.root.bg.btn_upgrade"] = "52",
+	["team.TeamView.root.bg1.rightSubBg.team.TeamExclusiveNode.root.bg.btn_awake"] = "53",
+	["guild.map.GuildMapView.root.treasure.treasureBtn"] = "55",
+	["weapons.WarReadinessView.root.bg1.scrollView.node4"] = "56",
 	},
 	-- 第一次进入副本某章
 	section =

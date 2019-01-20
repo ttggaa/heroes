@@ -386,7 +386,6 @@ function TeamHolyView:updateTeamAnim()
 		backBgNode:setScale(systeam.scaleHoly)
 	else
 		backBgNode:setScale(1)
-		self._viewMgr:showTip("team表 id:"..self._teamId.." 没有配置scaleHoly字段！！@吴茂炯")
 	end
     backBgNode:setPosition(cc.p(animBg:getContentSize().width/2+pos[1], pos[2]-10))
 	
@@ -1181,6 +1180,8 @@ function TeamHolyView:tableCellAtIndex(inView, idx)
 			local count = self._teamModel:getTeamHolyInlayCountBySuitId(self._teamId, suitId)
 			numLab:setString(string.format("已镶嵌:%d", count))
 			numLab:setVisible(count>0)
+		else
+			numLab:setVisible(false)
 		end
 		
 		local descLab = node:getChildByFullName("descLab")

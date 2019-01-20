@@ -86,8 +86,8 @@ function CardUtils:createTeamCard(inTable)
     zhaozi:setName("zhaozi")
     -- zhaozi:setOpacity(50)
     cardbg:addChild(zhaozi) -- 2
-
-    local classlabel = cc.Sprite:createWithSpriteFrameName(IconUtils.iconPath .. teamD["classlabel"] .. ".png")
+    local className = TeamUtils:getClassIconNameByTeamId(teamD.id, "classlabel", teamD)
+    local classlabel = cc.Sprite:createWithSpriteFrameName(IconUtils.iconPath .. className .. ".png")
     classlabel:setPosition(54, 505)
     classlabel:setScale(1.1)
     classlabel:setName("classlabel")
@@ -295,7 +295,11 @@ function CardUtils:createHeroDuelTeamCard(inTable)
     zhaoziJx:setName("zhaoziJx")
     cardbg:addChild(zhaoziJx) -- 2
 
-    local classlabel = cc.Sprite:createWithSpriteFrameName(IconUtils.iconPath .. teamD["classlabel"] .. ".png")
+    local className = teamD["classlabel"]
+    if inTable.isAwaking then
+        className = className .. "_awake"
+    end
+    local classlabel = cc.Sprite:createWithSpriteFrameName(IconUtils.iconPath .. className .. ".png")
     classlabel:setPosition(49, 400)
     classlabel:setName("classlabel")
     cardbg:addChild(classlabel) -- 3
@@ -343,7 +347,11 @@ function CardUtils:updateHeroDuelTeamCard(inView, inTable)
 
     local classlabel = inView:getChildByFullName("classlabel")
     if classlabel then
-         classlabel:setSpriteFrame(IconUtils.iconPath .. inTable.teamD["classlabel"] .. ".png")
+        local className = inTable.teamD["classlabel"]
+        if inTable.isAwaking then
+            className = className .. "_awake"
+        end
+        classlabel:setSpriteFrame(IconUtils.iconPath .. className .. ".png")
     end
 
     local name = inView:getChildByFullName("name")
@@ -625,7 +633,7 @@ function CardUtils:updateHaveTeamUI(inView, inTable)
 
     local classlabel = cardClip:getChildByFullName("classlabel")
     if classlabel then
-        local tclasslabel = systeam.classlabel
+        local tclasslabel = TeamUtils:getClassIconNameByTeamD(inTable, "classlabel", systeam)
         classlabel:setSpriteFrame(tclasslabel .. ".png")
     end
 
@@ -714,7 +722,7 @@ function CardUtils:updateNoTeamUI(inView, inTable)
 
     local classlabel = inView:getChildByFullName("classlabel")
     if classlabel then
-        local tclasslabel = systeam.classlabel
+        local tclasslabel = TeamUtils:getClassIconNameByTeamD(inTable, "classlabel", systeam)
         classlabel:setSpriteFrame(tclasslabel .. ".png")
     end
 

@@ -22,6 +22,7 @@ function LeagueRuleView:onInit()
     self._scrollView:setBounceEnabled(true)
     self._des1Bg = self:getUI("bg.scrollView.des1Bg")
     self._des2Bg = self:getUI("bg.scrollView.des2Bg")
+    self._des3Bg = self:getUI("bg.scrollView.des3Bg")
     self._title = self:getUI("bg.headBg.title")
     -- self._title:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor,2)
     -- self._title:setFontName(UIUtils.ttfName)
@@ -92,6 +93,7 @@ function LeagueRuleView:onInit()
     -- maxHeight = maxHeight+self._title:getContentSize().height
     maxHeight = maxHeight+self._des1Bg:getContentSize().height
     maxHeight = maxHeight+self._des2Bg:getContentSize().height
+    maxHeight = maxHeight+self._des3Bg:getContentSize().height
     local scrollW = self._scrollView:getInnerContainerSize().width
     -- 增加抬头
     local des1 = self._textPro:clone()
@@ -140,9 +142,10 @@ function LeagueRuleView:onInit()
     -- self._title:setPositionY(maxHeight-self._title:getContentSize().height/2)
     self._des1Bg:setPosition(cc.p(0,maxHeight-self._des1Bg:getContentSize().height+5))
     self._des2Bg:setPosition(cc.p(0,maxHeight-self._des1Bg:getContentSize().height-self._des2Bg:getContentSize().height+5))
+    self._des3Bg:setPosition(cc.p(0,maxHeight-self._des1Bg:getContentSize().height-self._des2Bg:getContentSize().height-self._des3Bg:getContentSize().height+5))
 
     des1:setPosition(cc.p(10,scrollBgH))
-    des2:setPosition(cc.p(10,maxHeight-self._des1Bg:getContentSize().height-self._des2Bg:getContentSize().height-15))
+    des2:setPosition(cc.p(10,maxHeight-self._des1Bg:getContentSize().height-self._des2Bg:getContentSize().height-self._des3Bg:getContentSize().height-15))
 
     rtx:setPosition(cc.p(-w* 0.5+10,scrollBgH+des1:getContentSize().height+28))
     self._ruleBg:setPosition(-5,scrollBgH+des1:getContentSize().height+15)
@@ -258,16 +261,20 @@ function LeagueRuleView:reflashTitleInfo()
     curPointLab:setString("(" .. (leagueD.league.currentPoint or 0) .. ")")
     curPointLab:setPositionX(curStage:getPositionX()+curStage:getContentSize().width+2)
 
-    local serverTitle = self._des2Bg:getChildByFullName("serverTitle")
+    local serverTitle = self._des3Bg:getChildByFullName("serverTitle")
     serverTitle:setColor(cc.c3b(70, 40, 0))
     -- serverTitle:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor,2)
-    local serverListLab = self._des2Bg:getChildByFullName("serverListLab")
+    local serverListLab = self._des3Bg:getChildByFullName("serverListLab")
     serverListLab:setVisible(false)
     local serverListStr = ""
     if leagueD.league then
     	-- dump(leagueD.league.leagueRivalList.rival)
 	    serverListStr = self._modelMgr:getModel("LeagueModel"):getServerList() --self:getServerList( leagueD.league.leagueRivalList.rival )
 	end
+    if serverListStr == "" or serverListStr == "暂无" then
+        self._des3Bg:setVisible(false)
+        self._des3Bg:setContentSize(cc.size(self._des3Bg:getContentSize().width, 0))
+    end
     self:reflashAwardImg(self._des2Bg,curRankData.weeklyawards)
 
     -- serverListLab:setString(serverListStr)
@@ -281,7 +288,7 @@ function LeagueRuleView:reflashTitleInfo()
     local serverDes = RichTextFactory:create(tempDes, 400, 0)
     serverDes:setPixelNewline(true)
     serverDes:formatText()
-    self:getUI("bg.scrollView.des2Bg"):addChild(serverDes)
+    self:getUI("bg.scrollView.des3Bg"):addChild(serverDes)
 
     local rtPosX = serverTitle:getPositionX() - serverTitle:getContentSize().width * 0.5 + serverDes:getContentSize().width * 0.5 + 1
     local rtPosY = serverTitle:getPositionY() - serverTitle:getContentSize().height * 0.5 - serverDes:getRealSize().height * 0.5 - 8
@@ -291,8 +298,8 @@ function LeagueRuleView:reflashTitleInfo()
     local childrenOffsetY = 0
     if listHeigth > 25  then
         childrenOffsetY = listHeigth-25
-        self._des2Bg:setContentSize(cc.size(self._des2Bg:getContentSize().width,
-            self._des2Bg:getContentSize().height+childrenOffsetY))
+        self._des3Bg:setContentSize(cc.size(self._des3Bg:getContentSize().width,
+        self._des3Bg:getContentSize().height + childrenOffsetY))
     end
     -- self:registerClickEventByName("bg.scrollView.des1Bg.tipBtn1",function( )
     --     self._scrollView:scrollToPercentVertical(89, 0, false)
@@ -303,7 +310,7 @@ function LeagueRuleView:reflashTitleInfo()
     self:getUI("bg.scrollView.des1Bg.tipBtn1"):setVisible(false)
     self:getUI("bg.scrollView.des2Bg.tipBtn2"):setVisible(false)
     if childrenOffsetY > 0 then
-        local children = self._des2Bg:getChildren()
+        local children = self._des3Bg:getChildren()
         for k,v in pairs(children) do
             v:setPositionY(v:getPositionY()+childrenOffsetY)
         end

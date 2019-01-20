@@ -383,6 +383,7 @@ function GuildBackupView:updateCell(cell, indexLine)
     local avatar = cellData.avatar or 3502
     local avatarFrame = cellData.avatarFrame or 1006
     local lv = cellData.lvl or 10
+    local plvl = cellData.plvl
 
     local playerName = detailCell:getChildByFullName("senderName")
     playerName:setString(name)
@@ -411,7 +412,7 @@ function GuildBackupView:updateCell(cell, indexLine)
         end
     else
         if not avatorIcon then
-            avatorIcon = IconUtils:createHeadIconById({avatar = avatar,level = lv or "0" ,tp = 4,avatarFrame=avatarFrame}) 
+            avatorIcon = IconUtils:createHeadIconById({avatar = avatar,level = lv ,tp = 4,avatarFrame=avatarFrame, plvl = plvl}) 
             avatorIcon:setPosition(cc.p(-1,-1))
             playerIcon:addChild(avatorIcon)
             avatorIcon:setName("avatorIcon")
@@ -419,7 +420,7 @@ function GuildBackupView:updateCell(cell, indexLine)
             -- playerIcon:setPosition(0,4)
         else
             avatorIcon:setVisible(true)
-            IconUtils:updateHeadIconByView(avatorIcon,{avatar = avatar,level = lv or "0" ,tp = 4,avatarFrame=avatarFrame})
+            IconUtils:updateHeadIconByView(avatorIcon,{avatar = avatar,level = lv ,tp = 4,avatarFrame=avatarFrame, plvl = plvl})
         end
         if flag then
             -- flag:removeFromParent()
@@ -521,9 +522,11 @@ function GuildBackupView:donate(indexId, askId)
         -- dump(guildBackup,"guildBackup", 20)
         -- dump(result, "result ===", 20)
         -- print("tabletabletable =======",indexId, table.nums(self._backupData), (table.nums(self._backupData)-3))
-        if indexId <= (table.nums(self._backupData)-3) then
+		local donateData = self._backupData[indexId]
+		if donateData.rid and donateData.rid~="" then
+--        if indexId <= (table.nums(self._backupData)-3) then
             self:delDonateData(indexId)
-        else
+        else 
             -- self._tableView:reloadData()
             self:refreshNotReload()
         end

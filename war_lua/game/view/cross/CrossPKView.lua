@@ -67,7 +67,7 @@ function CrossPKView:onInit()
     self._lineUp = self._crossModel:getFormationFightData(self._arenaType) 
 
     self._isSeasonSpot = (self._arenaType == 3 and self._crossModel:getSeasonSpot() ~= 0)
-    self._isWeaponSpot = (self._arenaType == 3 and self._crossModel:getSeasonSpot() == 1)
+    self._isWeaponSpot = self._isSeasonSpot
 
     print("self._arenaType=========", self._arenaType)
     self._tableData = {}
@@ -354,7 +354,7 @@ function CrossPKView:getChallengeInfo()
             self._serverMgr:sendMsg("CrossPKServer", "getChallengeInfo", param, true, {}, function (result)
                 -- self:test()
                 local soloData = self._crossModel:getSoloArenaData(self._arenaType)
-                dump(soloData, "result==========", 5)
+                -- dump(soloData, "result==========", 5)
                 if soloData == false then
                     self:tabButtonClick(self:getUI("leftLayer.tab1"), 1)
                     self._viewMgr:showTip(lang("cp_tips_limitbattle"))
@@ -376,7 +376,7 @@ function CrossPKView:updateSoloArena(soloData)
     local arenaNameLab = self:getUI("leftLayer.soloLayer.arenaBg.arenaName")
     -- local lab = self:getUI("leftLayer.soloLayer.heroBg.lab")
 
-    dump(soloData, "CpRegionSwitch==========", 2)
+    -- dump(soloData, "CpRegionSwitch==========", 2)
     local nameStr = soloData.name
     local secServer = soloData.sec
     local serverName = self._crossModel:getServerName(secServer)
@@ -733,7 +733,7 @@ end
 
 function CrossPKView:buyCrossPKTimes(callback)
     self._serverMgr:sendMsg("CrossPKServer", "buyCrossPKTimes", {}, true, {}, function(result)
-        dump(result, "result==========", 10)
+        -- dump(result, "result==========", 10)
         self:updatePKLayer()
         if callback then
             callback()
@@ -748,7 +748,7 @@ function CrossPKView:refreshCrossPK()
     local param = {region = self._arenaType}
     self._serverMgr:sendMsg("CrossPKServer", "refreshCrossPK", param, true, {}, function (result)
         self:updatePlayer()
-        dump(result, "result==========", 10)
+        -- dump(result, "result==========", 10)
         -- UIUtils:reloadLuaFile("cross.CrossPKView")
         -- self._viewMgr:showView("cross.CrossPKView", {arenaId = region})
     end)
@@ -805,7 +805,7 @@ function CrossPKView:initBtn()
         -- self._viewMgr:showDialog("cross.CrossIntegralDialog")
         local param = {region = self._arenaType}
         self._serverMgr:sendMsg("CrossPKServer", "getNowFT", param, true, {}, function(result) 
-            dump(result, "resu===========", 5)
+            -- dump(result, "resu===========", 5)
             local callback = function()
                 self._crossBar = false
             end
@@ -818,7 +818,7 @@ function CrossPKView:initBtn()
     self:registerClickEvent(reportBtn, function()
         local param = {region = self._arenaType}
         self._serverMgr:sendMsg("CrossPKServer", "getReports", param, true, {}, function(result) 
-            dump(result, "resu===========", 5)
+            -- dump(result, "resu===========", 5)
             UIUtils:reloadLuaFile("cross.CrossReportDialog")
             self._viewMgr:showDialog("cross.CrossReportDialog", {crossPK = result["d"]["crossPK"], arenaType = self._arenaType})
         end)
@@ -1235,7 +1235,7 @@ function CrossPKView:updateEnemyData(inView, indexId)
     self:registerClickEvent(chakanBtn, function()
         local param = {region = self._arenaType, aimSec = enemyData.sec, aimId = enemyData.rid, rank = enemyData.rank}
         self:getDetailInfo(param, enemyData)
-        dump(enemyData)
+        -- dump(enemyData)
         print("solo==========", tindex)
     end)
 
@@ -1384,7 +1384,7 @@ end
 -- 玩家信息展示
 function CrossPKView:getDetailInfo(param, enemyData)
     self._serverMgr:sendMsg("CrossPKServer", "getDetailInfo", param, true, {}, function(result) 
-        dump(result, "result========", 4)
+        -- dump(result, "result========", 4)
         local info = result["d"]["crossPK"]["defInfo"]
         info.rank = enemyData.rank
         info.rid = enemyData.rid
@@ -1483,7 +1483,7 @@ end
 function CrossPKView:soloEnemy(param, enemyData)
     self._serverMgr:sendMsg("CrossPKServer", "getDetailInfo", param, true, {}, function(result) 
         local info = result["d"]["crossPK"]["defInfo"]
-        dump(info, "info========", 2)
+        -- dump(info, "info========", 2)
         info.name = lang("cp_npcName" .. self._arenaId)
         -- info.rank = enemyData.rank
         if enemyData.rank ~= info.rank then
@@ -1523,7 +1523,7 @@ function CrossPKView:crossPK(param)
     local myData = self._crossModel:getMyInfo()
     self._oldRank = myData["rank" .. self._arenaType]
     self._serverMgr:sendMsg("CrossPKServer", "crossPK", param, true, {}, function(result)
-        dump(result, "result===========", 3)
+        -- dump(result, "result===========", 3)
         self._viewMgr:popView()
         self:reviewTheBattle(result, replayType)
     end)  
@@ -1583,6 +1583,10 @@ end
 -- 开始战斗展示
 function CrossPKView:soloRob()
     local soloData = self._crossModel:getSoloArenaData(self._arenaType)
+    local weakNpcData = self._crossModel:getWeakNpcData(self._arenaType)
+    if self._soloSelect == 1 and weakNpcData then
+        soloData = weakNpcData
+    end
     -- dump(soloData)
     local info = soloData
     if info.sec == "npcsec" then
@@ -1673,7 +1677,7 @@ function CrossPKView:crossBattleEnd(data, inCallBack)
 
     -- dump(self._award, "robMF=beg66666============", 5)
     self._serverMgr:sendMsg("CrossPKServer", "atkAfterChallenge", param, true, {}, function(result)
-        dump(result)
+        -- dump(result)
         if self._battleWin == 1 then
             self._soloSelect = nil
         end

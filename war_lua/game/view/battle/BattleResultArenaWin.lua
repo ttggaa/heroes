@@ -72,36 +72,36 @@ function BattleResultArenaWin:onInit()
     self._goldLabel = self:getUI("bg.bg2.goldLabel")
     self._goldLabel:enableOutline(cc.c4b(48,20,0,255),1)
     self._goldLabel:setScale(1) 
-	
-	self._rank = self:getUI("bg.bg1.rank") 
-	self._upRank = self:getUI("bg.bg1.upRank") 
-	self._upArrow = self:getUI("bg.bg1.upArrow") 
-	self._upArrow:runAction(cc.RepeatForever:create(cc.JumpBy:create(0.8,cc.p(0,0),5,1))) --cc.Sequence:create(cc.JumpBy:create(0.5,cc.p(0,5),5,1),cc.JumpBy:create(0.5,cc.p(0,0),0,1)) ))
-	local arenaInfo = self._result.arenaInfo
+    
+    self._rank = self:getUI("bg.bg1.rank") 
+    self._upRank = self:getUI("bg.bg1.upRank") 
+    self._upArrow = self:getUI("bg.bg1.upArrow") 
+    self._upArrow:runAction(cc.RepeatForever:create(cc.JumpBy:create(0.8,cc.p(0,0),5,1))) --cc.Sequence:create(cc.JumpBy:create(0.5,cc.p(0,5),5,1),cc.JumpBy:create(0.5,cc.p(0,0),0,1)) ))
+    local arenaInfo = self._result.arenaInfo
     -- dump(arenaInfo)
     if arenaInfo then
-    	local rank = arenaInfo.rank or 0
-    	local preRank = arenaInfo.preRank or 0
-    	local preHRank = arenaInfo.preHRank or preRank or 0
+        local rank = arenaInfo.rank or 0
+        local preRank = arenaInfo.preRank or 0
+        local preHRank = arenaInfo.preHRank or preRank or 0
         
-    	if rank >= preRank then
-    		self._bg1:setVisible(false)
-    		self._bg1 = self:getUI("bg.bg3")
-    		self._bg1:setVisible(true)
-    	else
-    		self._rank:setString(rank)
+        if rank >= preRank then
+            self._bg1:setVisible(false)
+            self._bg1 = self:getUI("bg.bg3")
+            self._bg1:setVisible(true)
+        else
+            self._rank:setString(rank)
             self:getUI("bg.bg1.des2"):setString("(")
             self._upArrow:setVisible(true)
-    		self._upRank:setString((math.min(preRank,10000)-rank) .. ")")
-    	end
-    	if rank < 10000 and rank < preHRank and arenaInfo.award then
-    		self._arenaCallback = function( callback )
+            self._upRank:setString((math.min(preRank,10000)-rank) .. ")")
+        end
+        if rank < 10000 and rank < preHRank and arenaInfo.award then
+            self._arenaCallback = function( callback )
                 self._viewMgr:showDialog("arena.DialogArenaNewReCord",{award = arenaInfo.award or {},preHRank = math.min(preHRank,10000) ,rank = rank,callback = function(  )
                     if self._battleInfo.arenaInfo and self._battleInfo.arenaInfo.rewards and next(self._battleInfo.arenaInfo.rewards) then 
                         self._viewMgr:showDialog("arena.ArenaTurnCardView",{awards = self._battleInfo.arenaInfo.rewards,titleType=2},true)
                     end
                 end},true,nil,nil,true)
-    		end
+            end
         else
             if self._battleInfo.arenaInfo and self._battleInfo.arenaInfo.rewards and next(self._battleInfo.arenaInfo.rewards) then
                 self._arenaCallback = function( )
@@ -123,7 +123,7 @@ function BattleResultArenaWin:onInit()
         end
         --]]
         if arenaInfo.award then
-        	self._goldLabel:setString(arenaInfo.award.val or "20")
+            self._goldLabel:setString(arenaInfo.award.val or "20")
         else
             self._goldLabel:setVisible(false)
             self._title:setVisible(false)
@@ -138,11 +138,11 @@ function BattleResultArenaWin:onInit()
 
     local children1 = self._bg1:getChildren()
     for k,v in pairs(children1) do
-    	v:setOpacity(0)
+        v:setOpacity(0)
     end
     local children2 = self._bg2:getChildren()
     for k,v in pairs(children2) do
-    	v:setOpacity(0)
+        v:setOpacity(0)
     end
 
     -- self._expLabel:setString("")
@@ -179,7 +179,7 @@ function BattleResultArenaWin:onInit()
     end
 
     -- 分享 过滤出敌方 防御和输出 teamData
-    self._shareRightDamageD = self._battleInfo.rightData[1].teamData
+    self._shareRightDamageD = self._battleInfo.rightData[1].teamData or {}
     self._shareRightHurtD = self._battleInfo.rightData[1].teamData
     outputValue = self._battleInfo.rightData[1].damage or 0
     defendValue = self._battleInfo.rightData[1].hurt or 0
@@ -188,7 +188,7 @@ function BattleResultArenaWin:onInit()
             if tonumber(self._battleInfo.rightData[i].damage) > tonumber(outputValue) and self._battleInfo.rightData[i].original then
                 outputValue = self._battleInfo.rightData[i].damage
                 if self._battleInfo.rightData[i].original then
-                    self._shareRightDamageD = self._battleInfo.rightData[i].teamData
+                    self._shareRightDamageD = self._battleInfo.rightData[i].teamData or {}
                 end
             end
         end
@@ -223,9 +223,9 @@ function BattleResultArenaWin:onInit()
         }
         return param
     end)
-	self._time = self._battleInfo.time
+    self._time = self._battleInfo.time
 
-	local mcMgr = MovieClipManager:getInstance()
+    local mcMgr = MovieClipManager:getInstance()
     self:animBegin()
 end
 
@@ -242,24 +242,24 @@ function BattleResultArenaWin:initLabel(node,isGreen)
 end
 
 function BattleResultArenaWin:onQuit()
-	-- if self._arenaCallback then
-	-- 	print("in arena callbakc....")
-	-- 	self._arenaCallback(self._callback)
+    -- if self._arenaCallback then
+    --  print("in arena callbakc....")
+    --  self._arenaCallback(self._callback)
  --    else
         if self._callback then
             self._callback()
         end
-	-- end
+    -- end
 end
 
 function BattleResultArenaWin:onCount()
-	self._viewMgr:showView("battle.BattleCountView", self._battleInfo)
+    self._viewMgr:showView("battle.BattleCountView", self._battleInfo)
 end
 
 local delaytick = {1000, 1500, 380}
 function BattleResultArenaWin:animBegin()
     audioMgr:stopMusic()
-	audioMgr:playSoundForce("WinBattle")
+    audioMgr:playSoundForce("WinBattle")
 
     local liziAnim = mcMgr:createViewMC("liziguang_commonwin", true, false) 
     liziAnim:setPosition(MAX_SCREEN_WIDTH * 0.5, 135)
@@ -290,13 +290,13 @@ function BattleResultArenaWin:animBegin()
         local teamModel = self._modelMgr:getModel("TeamModel")
         local tdata,_idx = teamModel:getTeamAndIndexById(lihuiId)
         local isAwaking,_ = TeamUtils:getTeamAwaking(tdata)
-        local teamName, art1, art2, art3 = TeamUtils:getTeamAwakingTab(tdata, tdata.id)
-        if isAwaking then 
-            -- 结算例会单独处理 读配置
-            imgName = teamData.jxart2
-            artUrl = "asset/uiother/team/"..imgName..".png"
-        end
-
+        local teamName, art1, art2, art3 = TeamUtils:getTeamAwakingTab(tdata, self._lihuiId)
+        -- if isAwaking then 
+        --     -- 结算例会单独处理 读配置
+        --     imgName = teamData.jxart2
+        --     artUrl = "asset/uiother/team/"..imgName..".png"
+        -- end
+        artUrl = "asset/uiother/team/".. art2 ..".png"
         if  teamData["jisuan"] then
             local teamX ,teamY = teamData["jisuan"][1], teamData["jisuan"][2]
             local scale = teamData["jisuan"][3] 

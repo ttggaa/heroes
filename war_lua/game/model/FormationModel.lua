@@ -13,6 +13,8 @@
 
 local FormationModel = class("FormationModel", BaseModel)
 
+FormationModel.kTeamMaxCount = 8
+
 FormationModel.kFormationTypeCommon = 1
 FormationModel.kFormationTypeArena = 2
 FormationModel.kFormationTypeAiRenMuWu = 3
@@ -54,6 +56,23 @@ FormationModel.kFormationTypeCrossPKAtk2 = 33
 FormationModel.kFormationTypeCrossPKAtk3 = 34
 FormationModel.kFormationTypeCrossPKFight = 35
 FormationModel.kFormationTypeClimbTower = 36
+FormationModel.kFormationTypeCrossGodWar1 = 37
+FormationModel.kFormationTypeCrossGodWar2 = 38
+FormationModel.kFormationTypeCrossGodWar3 = 39
+FormationModel.kFormationTypeStakeAtk1 = 40    -- 木桩布阵
+FormationModel.kFormationTypeStakeAtk2 = 41    -- 木桩自定义攻击
+
+-- 荣耀竞技场进攻编组
+FormationModel.kFormationTypeGloryArenaAtk1 = 46
+FormationModel.kFormationTypeGloryArenaAtk2 = 47
+FormationModel.kFormationTypeGloryArenaAtk3 = 48
+
+FormationModel.kFormationTypeWorldBoss = 49
+FormationModel.kFormationTypeProfession1 = 50    -- pve 军团试炼 攻
+FormationModel.kFormationTypeProfession2 = 51    -- pve 军团试炼 防
+FormationModel.kFormationTypeProfession3 = 52    -- pve 军团试炼 突
+FormationModel.kFormationTypeProfession4 = 53    -- pve 军团试炼 射
+FormationModel.kFormationTypeProfession5 = 54    -- pve 军团试炼 魔
 
 FormationModel.kFormationTypeArenaDef = 101
 FormationModel.kFormationTypeGuildDef = 102
@@ -63,7 +82,15 @@ FormationModel.kFormationTypeCrossPKDef1 = 105
 FormationModel.kFormationTypeCrossPKDef2 = 106
 FormationModel.kFormationTypeCrossPKDef3 = 107
 
+FormationModel.kFormationTypeStakeDef2 = 108    -- 木桩自定义防御
+
+-- 荣耀竞技场防守编组
+FormationModel.kFormationTypeGloryArenaDef1 = 109
+FormationModel.kFormationTypeGloryArenaDef2 = 110
+FormationModel.kFormationTypeGloryArenaDef3 = 111
+
 FormationModel.isFormationDialogShowed = false --是否显示过进战斗之前提示上阵不满的提示，仅限副本和竞技场使用
+FormationModel.isShowFieldEmptyDialog = {}
 
 FormationModel.kFormationName = 
 {
@@ -120,9 +147,58 @@ FormationModel.kFormationName =
     [FormationModel.kFormationTypeCrossPKDef2] = "防守编组",
     [FormationModel.kFormationTypeCrossPKDef3] = "防守编组",
     [FormationModel.kFormationTypeCrossPKFight] = "进攻编组",
-
     [FormationModel.kFormationTypeClimbTower] = "无尽炼狱编组",
+    [FormationModel.kFormationTypeCrossGodWar1] = "跨服诸神编组1",
+    [FormationModel.kFormationTypeCrossGodWar2] = "跨服诸神编组2",
+    [FormationModel.kFormationTypeCrossGodWar3] = "跨服诸神编组3",
+    [FormationModel.kFormationTypeStakeAtk1] = "进攻编组",
+    [FormationModel.kFormationTypeStakeAtk2] = "进攻编组",
+    [FormationModel.kFormationTypeStakeDef2] = "防守编组",
 
+    [FormationModel.kFormationTypeGloryArenaAtk1] = "进攻编组",
+    [FormationModel.kFormationTypeGloryArenaAtk2] = "进攻编组",
+    [FormationModel.kFormationTypeGloryArenaAtk3] = "进攻编组",
+    [FormationModel.kFormationTypeGloryArenaDef1] = "防守编组",
+    [FormationModel.kFormationTypeGloryArenaDef2] = "防守编组",
+    [FormationModel.kFormationTypeGloryArenaDef3] = "防守编组",
+
+    [FormationModel.kFormationTypeWorldBoss] = "战前编组",
+    [FormationModel.kFormationTypeProfession1] = "军团试炼：攻",
+    [FormationModel.kFormationTypeProfession2] = "军团试炼：防",
+    [FormationModel.kFormationTypeProfession3] = "军团试炼：突",
+    [FormationModel.kFormationTypeProfession4] = "军团试炼：射",
+    [FormationModel.kFormationTypeProfession5] = "军团试炼：魔",
+}
+
+-- 2,8,6,7,15,9,32,33,34,35,101,102,103,104,105,106,107
+-- 36，25，26，27，28，29，12，13，1
+FormationModel.kBackupFormation = {
+    FormationModel.kFormationTypeArena,
+    FormationModel.kFormationTypeLeague,
+    FormationModel.kFormationTypeCrusade,
+    FormationModel.kFormationTypeMF,
+    FormationModel.kFormationTypeGuild,
+    -- FormationModel.kFormationTypeCrossPKAtk1,
+    -- FormationModel.kFormationTypeCrossPKAtk2,
+    -- FormationModel.kFormationTypeCrossPKAtk3,
+    -- FormationModel.kFormationTypeCrossPKFight,
+    FormationModel.kFormationTypeArenaDef,
+    FormationModel.kFormationTypeGuildDef,
+    FormationModel.kFormationTypeMFDef,
+    -- FormationModel.kFormationTypeCrossPKDef1,
+    -- FormationModel.kFormationTypeCrossPKDef2,
+    -- FormationModel.kFormationTypeCrossPKDef3
+    FormationModel.kFormationTypeClimbTower,
+    FormationModel.kFormationTypeElemental1,
+    FormationModel.kFormationTypeElemental2,
+    FormationModel.kFormationTypeElemental3,
+    FormationModel.kFormationTypeElemental4,
+    FormationModel.kFormationTypeElemental5,
+    FormationModel.kFormationTypeCloud1,
+    FormationModel.kFormationTypeCloud2,
+    FormationModel.kFormationTypeCommon,
+    FormationModel.kFormationTypeStakeAtk2,
+    FormationModel.kFormationTypeStakeDef2
 }
 
 function FormationModel:ctor()
@@ -141,6 +217,7 @@ function FormationModel:ctor()
     self._skillTalentModel = self._modelMgr:getModel("SkillTalentModel")
     self._starChartsModel = self._modelMgr:getModel("StarChartsModel")
     self._teamLoadedMap = {}
+    self._backupTeamLoadedMap = {}
     self._allFormationType  = {
         [1] = FormationModel.kFormationTypeCommon,
         [2] = FormationModel.kFormationTypeArena,
@@ -183,7 +260,24 @@ function FormationModel:ctor()
         [39] = FormationModel.kFormationTypeCrossPKDef3,
         [40] = FormationModel.kFormationTypeCrossPKFight,
         [41] = FormationModel.kFormationTypeClimbTower,
-
+        [42] = FormationModel.kFormationTypeCrossGodWar1,
+        [43] = FormationModel.kFormationTypeCrossGodWar2,
+        [44] = FormationModel.kFormationTypeCrossGodWar3,
+        [45] = FormationModel.kFormationTypeStakeAtk1,
+        [46] = FormationModel.kFormationTypeStakeAtk2,
+        [47] = FormationModel.kFormationTypeStakeDef2,
+        [48] = FormationModel.kFormationTypeGloryArenaAtk1,
+        [49] = FormationModel.kFormationTypeGloryArenaAtk2,
+        [50] = FormationModel.kFormationTypeGloryArenaAtk3,
+        [51] = FormationModel.kFormationTypeGloryArenaDef1,
+        [52] = FormationModel.kFormationTypeGloryArenaDef2,
+        [53] = FormationModel.kFormationTypeGloryArenaDef3,
+        [54] = FormationModel.kFormationTypeWorldBoss,
+        [55] = FormationModel.kFormationTypeProfession1,
+        [56] = FormationModel.kFormationTypeProfession2,
+        [57] = FormationModel.kFormationTypeProfession3,
+        [58] = FormationModel.kFormationTypeProfession4,
+        [59] = FormationModel.kFormationTypeProfession5,
     }
 end
 
@@ -239,6 +333,12 @@ function FormationModel:saveData(data, formationId, isScenarioHero, hireTeamId, 
         end
 
         context["args"]["tid"] = data["tid"]
+        context["args"]["areaSkillTeam"] = data["areaSkillTeam"]
+
+        if table.indexof(FormationModel.kBackupFormation, tonumber(formationId)) then
+            context["args"]["bid"] = data["bid"]
+            context["args"]["backupTs"] = data["backupTs"]
+        end
 
         context["args"] = json.encode(context["args"])
         --print("context json", context["args"])
@@ -283,6 +383,80 @@ function FormationModel:saveData(data, formationId, isScenarioHero, hireTeamId, 
     ]==]
 end
 
+function FormationModel:saveCrossGodWarData( saveData, callback )
+    local allContext = {args = {}}
+
+    local index = 0
+    for k, v in pairs(saveData) do
+        index = index + 1
+        self._data._formationDataCache[k] = v
+        allContext.args[index] = {id = tonumber(k), data = {teams = {}}}
+        table.walk(v, function ( vv, kk )
+            if string.find(tostring(kk), "g") or (0 == vv and not string.find(tostring(kk), "heroId")) then return end
+            if string.find(tostring(kk), "team") then
+                table.insert(allContext["args"][index]["data"]["teams"], {[1] = tonumber(vv), [2] = tonumber(v[string.format("g%d", tonumber(string.sub(tostring(kk), -1)))])})
+            elseif string.find(tostring(kk), "heroId") then
+                allContext["args"][index]["data"]["heroId"] = tonumber(vv)
+            end
+        end)
+        for i = 1, 4 do
+            local weaponId = v["weapon" .. i]
+            if weaponId and 0 ~= weaponId then
+                allContext["args"][index]["data"]["weapon" .. i] = v["weapon" .. i]
+            end
+        end
+        allContext["args"][index]["data"]["tid"] = v["tid"]
+    end
+
+    allContext["args"] = json.encode(allContext["args"])
+    print("context json", allContext)
+    self._serverMgr:sendMsg("FormationServer", "setCrossGodWarFormations", allContext, true, {}, function(success) 
+        if success then
+            self:private_saveFormationData(success)
+        end
+        if callback then
+            callback(success)
+        end
+    end)
+end
+
+function FormationModel:saveGloryArenaData( saveData, callback )
+    local allContext = {args = {}}
+
+    local index = 0
+    for k, v in pairs(saveData) do
+        index = index + 1
+        self._data._formationDataCache[k] = v
+        allContext.args[index] = {id = tonumber(k), data = {teams = {}}}
+        table.walk(v, function ( vv, kk )
+            if string.find(tostring(kk), "g") or (0 == vv and not string.find(tostring(kk), "heroId")) then return end
+            if string.find(tostring(kk), "team") then
+                table.insert(allContext["args"][index]["data"]["teams"], {[1] = tonumber(vv), [2] = tonumber(v[string.format("g%d", tonumber(string.sub(tostring(kk), -1)))])})
+            elseif string.find(tostring(kk), "heroId") then
+                allContext["args"][index]["data"]["heroId"] = tonumber(vv)
+            end
+        end)
+        for i = 1, 4 do
+            local weaponId = v["weapon" .. i]
+            if weaponId and 0 ~= weaponId then
+                allContext["args"][index]["data"]["weapon" .. i] = v["weapon" .. i]
+            end
+        end
+        allContext["args"][index]["data"]["tid"] = v["tid"]
+    end
+
+    allContext["args"] = json.encode(allContext["args"])
+    print("context json", allContext["args"])
+    self._serverMgr:sendMsg("FormationServer", "setCrossArenaFormations", allContext, true, {}, function(success) 
+        if success then
+            self:private_saveFormationData(success)
+        end
+        if callback then
+            callback(success)
+        end
+    end)
+end
+
 function FormationModel:saveMultipleData(formationData1, formationId1, formationData2, formationId2, callback)
     local allContext = {args = {}}
     local index = 0
@@ -298,6 +472,10 @@ function FormationModel:saveMultipleData(formationData1, formationId1, formation
                 allContext["args"][index]["data"]["heroId"] = tonumber(v)
             end
         end)
+        if table.indexof(FormationModel.kBackupFormation, tonumber(formationId1)) then
+            allContext["args"][index]["data"]["bid"] = formationData1["bid"]
+            allContext["args"][index]["data"]["backupTs"] = formationData1["backupTs"]
+        end
     end
     if formationData2 then
         index = index + 1
@@ -311,6 +489,10 @@ function FormationModel:saveMultipleData(formationData1, formationId1, formation
                 allContext["args"][index]["data"]["heroId"] = tonumber(v)
             end
         end)
+        if table.indexof(FormationModel.kBackupFormation, tonumber(formationId2)) then
+            allContext["args"][index]["data"]["bid"] = formationData2["bid"]
+            allContext["args"][index]["data"]["backupTs"] = formationData2["backupTs"]
+        end
     end
 
     allContext["args"] = json.encode(allContext["args"])
@@ -396,6 +578,7 @@ function FormationModel:saveAllData(formationDatas, formationId1, formationId2, 
         end
 
         allContext["args"][index]["data"]["tid"] = formationData["tid"]
+        allContext["args"][index]["data"]["areaSkillTeam"] = formationData["areaSkillTeam"]
         index = index + 1
     end
 
@@ -594,6 +777,61 @@ function FormationModel:private_saveCityBattleFormationData(success, data)
     self:reflashData()
 end
 
+--检测荣耀竞技场进攻编组，如果是nil初始化成
+function FormationModel:private_saveGloryArenaAttackFormationData(success, data)
+    if success then 
+        if data then
+            local formationData = data
+            for formationId = FormationModel.kFormationTypeGloryArenaAtk1, FormationModel.kFormationTypeGloryArenaAtk3 do
+                if formationData[tostring(formationId)] and not self._data._formationDataCache[formationId] then
+                    self._data._formationDataCache[formationId] = clone(formationData[tostring(formationId)])
+                end
+                 repeat
+                     if not (self._data._formationDataCache[formationId] and formationData[tostring(formationId)]) then break end
+                      local filter = string.split(tostring(formationData[tostring(formationId)].filter), ",")
+                      table.walk(filter, function(v, k)
+                          filter[k] = tonumber(filter[k])
+                      end)
+                     self._data._formationDataCache[formationId].filter = filter
+                 until true
+            end
+        end
+        self._data._formationData = clone(self._data._formationDataCache) 
+        self._defaultFormationId = self._defaultFormationIdCache
+        self._formationDataChanged = {}
+        self:updateTeamLoadedMap()
+    end
+    self:reflashData()
+
+end
+
+--检测荣耀竞技场防御编组，如果是nil初始化成
+function FormationModel:private_saveGloryArenaBattleFormationData(success, data)
+    if success then 
+        if data then
+            local formationData = data
+            for formationId = FormationModel.kFormationTypeGloryArenaDef1, FormationModel.kFormationTypeGloryArenaDef3 do
+                if formationData[tostring(formationId)] and not self._data._formationDataCache[formationId] then
+                    self._data._formationDataCache[formationId] = clone(formationData[tostring(formationId)])
+                end
+                 repeat
+                     if not (self._data._formationDataCache[formationId] and formationData[tostring(formationId)]) then break end
+                      local filter = string.split(tostring(formationData[tostring(formationId)].filter), ",")
+                      table.walk(filter, function(v, k)
+                          filter[k] = tonumber(filter[k])
+                      end)
+                     self._data._formationDataCache[formationId].filter = filter
+                 until true
+            end
+        end
+        self._data._formationData = clone(self._data._formationDataCache) 
+        self._defaultFormationId = self._defaultFormationIdCache
+        self._formationDataChanged = {}
+        self:updateTeamLoadedMap()
+    end
+    self:reflashData()
+end
+
 
 function FormationModel:private_saveAllFormationData(success, formationId1, formationId2, data)
     if success then 
@@ -672,7 +910,20 @@ function FormationModel:isHaveWeapon(formationType)
            formationType == FormationModel.kFormationTypeCrossPKDef2 or 
            formationType == FormationModel.kFormationTypeCrossPKDef3 or
            formationType == FormationModel.kFormationTypeClimbTower or 
-           formationType == FormationModel.kFormationTypeCrossPKFight)
+           formationType == FormationModel.kFormationTypeCrossGodWar1 or 
+           formationType == FormationModel.kFormationTypeCrossGodWar2 or 
+           formationType == FormationModel.kFormationTypeCrossGodWar3 or 
+           formationType == FormationModel.kFormationTypeCrossPKFight or 
+           formationType == FormationModel.kFormationTypeGloryArenaAtk1 or 
+           formationType == FormationModel.kFormationTypeGloryArenaAtk2 or 
+           formationType == FormationModel.kFormationTypeGloryArenaAtk3 or 
+           formationType == FormationModel.kFormationTypeGloryArenaDef1 or 
+           formationType == FormationModel.kFormationTypeGloryArenaDef2 or 
+           formationType == FormationModel.kFormationTypeGloryArenaDef3 or 
+           formationType == FormationModel.kFormationTypeStakeAtk1 or 
+           formationType == FormationModel.kFormationTypeStakeAtk2 or 
+           formationType == FormationModel.kFormationTypeStakeDef2 or 
+           formationType == FormationModel.kFormationTypeWorldBoss)
 end
 
 function FormationModel:updateFormationDataByType(formationType, formationData)
@@ -1068,9 +1319,20 @@ function FormationModel:updateTeamLoadedMap()
     local formationData = self._data._formationData[FormationModel.kFormationTypeCommon]
     if not formationData then return end
     self._teamLoadedMap = {}
+    self._backupTeamLoadedMap = {}
     for i = 1, 8 do
         if formationData["team"..i] ~= 0 then
             self._teamLoadedMap[formationData["team"..i]] = true
+        end
+    end
+    local backupTs = formationData.backupTs or {}
+    if formationData.bid then
+        local btData = backupTs[tostring(formationData.bid)] or {}
+        for i = 1, 3 do
+            local teamId = btData["bt" .. i]
+            if teamId and teamId ~= 0 then
+                self._backupTeamLoadedMap[teamId] = true
+            end
         end
     end
 end
@@ -1081,7 +1343,7 @@ function FormationModel:getTeamLoadedMap()
         self:initTeamLoadedMap()
     end
     ]]
-    return self._teamLoadedMap
+    return self._teamLoadedMap, self._backupTeamLoadedMap
     --[=[
     if self._data == nil or self._data._formationData == nil then return {} end
     local formationData = self._data._formationData[FormationModel.kFormationTypeCommon]
@@ -1157,6 +1419,42 @@ function FormationModel:isFormationTeamFullByType(formationType)
     return currentNotLoadedTeamCount <= 0 or currentLoadedTeamCount >= currentAllowedTeamCount
 end
 
+--返回该编组后援是否有红点
+-- 0：后援无可操作的
+-- 1：没有使用后援
+-- 2：有空位
+-- 3：有冲突
+function FormationModel:isFormationBackupFullByType( formationType )
+    local backupModel = self._modelMgr:getModel("BackupModel")
+    if not table.indexof(FormationModel.kBackupFormation, tonumber(formationType)) or not backupModel:isOpen() then
+        return 0
+    end
+    local formationData = self:getFormationDataByType(formationType)
+
+    if not formationData.bid then
+        return 1
+    end
+
+    local teamUsing = {}
+    for i = 1, FormationModel.kTeamMaxCount do
+        local teamId = formationData["team" .. i]
+        if teamId and teamId ~= 0 then
+            table.insert(teamUsing, teamId)
+        end
+    end
+    
+    local isHaveEmptySeat = backupModel:isHaveEmptySeat(formationData.backupTs, formationData.bid, {}, clone(teamUsing))
+    if isHaveEmptySeat then
+        return 2
+    end
+
+    local isHaveConflictTeam = backupModel:isHaveConflictTeam(formationData.backupTs, formationData.bid, clone(teamUsing))
+    if isHaveConflictTeam then
+        return 3
+    end
+    return 0
+end
+
 function FormationModel.decodeFilterString(filter)
     if not filter then return {}
     elseif type(filter) == "table" then
@@ -1187,10 +1485,12 @@ end
 
 function FormationModel:getCurrentFightScoreByType(formationType, specifiedFormationData, isHireTeamLoaded, hireTeamId, userId, isFixedWeapon)
     local data = specifiedFormationData or self:getFormationDataByTypeWithFilter(formationType)
+    local usingTeamList = {}
     local fightScore = 0
     table.walk(data, function(v, k)
         if 0 == v then return end
         if string.find(tostring(k), "team") and not string.find(tostring(k), "g") then
+            table.insert(usingTeamList, tonumber(v))
             local teamData = self._teamModel:getTeamAndIndexById(v)
             if isHireTeamLoaded and v == hireTeamId then
                 teamData = self._guildModel:getEnemyDataById(hireTeamId, userId)
@@ -1209,7 +1509,6 @@ function FormationModel:getCurrentFightScoreByType(formationType, specifiedForma
             end
         end
     end)
-
     --冠军对决 NPC英雄用固定的英雄战力计算总战力  edit by yuxiaojing
     if formationType == FormationModel.kFormationTypeLeague then
         fightScore = fightScore + tab:Setting("G_LEAGUE_HEROSCORE").value
@@ -1262,6 +1561,32 @@ function FormationModel:getCurrentFightScoreByType(formationType, specifiedForma
         fightScore = fightScore + self._treasureModel:getTreasureScore()
         local talentScore = self._talentModel:getBattleNum()
         fightScore = fightScore + talentScore
+    end
+    -- 后援 战力
+    local backupData = self._modelMgr:getModel("BackupModel"):getBackupData() or {}
+    for k, v in pairs(backupData) do
+        if v and v.as then
+            fightScore = fightScore + (v.as or 0)
+        end
+    end
+    if table.indexof(FormationModel.kBackupFormation, formationType) then
+        local backupTs = data.backupTs or {}
+        local useBid = data.bid
+        for k, v in pairs(backupData) do
+            if tonumber(k) == tonumber(useBid) and v and v.score then
+                fightScore = fightScore + (v.score or 0)
+                local tsData = backupTs[tostring(useBid)] or {}
+                for i = 1, 3 do
+                    local teamId = tsData["bt" .. i]
+                    if teamId and teamId ~= 0 and not table.indexof(usingTeamList, tonumber(teamId)) then
+                        local teamData = self._teamModel:getTeamAndIndexById(teamId)
+                        if teamData then
+                            fightScore = fightScore + (teamData.score or 0)
+                        end
+                    end
+                end
+            end
+        end
     end
 
     fightScore = fightScore + self._starChartsModel:getStarChartsScore(self._userModel:getHeroStarInfo())
@@ -1358,6 +1683,7 @@ function FormationModel:initBattleData(formationType, specifiedFormationData)
             end
         end
 
+        local tSkinData = self._userModel:getTeamSkinData()
         local team
         table.walk(formationData, function(v, k)
             if string.find(tostring(k), "g") or 0 == v or isFiltered(v) then return end
@@ -1365,6 +1691,12 @@ function FormationModel:initBattleData(formationType, specifiedFormationData)
                 local teamData = self._teamModel:getTeamAndIndexById(v)
                 if teamData then
                     local teamTableData = tab:Team(teamData.teamId)
+                    local tSkin = nil
+                    if tSkinData and next(tSkinData) then
+                        if tSkinData[tostring(teamData.teamId)] or tSkinData[teamData.teamId] then
+                            tSkin = tSkinData[tostring(teamData.teamId)] or tSkinData[teamData.teamId]
+                        end
+                    end
                     local jxTree = teamData.tree or {}
                     team = {
                             id = teamData.teamId,
@@ -1408,6 +1740,8 @@ function FormationModel:initBattleData(formationType, specifiedFormationData)
                             jxSkill2 = jxTree.b2,
                             jxSkill3 = jxTree.b3,
                             data = clone(teamData),
+                            sId = teamData.sId or 0,
+                            tSkin = tSkin,
                        }
                     if team.jxSkill1 == 0 then team.jxSkill1 = nil end
                     if team.jxSkill2 == 0 then team.jxSkill2 = nil end
@@ -1476,6 +1810,255 @@ function FormationModel:initBattleData(formationType, specifiedFormationData)
     end 
     ]]
     return result
+end
+
+function FormationModel:getAllRelationBuilds(teams, heroId)
+    local fBuildCfg = clone(tab.formation_build)
+    local fHeroCfg = clone(tab.formation_hero)
+    local fTeamCfg = clone(tab.formation_team)
+
+    if not fBuildCfgReverse then
+        fBuildCfgReverse = {}
+        local builds = fBuildCfg
+        for k, v in ipairs(builds) do
+            fBuildCfgReverse[k] = {}
+            for i = 1, 4 do
+                local build = v["build" .. i]
+                for _, v0 in ipairs(build) do
+                    if not fBuildCfgReverse[k][v0] then
+                        fBuildCfgReverse[k][v0] = {}
+                    end
+                    table.insert(fBuildCfgReverse[k][v0], i)
+                end
+            end
+        end
+    end
+
+    -- dump(fBuildCfgReverse, "fBuildCfgReverse[k][v0]", 10)
+
+    local allBuilds = {}
+    for i = 1, #fBuildCfg do
+        allBuilds[i] = {{}, {}, {}, {}}
+    end
+
+    local buildsReverse = fBuildCfgReverse
+
+    --dump(teams, "teams", 5)
+    for teamId, _ in pairs(teams) do
+        repeat
+            local builds = fTeamCfg[teamId]
+            if not builds then break end
+            builds = builds["build"]
+            if not builds then break end
+            for _, build in ipairs(builds) do
+                local buildId1 = build[1]
+                local buildId2 = build[2]
+                local relationItems = fBuildCfg[buildId1]["build" .. buildId2]
+                if buildId2 < 3 then
+                    for _, item in ipairs(relationItems) do
+                        if teams[item] then
+                            local buildIds = buildsReverse[buildId1][teamId]
+                            if buildIds then
+                                for _, id in ipairs(buildIds) do
+                                    if not allBuilds[buildId1][id] then
+                                        allBuilds[buildId1][id] = {}
+                                    end
+                                    allBuilds[buildId1][id][teamId] = true
+                                end
+                            end
+                            buildIds = buildsReverse[buildId1][item]
+                            if buildIds then
+                                for _, id in ipairs(buildIds) do
+                                    if not allBuilds[buildId1][id] then
+                                        allBuilds[buildId1][id] = {}
+                                    end
+                                    allBuilds[buildId1][id][item] = true
+                                end
+                            end
+                        end
+                    end
+                else
+                    for _, item in ipairs(relationItems) do
+                        if heroId == item then
+                            local buildIds = buildsReverse[buildId1][teamId]
+                            if buildIds then
+                                for _, id in ipairs(buildIds) do
+                                    print("buildId1:" .. buildId1)
+                                    if not allBuilds[buildId1][id] then
+                                        allBuilds[buildId1][id] = {}
+                                    end
+                                    allBuilds[buildId1][id][teamId] = true
+                                end
+                            end
+                            buildIds = buildsReverse[buildId1][item]
+                            if buildIds then
+                                for _, id in ipairs(buildIds) do
+                                    if not allBuilds[buildId1][id] then
+                                        allBuilds[buildId1][id] = {}
+                                    end
+                                    allBuilds[buildId1][id][item] = true
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        until true
+    end
+
+    if heroId and 0 ~= heroId then
+        local builds = fHeroCfg[heroId]
+        if builds then 
+            builds = builds["build"]
+            --dump(builds, "builds", 5)
+            if builds then 
+                for _, build in ipairs(builds) do
+                    local buildId1 = build[1]
+                    local buildId2 = build[2]
+                    local relationItems = fBuildCfg[buildId1]["build" .. buildId2]
+                    if buildId2 < 3 then
+                        for _, item in ipairs(relationItems) do
+                            if teams[item] then
+                                local buildIds = buildsReverse[buildId1][heroId]
+                                for _, id in ipairs(buildIds) do
+                                    if not allBuilds[buildId1][id] then
+                                        allBuilds[buildId1][id] = {}
+                                    end
+                                    allBuilds[buildId1][id][heroId] = true
+                                end
+                                buildIds = buildsReverse[buildId1][item]
+                                for _, id in ipairs(buildIds) do
+                                    if not allBuilds[buildId1][id] then
+                                        allBuilds[buildId1][id] = {}
+                                    end
+                                    allBuilds[buildId1][id][item] = true
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    -- dump(allBuilds, "allBuilds", 10)
+
+    return allBuilds
+end
+
+function FormationModel:showFormationEditView( params )
+    -- self._serverMgr:sendMsg("UserServer", "getAreaSkillTeam", {}, true, {}, function ( result )
+    self._viewMgr:showDialog("formation.FormationEditInfoDialog", params)
+    -- end)
+end
+
+function FormationModel:getFieldSkillList( hireTeamData )
+    local allTeamData = self._teamModel:getData()
+    local result = {}
+    local teamResult = {}
+    for k, v in pairs(allTeamData) do
+        local teamId = v.teamId
+        local sysData = tab:Team(teamId)
+        if sysData then
+            local skill = sysData.skill or {}
+            local skillInfo = nil
+            for k1, v1 in pairs(skill) do
+                local skillType = v1[1]
+                local skillId = v1[2]
+                local sysSkill = SkillUtils:getTeamSkillByType(skillId, skillType)
+                if sysSkill and sysSkill.lingyu and sysSkill.lingyu == 1 then
+                    skillInfo = clone(v1)
+                    skillInfo[3] = teamId
+                    break
+                end
+            end
+            if skillInfo and v.sl7 and v.sl7 >= 1 then
+                table.insert(result, skillInfo)
+                table.insert(teamResult, skillInfo[3])
+            end
+        end
+    end
+    if hireTeamData then
+        local teamId = hireTeamData.teamId
+        local sysData = tab:Team(teamId)
+        if sysData then
+            local skill = sysData.skill or {}
+            local skillInfo = nil
+            for k1, v1 in pairs(skill) do
+                local skillType = v1[1]
+                local skillId = v1[2]
+                local sysSkill = SkillUtils:getTeamSkillByType(skillId, skillType)
+                if sysSkill and sysSkill.lingyu and sysSkill.lingyu == 1 then
+                    skillInfo = clone(v1)
+                    skillInfo[3] = teamId
+                    break
+                end
+            end
+            if skillInfo and hireTeamData.sl7 and hireTeamData.sl7 >= 1 and not table.indexof(teamResult, skillInfo[3]) then
+                table.insert(result, skillInfo)
+                table.insert(teamResult, skillInfo[3])
+            end
+        end
+    end
+    -- dump(result)
+    return result, teamResult
+end
+
+function FormationModel:isShowFieldDialogByType( fType )
+    return FormationModel.isShowFieldEmptyDialog[fType]
+end
+
+function FormationModel:setShowFieldDialogByType( fType )
+    FormationModel.isShowFieldEmptyDialog[fType] = true
+end
+
+function FormationModel:isFieldSkillEmpty( formationId, hireTeamData )
+    formationId = formationId or 1
+    local formationData = self:getFormationDataByType(tonumber(formationId))
+    if formationData.areaSkillTeam then
+        return false
+    end
+    local _, fieldTeamList = self:getFieldSkillList(hireTeamData)
+    if #fieldTeamList <= 0 then
+        return false
+    end
+    local result = false
+    table.walk(formationData, function(v, k)
+        if not string.find(tostring(k), "team") then return end
+        if 0 ~= v and table.indexof(fieldTeamList, v) then
+            result = true
+        end
+    end)
+    if hireTeamData then
+        local teamId = hireTeamData.teamId
+        if teamId and 0 ~= teamId and table.indexof(fieldTeamList, teamId) then
+            result = true
+        end
+    end
+    return result
+end
+
+function FormationModel:handleUnsetFormationData( unsetData )
+    local tempData = {}
+    for k, v in pairs(unsetData) do
+        if string.find(k, ".") ~= nil then
+            local temp = string.split(k, "%.")
+            if temp[1] == "formations" and #temp == 3 then
+                table.insert(tempData, clone(temp))
+            end
+        end
+    end
+    if #tempData <= 0 then
+        return
+    end
+    local allFormationData = self._data._formationData
+    for k, v in pairs(tempData) do
+        if allFormationData[tonumber(v[2])] and allFormationData[tonumber(v[2])][v[3]] then
+            allFormationData[tonumber(v[2])][v[3]] = nil
+            self._formationDataChanged[tonumber(v[2])] = true
+        end
+    end
+    self._data._formationDataCache = clone(self._data._formationData)
 end
 
 return FormationModel

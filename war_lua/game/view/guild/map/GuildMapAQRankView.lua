@@ -318,8 +318,12 @@ function GuildMapAQRankView:reflashUserInfo()
 			awardIcon:removeAllChildren()
 			awardNum:setVisible(true)
 			if rwds[i] == nil then
-				awardIcon:setVisible(false)
-				awardNum:setVisible(false)
+				for m=i,3 do
+					local awardIcon1 = self._selfAward:getChildByFullName("awardImg" .. m)
+					local awardNum1 = self._selfAward:getChildByFullName("awardTxt" .. m)
+					awardIcon1:setVisible(false)
+					awardNum1:setVisible(false)
+				end
 				break
 			end
 
@@ -375,7 +379,7 @@ function GuildMapAQRankView:createRoleHead(data,headNode,scaleNum)
 	local scale = scaleNum and scaleNum or 0.8
 	if avatarName == 0 or not avatarName then avatarName = 1203 end	
 	local lvl = data.lvl
-	local icon = IconUtils:createHeadIconById({avatar = avatarName,tp = 3 ,level = lvl,avatarFrame = data["avatarFrame"]})
+	local icon = IconUtils:createHeadIconById({avatar = avatarName,tp = 3 ,level = lvl,avatarFrame = data["avatarFrame"], plvl = data["plvl"]})
 	icon:setName("avatarIcon")
 	icon:setAnchorPoint(cc.p(0.5,0.5))
 	icon:setScale(scale)
@@ -403,7 +407,8 @@ function GuildMapAQRankView:reflashNo1( data )
 
 	--level
 	local level = self._leftBoard:getChildByFullName("level")
-	level:setString("Lv." .. (data.level or data.lvl or 0))
+	local inParam = {lvlStr = "Lv." .. (data.level or data.lvl or 0), lvl = (data.level or data.lvl or 0), plvl = data.plvl}
+    UIUtils:adjustLevelShow(level, inParam, 1)
 
 	--guild
 	guildDes:setVisible(true)

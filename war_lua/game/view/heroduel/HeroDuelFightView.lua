@@ -110,14 +110,15 @@ function HeroDuelFightView:onInit()
 --        self._vsMc:gotoAndPlay(22)
 --    end)
 
-
+    self._mode = self._hModel:getHeroDuelData("mode")
     ScheduleMgr:delayCall(3000, self, function()
-        self._viewMgr:showDialog("heroduel.HeroDuelForbiddenView", {callback = self._callback})
+        self._viewMgr:showDialog("heroduel.HeroDuelForbiddenView", {callback = self._callback,mode = self._mode})
         self:close()
     end)
 
     self._myNode:setPositionX(self._myNode:getPositionX() - 50)
     self._enemyNode:setPositionX(self._enemyNode:getPositionX() + 50)
+
 end
 
 function HeroDuelFightView:onShow()

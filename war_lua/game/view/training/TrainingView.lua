@@ -7,6 +7,7 @@ function TrainingView:ctor(param)
     self.super.ctor(self)
     self.initAnimType = 2
     self._trainingModel = self._modelMgr:getModel("TrainingModel")
+    self._stakeModel = self._modelMgr:getModel("StakeModel")
     -- 是否从活动界面跳转
     self._isFromAc = param and param.isFromAc or false
 end
@@ -15,6 +16,7 @@ function TrainingView:getAsyncRes()
     return 
     {
         {"asset/ui/training.plist", "asset/ui/training.png"},
+        {"asset/ui/training1.plist", "asset/ui/training1.png"},
     }
 end
 
@@ -38,8 +40,7 @@ function TrainingView:onAdd()
 
 end
 
-function TrainingView:onBeforeAdd( callback )  
-
+function TrainingView:onBeforeAdd( callback ) 
 	local needRequest = self._trainingModel:getIsNeedRequest()
 	if needRequest then
 		-- print("===================TrainingView==needRequest====",needRequest)
@@ -63,6 +64,9 @@ function TrainingView:onShow()
 		self._taskView = self._viewMgr:showDialog("training.TrainingTaskView", {parent = self,trainType = 3,goStageIdx=23,isFromAc = true}, true)
 	end
 end
+
+-- 
+local panelNum = 4
 -- 初始化UI后会调用, 有需要请覆盖
 function TrainingView:onInit()
 	-- 通用动态背景
@@ -81,12 +85,49 @@ function TrainingView:onInit()
     	[3] = "trainingView_inViewGolden.png",
     	[4] = "trainingView_inViewWG.png",
 	}
+
+	self._bg = self:getUI("bg")
     --scrollView
+    self._scrollView = self:getUI("bg.scrollView")
+    self._scrollView:setBounceEnabled(true)
+    self._scrollView:setClippingType(1)
+    local width = self._scrollView:getContentSize().width
+    local height = self._scrollView:getContentSize().height
+    if panelNum > 4 and width < 320*panelNum then
+		width = 320*panelNum 
+	end
+    self._scrollView:setInnerContainerSize(cc.size(1280,height))
+    self._scrollView:setClippingEnabled(true)
+
     self._bg = self:getUI("bg")
 	-- self._scrollView:setBounceEnabled(true)
+    self._rightArrow = mcMgr:createViewMC("youjiantou_teamnatureanim", true, false)
+	self._rightArrow:setPosition(920,300)
+	self._bg:addChild(self._rightArrow, 99)
+	self._leftArrow = mcMgr:createViewMC("zuojiantou_teamnatureanim", true, false)
+	self._leftArrow:setPosition(20,300)
+	self._bg:addChild(self._leftArrow, 99)
+	self._rightArrow:setVisible(true)
+	self._leftArrow:setVisible(false)
+
+	self._scroW = self._scrollView:getInnerContainerSize().width
+	self._scrollView:addEventListener(function(sender, eventType)
+        local minX = 960 - self._scroW
+        local posX = self._scrollView:getInnerContainer():getPositionX()
+        if posX < minX + 25 then
+             self._leftArrow:setVisible(true)
+             self._rightArrow:setVisible(false)
+        elseif posX > -25 then 
+             self._rightArrow:setVisible(true)
+             self._leftArrow:setVisible(false)
+        else
+        	self._rightArrow:setVisible(false)
+			self._leftArrow:setVisible(false)
+        end        
+    end)
 
 	-- 初级训练所
-	self._trainingNode1 = self:getUI("bg.trainingNode1")
+	self._trainingNode1 = self:getUI("bg.scrollView.trainingNode1")
     self._trainingNode1.pointIcon = self._trainingNode1:getChildByFullName("pointIcon")
     self._trainingNode1.pointIcon:setVisible(false)
     
@@ -119,7 +160,7 @@ function TrainingView:onInit()
 	end)		
 
 	-- 中级训练所
-	self._trainingNode2 = self:getUI("bg.trainingNode2")
+	self._trainingNode2 = self:getUI("bg.scrollView.trainingNode2")
     self._trainingNode2.pointIcon = self._trainingNode2:getChildByFullName("pointIcon")
     self._trainingNode2.pointIcon:setVisible(false)
 
@@ -145,7 +186,7 @@ function TrainingView:onInit()
     -- 等级开启限制提示
     local juniorTb = tab:Setting("JUNIOR_TRAINING")
     local juniorLvl = juniorTb and juniorTb.value or 0
-  	local txt2 = self:getUI("bg.trainingNode2.lockPanel.txt2")
+  	local txt2 = self:getUI("bg.scrollView.trainingNode2.lockPanel.txt2")
   	txt2:setString(juniorLvl .. "级开启")
 
     -- 中级是否开启通关(等级限制)
@@ -159,7 +200,7 @@ function TrainingView:onInit()
 	end)
 
 	-- 高级训练所
-	self._trainingNode3 = self:getUI("bg.seniorBgPanel.trainingNode3")
+	self._trainingNode3 = self:getUI("bg.scrollView.seniorBgPanel.trainingNode3")
     self._trainingNode3.pointIcon = self._trainingNode3:getChildByFullName("pointIcon")
     self._trainingNode3.pointIcon:setVisible(false)
     self._trainingNode3:setSwallowTouches(false)
@@ -184,12 +225,12 @@ function TrainingView:onInit()
     -- 等级开启限制提示
     local senTb = tab:Setting("SENIOR_TRAINING")
     local senLvl = senTb and senTb.value or 0
-  	local txt2 = self:getUI("bg.seniorBgPanel.trainingNode3.lockPanel.txt2")
+  	local txt2 = self:getUI("bg.scrollView.seniorBgPanel.trainingNode3.lockPanel.txt2")
   	txt2:setString(senLvl .. "级开启")
 
     -- 高级是否开启通关(等级限制)
     self._isUnlockSen = self._trainingModel:isSeniorOpen()
-    self._trainingSenior = self:getUI("bg.seniorBgPanel")
+    self._trainingSenior = self:getUI("bg.scrollView.seniorBgPanel")
 	self:registerClickEvent(self._trainingSenior,function() 
 		-- print("======================高级训练所==============")
 		if self._isUnlockSen then
@@ -199,7 +240,7 @@ function TrainingView:onInit()
 		end
 	end)
 
-	local seniorLock = self:getUI("bg.seniorBgPanel.seniorLock")
+	local seniorLock = self:getUI("bg.scrollView.seniorBgPanel.seniorLock")
 	seniorLock:setVisible(false)
 
 	-- 解锁动画需要
@@ -223,14 +264,54 @@ function TrainingView:onInit()
 		self._isMidNeedAnim = true
         
     else
-   		local juniorLockPanel = self:getUI("bg.trainingNode2.lockPanel")
-		local juniorProgressBg = self:getUI("bg.trainingNode2.progressBg")
+   		local juniorLockPanel = self:getUI("bg.scrollView.trainingNode2.lockPanel")
+		local juniorProgressBg = self:getUI("bg.scrollView.trainingNode2.progressBg")
 		-- 中级解锁 panel隐藏
 		juniorLockPanel:setVisible(not self._isUnlockjunior)
 		juniorProgressBg:setVisible(self._isUnlockjunior)    	
 		self:updateProgressByType(2)
 		self._trainingNode2:setSaturation(self._isUnlockjunior and 0 or -100)
     end
+
+    -- 木桩入口
+    self._stakeData = self._stakeModel:getStakeData() or {}
+    local woodPileLock ,_,unlockLvl = SystemUtils["enableStake"]()
+	self._trainingNode4 = self:getUI("bg.scrollView.woodPilePanel")
+	self:registerClickEvent(self._trainingNode4,function() 
+		-- print("==========木桩=========")
+		if woodPileLock then
+			-- print("=================================")
+			self._serverMgr:sendMsg("StakeServer", "getStakeInfo", {}, true, {}, function()
+		        self._taskView = self._viewMgr:showDialog("training.StakeTrainDialog", {callBack=function()
+		        	-- 更新最高伤害
+    				if self._proTxt then
+    					self._stakeData = self._stakeModel:getStakeData() or {}
+    					local damage = self._stakeData.hDamage or 0
+    					self._proTxt:setString(ItemUtils.formatItemCount(damage))
+    				end
+		        end}, true)
+		    end)
+			
+		else
+			self._viewMgr:showTip(unlockLvl .. "级开启")
+		end
+	end)
+	self._trainingNode4:setSaturation(woodPileLock and 0 or -100)
+	local titleTxt 		= self:getUI("bg.scrollView.woodPilePanel.titleTxt")
+	titleTxt:setString(lang("STAKE_101"))
+	local lockPanel 	= self:getUI("bg.scrollView.woodPilePanel.lockPanel")
+	local lockTxt1 		= self:getUI("bg.scrollView.woodPilePanel.lockPanel.txt2")
+	local unLockPanel 	= self:getUI("bg.scrollView.woodPilePanel.unLockPanel")
+	local proTxt 		= self:getUI("bg.scrollView.woodPilePanel.unLockPanel.proTxt")
+	lockTxt1:setString(unlockLvl .. "级解锁")
+	lockPanel:setVisible(not woodPileLock)
+	unLockPanel:setVisible(woodPileLock)
+	local damage = self._stakeData.hDamage or 0
+	proTxt:setAnchorPoint(0,0.5)
+	proTxt:setString(ItemUtils.formatItemCount(damage))
+	proTxt:setPositionX(165)
+	self._proTxt = proTxt
+
 
     -- 更新训练所进度
     self:updateProgressByType(1)
@@ -271,7 +352,7 @@ end
 
 function TrainingView:updateSeniorPanel()
     -- print("updateSeniorPanel====================")    
-	self:getUI("bg.seniorBgPanel"):setSaturation(self._isUnlockSen and 0 or -100)
+	self:getUI("bg.scrollView.seniorBgPanel"):setSaturation(self._isUnlockSen and 0 or -100)
 	-- 总评分
 	local scoreSum = self._trainingModel:getSeniorSumScore()
 	local trainData = self._trainingModel:getDataByType(3)
@@ -362,11 +443,12 @@ function TrainingView:beforePopAnim()
 	TrainingView.super.beforePopAnim(self)
 	-- 如果是活动跳转 不播动画
 	if self._isFromAc then return end
-	for i=1,3 do
+	for i=1,panelNum do
 		local hole = 3 ~= i and self["_trainingNode" .. i] or self._trainingSenior
 		hole:setCascadeOpacityEnabled(true, true)
 		hole:setOpacity(0)
 		hole:setScaleAnim(true)
+		hole:setSwallowTouches(false)
 
 		-- if 3 == i then 
 		-- 	local seniorLock = self:getUI("bg.seniorBgPanel.seniorLock")
@@ -402,7 +484,7 @@ function TrainingView:popAnim(callback)
 	local fadeInTime = 0.1
 	local moveDis = 200
 	local springDis = 10
-	for i=1,3 do
+	for i=1,panelNum do
 		local hole = 3 ~= i and self["_trainingNode" .. i] or self._trainingSenior
 		local holeInitPos = cc.p(hole:getPositionX(),hole:getPositionY())
 		local holeSpringPos = cc.p(hole:getPositionX()-springDis,hole:getPositionY())
@@ -424,8 +506,8 @@ function TrainingView:popAnim(callback)
 			        self:unlockSeniorAnim(self._trainingNode2,"trainingView_anim_clipNodeJ1.png",function()			
 						self:updateProgressByType(2)	
 						-- 更新中级训练场的显示				
-						local juniorLockPanel = self:getUI("bg.trainingNode2.lockPanel")
-						local juniorProgressBg = self:getUI("bg.trainingNode2.progressBg")
+						local juniorLockPanel = self:getUI("bg.scrollView.trainingNode2.lockPanel")
+						local juniorProgressBg = self:getUI("bg.scrollView.trainingNode2.progressBg")
 						-- 中级解锁 panel隐藏
 						juniorLockPanel:setVisible(not self._isUnlockjunior)
 						juniorProgressBg:setVisible(self._isUnlockjunior)	

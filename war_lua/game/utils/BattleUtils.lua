@@ -17,6 +17,8 @@ local tonumber = tonumber
 
 local BattleUtils = {}
 
+BattleUtils.bTeamRace = {101, 102, 103, 104, 105, 106, 107, 108, 109, 112}
+
 BattleUtils.DEBUG_FAST_BATTLE = 0
 
 local fupanStr
@@ -72,7 +74,13 @@ BattleUtils.surpriseSuccess = false
 
 -- 技能调试信息
 BattleUtils.XBW_SKILL_DEBUG = false
+BattleUtils.XBW_SKILL_TEAM_DEBUG = false
+--是否显示攻击的范围
+BattleUtils.XBW_SKILL_TEAM_ATTACK_ARER = false
 -- 统计界面 普攻技能分开统计
+BattleUtils.BATTLE_PROC_RECORD_DATA = false
+
+BattleUtils.__attackType = 40
 
 BattleUtils.CUR_BATTLE_TYPE = 1
 BattleUtils.CUR_BATTLE_SUB_TYPE = 1
@@ -114,6 +122,12 @@ BattleUtils.BATTLE_TYPE_GuildFAM = 35           -- 联盟探索密境
 BattleUtils.BATTLE_TYPE_ServerArena = 36        -- 跨服竞技场
 BattleUtils.BATTLE_TYPE_ServerArenaFuben = 37   -- 跨服竞技场副本(挑战镜像)
 BattleUtils.BATTLE_TYPE_ClimbTower = 38         -- 爬塔
+BattleUtils.BATTLE_TYPE_CrossGodWar = 39        -- 跨服争霸赛
+BattleUtils.BATTLE_TYPE_WoodPile_1 = 40         -- 木桩自己打自己
+BattleUtils.BATTLE_TYPE_WoodPile_2 = 41         -- 木桩
+BattleUtils.BATTLE_TYPE_GloryArena = 42         -- 荣耀竞技场战斗 
+BattleUtils.BATTLE_TYPE_WORDBOSS = 44           -- 世界BOSS
+BattleUtils.BATTLE_TYPE_Legion  = 45            -- 军团试炼
 BattleUtils.BATTLE_TYPE_Guide = 100             -- 引导战斗
 
 -- 强制自动战斗的类别
@@ -126,6 +140,9 @@ BattleUtils.PROC_AUTO_SKILL =
     [BattleUtils.BATTLE_TYPE_GVGSiege] = true,
     [BattleUtils.BATTLE_TYPE_HeroDuel] = true,
     [BattleUtils.BATTLE_TYPE_GodWar] = true,
+    [BattleUtils.BATTLE_TYPE_CrossGodWar] = true,
+    [BattleUtils.BATTLE_TYPE_GloryArena] = true,
+    [BattleUtils.BATTLE_TYPE_WoodPile_1] = true,
 }
 
 -- 使用攻城器械的战斗
@@ -147,6 +164,12 @@ BattleUtils.USE_WEAPONS =
     [BattleUtils.BATTLE_TYPE_Crusade] = true,   
     [BattleUtils.BATTLE_TYPE_ClimbTower] = true,   
     [BattleUtils.BATTLE_TYPE_ServerArenaFuben] = true,   
+    [BattleUtils.BATTLE_TYPE_CrossGodWar] = true,
+    [BattleUtils.BATTLE_TYPE_ServerArenaFuben] = true,
+    [BattleUtils.BATTLE_TYPE_WoodPile_1] = true,
+    [BattleUtils.BATTLE_TYPE_WoodPile_2] = true,
+    [BattleUtils.BATTLE_TYPE_GloryArena] = true,
+    [BattleUtils.BATTLE_TYPE_WORDBOSS] = true,
 }
 
 -- 使用攻城器械的战斗的子类型
@@ -174,7 +197,13 @@ BattleUtils.NO_DAMAGE =
     [BattleUtils.BATTLE_TYPE_Zombie] = true,
 }
 
+-- 展示调试信息
+BattleUtils.SHOW_SKILL_DEBUG = {
+    [BattleUtils.BATTLE_TYPE_WoodPile_1] = true,
+    [BattleUtils.BATTLE_TYPE_WoodPile_2] = true,
+}
 
+-- BattleUtils.SHOW_SKILL_DEBUG[BattleUtils.CUR_BATTLE_TYPE]
 
 
 BattleUtils.fubenBranch = false
@@ -404,6 +433,7 @@ BattleUtils.kIconTypeAttributeMorale = 29
 BattleUtils.kIconTypeAttributeMagic = 30
 BattleUtils.kIconTypeAllAttributes = 100
 BattleUtils.kIconTypeHeroSkillDamage = 31
+BattleUtils.kIconTypeBackupSkill2 = 32
 
 K_ASPEED = 0.01
 -- teamid 怪兽ID
@@ -424,7 +454,7 @@ K_ASPEED = 0.01
 -- 攻，防，突，射，魔
 local classIdxTable = {10, 6, 2, 4, 8}
 -- 城堡，壁垒，据点，墓园，地狱，塔楼，地下城，要塞，元素
-local raceIdxTable = {1, 3, 5, 7, 9, 11, 13, 14, 12}
+local raceIdxTable = {1, 3, 5, 7, 9, 11, 13, 14, 12,0,0,15}
 local potentialTable = {
     [1]={{5,2},{21,0.5}},
     [2]={{14,0.5},{55,0.5}},
@@ -432,10 +462,17 @@ local potentialTable = {
 }
 BattleUtils.G_TEAM_TALENTSKILL = {0,1000,2000,3000,4000,5000,6000,7000,8000,10000,12000,14000,16000,18000,20000,22000}
 local G_TEAM_TALENTSKILL = BattleUtils.G_TEAM_TALENTSKILL
-function BattleUtils.getTeamBaseAttr(teamData, equip, pokedex, classCount, moveTypeCount, race1Count, teampassives, xcount)
+function BattleUtils.getTeamBaseAttr(teamData, equip, pokedex, classCount, moveTypeCount, race1Count, teampassives, xcount, battleArrayData, paragonTalentData)
     local skillLevel = teamData.skill
     if skillLevel == nil then
-        skillLevel = {teamData.sl1, teamData.sl2, teamData.sl3, teamData.sl4}
+        local stuntSkill = {
+            ["sl5"] = 0,
+            ["sl6"] = 0,
+        }
+        if teamData.ss and teamData.ss >= 5 and teamData.ss <= 6 then
+            stuntSkill["sl"..teamData.ss] = teamData["sl"..teamData.ss] or 0
+        end
+        skillLevel = {teamData.sl1, teamData.sl2, teamData.sl3, teamData.sl4, stuntSkill.sl5, stuntSkill.sl6, teamData.sl7}
     end
     local teamid = teamData.teamid or teamData.teamId
     local star = teamData.star 
@@ -549,7 +586,7 @@ function BattleUtils.getTeamBaseAttr(teamData, equip, pokedex, classCount, moveT
             for i = 1, #skillD do
                 __jxSkill = jxSkill[i]
                 sl = skillLevel[i]
-                if sl > 0 then
+                if sl and sl > 0 then
                     if __jxSkill then
                         if __jxSkill[3] == 1 then
                             -- 额外增加
@@ -574,6 +611,21 @@ function BattleUtils.getTeamBaseAttr(teamData, equip, pokedex, classCount, moveT
                             index = index + 1
                         end
                     end
+                end
+            end
+        end
+
+        -- 专属武器被动技能属性添加
+        local exclusiveData = tab.exclusive[teamid]
+        local exStarLv = (teamData.zStar or 0) - 1
+        if exStarLv >= 0 and exclusiveData and exclusiveData.isOpen and exclusiveData.isOpen == 1 then
+            local effects = exclusiveData.effect
+            for i = 0, exStarLv do
+                local effect = effects[i + 1]
+                if effect[1] == 2 and effect[2] == 2 then
+                    -- 是技能，effect数据格式是{2,2,59044} [2,技能表,技能id]
+                    passives[index] = {effect[3], 1}
+                    index = index + 1
                 end
             end
         end
@@ -662,6 +714,20 @@ function BattleUtils.getTeamBaseAttr(teamData, equip, pokedex, classCount, moveT
                 elseif condition >= 23 and condition <= 25 then
                     if xcount then
                         count = xcount[26 - condition]
+                    end
+                elseif condition >= 27 and condition <= 36 then
+                    if race1Count then
+                        local nReduce = 26
+                        if condition == 36 then
+                            nReduce = 24
+                        end
+                        count = race1Count[condition - nReduce]
+                    end
+                    count = count >= 3 and 1 or 0
+                elseif condition == 37 then
+                    if race1Count then
+                        --港口兵团
+                        count = race1Count[12]
                     end
                 end
             end
@@ -793,12 +859,203 @@ function BattleUtils.getTeamBaseAttr(teamData, equip, pokedex, classCount, moveT
         baseAttr[BattleUtils.ATTR_HPPro] = baseAttr[BattleUtils.ATTR_HPPro] + addValue
     end
 
-    local atkSpeed = atkspeedbase * (1 + K_ASPEED * baseAttr[BattleUtils.ATTR_Haste])
+    -- 兵团战阵 start
+    if battleArrayData and teamD and teamD.race then
+        local raceType = teamD.race[1]
+        local baData = nil
+        for k, v in pairs(battleArrayData) do
+            if v and tonumber(k) == tonumber(raceType) then
+                baData = v
+                break
+            end
+        end
+
+        if baData then
+            local diagramDB = {}
+            local dbData = tab.battleDiagram
+            for k, v in pairs(dbData) do
+                if v.battleId and v.battleId == raceType then
+                    diagramDB[v.diagramId] = clone(v)
+                end
+            end
+
+            local battleUpDB = {}
+            dbData = tab.battleUp
+            for k, v in pairs(dbData) do
+                if v.battleId and v.battleId == raceType then
+                    battleUpDB[v.battleLevel] = clone(v)
+                end
+            end
+
+            local level = baData.lv or 1
+            local baseCoe = 1
+            for i = 1, level do
+                local levelupData = battleUpDB[i] or {}
+                if i < level then
+                    baseCoe = levelupData.coefficientAtt2 or 1
+                elseif i == level then
+                    baseCoe = 0
+                end
+                local pointMaxId = levelupData.pointId
+                for k, v in pairs(diagramDB) do
+                    if tonumber(k) < pointMaxId then
+                        local attr = v.diagramAtt or {}
+                        for k1, v1 in pairs(attr) do
+                            local id = tonumber(v1[1])
+                            local num = v1[2]
+                            baseAttr[id] = baseAttr[id] + BattleUtils.formatnumberDecimal(num * baseCoe, 2)
+                        end
+                    end
+                end
+
+                if levelupData.effect then
+                    local attr = levelupData.effect or {}
+                    for k1, v1 in pairs(attr) do
+                        local id = tonumber(v1[1])
+                        local num = v1[2]
+                        baseAttr[id] = baseAttr[id] + num
+                    end
+                end
+            end
+
+            local levelupData = battleUpDB[level] or {}
+            local pointMaxId = levelupData.pointId
+            if baData.aIds then
+                for k, v in pairs(baData.aIds) do
+                    if tonumber(k) < pointMaxId then
+                        local dd = diagramDB[tonumber(k)] or {}
+                        local attr = dd.diagramAtt or {}
+                        for k1, v1 in pairs(attr) do
+                            local id = tonumber(v1[1])
+                            local num = v1[2]
+                            local levelupData = battleUpDB[level] or {}
+                            local coe = levelupData.coefficientAtt2 or 1
+                            baseAttr[id] = baseAttr[id] + BattleUtils.formatnumberDecimal(num * coe, 2)
+                        end
+                    end
+                end
+            end
+        end
+    end
+    -- 兵团战阵 end
+
+    -- 兵团专属 start
+
+    local exclusiveData = tab.exclusive[teamid]
+    if exclusiveData and exclusiveData.isOpen and exclusiveData.isOpen == 1 then
+        local exLv = teamData.zLv or 0
+        local exStarLv = (teamData.zStar or 0) - 1
+
+        local atkadd = exclusiveData.atkadd
+        baseAttr[BattleUtils.ATTR_Atk] = baseAttr[BattleUtils.ATTR_Atk] + (exLv * atkadd[exStarLv + 2])
+
+        local hpadd = exclusiveData.hpadd
+        baseAttr[BattleUtils.ATTR_HP] = baseAttr[BattleUtils.ATTR_HP] + (exLv * hpadd[exStarLv + 2])
+
+        local exlevel = exclusiveData.exlevel
+        local exattribute = exclusiveData.exattribute
+        for k, v in pairs(exlevel) do
+            if exLv >= v then
+                local attr = exattribute[k] or {}
+                for k1, v1 in pairs(attr) do
+                    local id = v1[1]
+                    local num = v1[2]
+                    baseAttr[id] = baseAttr[id] + num
+                end
+            end
+        end
+
+        if exStarLv >= 0 then
+            local effects = exclusiveData.effect
+            for i = 0, exStarLv do
+                local effect = effects[i + 1]
+                if effect[1] == 1 then
+                    local id = effect[2]
+                    local num = effect[3]
+                    baseAttr[id] = baseAttr[id] + num
+                end
+            end
+        end
+    end
+
+    -- 兵团专属 end
+
+    -- 巅峰天赋 start
+
+    if paragonTalentData then
+        for k, v in pairs(paragonTalentData) do
+            local pLv = v.lv or 0
+            local pId = tonumber(k)
+            local sysTalentData = tab.paragonTalent[pId]
+            if pLv > 0 and sysTalentData then
+                local attrCondition = sysTalentData.attrCondition
+                local attr = sysTalentData.Attr
+                if attrCondition and attr then
+                    for k1, v1 in pairs(attr) do
+                        local attrId = v1[1]
+                        local attrNum = v1[2] * pLv
+                        for k2, v2 in pairs(attrCondition) do
+                            if v2 == 0 then
+                                baseAttr[attrId] = baseAttr[attrId] + attrNum
+                            elseif v2 > 0 and v2 <= 100 then
+
+                            elseif v2 > 100 and v2 < 200 then
+                                local raceType = teamD.race[1]
+                                if raceType and v2 == raceType then
+                                    baseAttr[attrId] = baseAttr[attrId] + attrNum
+                                end
+                            elseif v2 > 300 then
+                                local classType = teamD.class
+                                if classType and (classType == (v2 - 300)) then
+                                    baseAttr[attrId] = baseAttr[attrId] + attrNum
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    -- 巅峰天赋 end
+
+    local atkSpeed = 0
+    local baseAtkSpeed = baseAttr[BattleUtils.ATTR_Haste]
+    if baseAtkSpeed >= 0 then
+        atkSpeed = atkspeedbase * (1 + K_ASPEED * baseAttr[BattleUtils.ATTR_Haste])
+    else
+        atkSpeed = atkspeedbase / (1 - K_ASPEED * baseAttr[BattleUtils.ATTR_Haste])
+    end
+
+    atkSpeed = tonumber(string.format("%.3f", atkSpeed))
+
+    --兵团皮肤属性
+    -- local skinData = ModelManager:getInstance():getModel("TeamModel"):getTeamSkinAttr(teamData.teamid or teamData.teamId or teamData.id)
+    -- baseAttr[BattleUtils.ATTR_Atk] = baseAttr[BattleUtils.ATTR_Atk] + skinData["atk"]
+    -- baseAttr[BattleUtils.ATTR_HP] = baseAttr[BattleUtils.ATTR_HP] + skinData["hp"]
+    if teamData.tSkin and next(teamData.tSkin) then
+        local attrs = {atk=0,hp=0}
+        local changeMap = {[1] = "atk",[2] = "hp"}
+        local skinTb = tab.teamSkin
+        for k , v in pairs(teamData.tSkin) do
+            local tempData = skinTb[tonumber(k)]
+            if tempData and tempData.addteamAttr then
+                for key,value in pairs(tempData.addteamAttr) do                    
+                    local changeType = changeMap[tonumber(value[1])]
+                    if changeType then
+                        attrs[changeType] = attrs[changeType]+tonumber(value[2])
+                    end
+                end
+            end
+        end
+        baseAttr[BattleUtils.ATTR_Atk] = baseAttr[BattleUtils.ATTR_Atk] + attrs["atk"]
+        baseAttr[BattleUtils.ATTR_HP] = baseAttr[BattleUtils.ATTR_HP] + attrs["hp"]
+    end
     -- BattleUtils.dumpBaseAttr(baseAttr)
     return baseAttr, atkspeedbase, atkSpeed
 end
 
-function BattleUtils.getTeamBaseAttr1(inTeam, pokedex)
+function BattleUtils.getTeamBaseAttr1(inTeam, pokedex, battleArrayData, paragonTalentData)
     local tempEquips = inTeam.equip
     if tempEquips == nil then
         tempEquips = {}
@@ -812,7 +1069,7 @@ function BattleUtils.getTeamBaseAttr1(inTeam, pokedex)
         end
     end
 
-    local backData, backSpeed, atkSpeed = BattleUtils.getTeamBaseAttr(inTeam, tempEquips, pokedex)
+    local backData, backSpeed, atkSpeed = BattleUtils.getTeamBaseAttr(inTeam, tempEquips, pokedex, nil, nil, nil, nil, nil, battleArrayData, paragonTalentData)
     return backData, backSpeed, atkSpeed
 end
 
@@ -1204,7 +1461,7 @@ function BattleUtils.getHeroStarChatsMastery( starChats,hStar )
     return starChartsMasterys
 end
 -- 统计英雄的被动技能-- 来源 专精 专长 全局专长
-function BattleUtils.getHeroMasterys(heroD, star, masterys, globalMasterys, treasureMasterys, uMastery, skillex,starChartMasterys)
+function BattleUtils.getHeroMasterys(heroD, star, masterys, globalMasterys, treasureMasterys, uMastery, skillex, starChartMasterys, hformationData, backupData)
     if star == nil then 
         star = 1 
         print("getHeroMasterys star == nil")
@@ -1285,6 +1542,17 @@ function BattleUtils.getHeroMasterys(heroD, star, masterys, globalMasterys, trea
         end
     end
 
+    if hformationData and backupData then
+        local id = hformationData["skill1"]
+        local _nUnckSk1 = hformationData.skill1Unlock or 1
+        local level = backupData["slv1"] or 1
+        local _nBaForLv = backupData["lv"] or 1
+        if masterysMap[id] == nil and _nBaForLv >= _nUnckSk1 then
+            masterysMap[id] = true
+            masterysArray[#masterysArray + 1] = {id, level, 6, 1}
+        end
+    end
+
     if uMastery then
         local array = {}
         for id, count in pairs(uMastery) do
@@ -1303,7 +1571,7 @@ function BattleUtils.getHeroMasterys(heroD, star, masterys, globalMasterys, trea
 end
 
 -- 根据英雄id 等级, 专精 装备, 计算出英雄的属性
-function BattleUtils.getHeroBaseAttr(heroD, level, slevel, star, masterys, globalMasterys, treasure, buff, talent, hAb, uMastery, skillex, weapons, isBattleData, isEnemyHero, manabase, manarec,qhab,starCharts,hStar,battleType)
+function BattleUtils.getHeroBaseAttr(heroD, level, slevel, star, masterys, globalMasterys, treasure, buff, talent, hAb, uMastery, skillex, weapons, isBattleData, isEnemyHero, manabase, manarec, qhab, starCharts, hStar, battleType, hformationData, backupData, paragonTalentData)
     local heroD = heroD
     -- dump({heroD, level, slevel, star, masterys,
     --  globalMasterys, treasure, buff, talent, hAb, uMastery, skillex, weapons, isBattleData}, "asdbjfgh")
@@ -1311,8 +1579,11 @@ function BattleUtils.getHeroBaseAttr(heroD, level, slevel, star, masterys, globa
         star = 1
     end
 
-    -- 怪兽属性追加 -- [飞行][兵种][体型][属性]
+    -- 怪兽属性追加 -- [飞行][兵种][体型][属性] [全兵团]
     local monsterAttr = {{{{}, {}, {}, {}}, {{}, {}, {}, {}}, {{}, {}, {}, {}}, {{}, {}, {}, {}}, {{}, {}, {}, {}}}, {{{}, {}, {}, {}}, {{}, {}, {}, {}}, {{}, {}, {}, {}}, {{}, {}, {}, {}}, {{}, {}, {}, {}}}}
+    -- 怪兽属性追加 -- [飞行][兵种][体型][属性] [排除召唤物]
+    local monsterAttr5 = {{{{}, {}, {}, {}}, {{}, {}, {}, {}}, {{}, {}, {}, {}}, {{}, {}, {}, {}}, {{}, {}, {}, {}}}, {{{}, {}, {}, {}}, {{}, {}, {}, {}}, {{}, {}, {}, {}}, {{}, {}, {}, {}}, {{}, {}, {}, {}}}}
+
     local monsterAttrikn
     for i = 1, #monsterAttr do
         for k = 1, #monsterAttr[i] do
@@ -1324,6 +1595,18 @@ function BattleUtils.getHeroBaseAttr(heroD, level, slevel, star, masterys, globa
             end
         end
     end
+
+    for i = 1, #monsterAttr5 do
+        for k = 1, #monsterAttr5[i] do
+            for n = 1, #monsterAttr5[i][k] do
+                monsterAttrikn = monsterAttr5[i][k][n]
+                for m = BattleUtils.ATTR_Atk, BattleUtils.ATTR_COUNT do
+                    monsterAttrikn[m] = 0
+                end
+            end
+        end
+    end
+
     -- 怪兽属性追加 -- label1
     local monsterAttr1 = {}
 
@@ -1356,6 +1639,11 @@ function BattleUtils.getHeroBaseAttr(heroD, level, slevel, star, masterys, globa
     local autoSkills = {}
     -- 法术刻印提供的被动技能
     local skillBookPassive = {}
+    -- 后援技能
+    local specialSkills = {}
+
+    -- 条件激活的技能
+    local conditionSkills = {}
 
     -- 英雄属性追加
     local heroAttr = {}
@@ -1368,6 +1656,9 @@ function BattleUtils.getHeroBaseAttr(heroD, level, slevel, star, masterys, globa
     local heroAttr_talent = {}
     local heroAttr_skillBook = {}
     -- local heroAttr_buff = {}
+    local heroAttr_starChartMasterys = {}
+    local heroAttr_backup = {}
+    local heroAttr_paragonTalent = {}
 
     for i = 1, BattleUtils.HATTR_COUNT do
         heroAttr[i] = 0
@@ -1378,6 +1669,9 @@ function BattleUtils.getHeroBaseAttr(heroD, level, slevel, star, masterys, globa
         heroAttr_talent[i] = 0
         heroAttr_skillBook[i] = 0
         -- heroAttr_buff[i] = 0
+        heroAttr_starChartMasterys[i] = 0
+        heroAttr_backup[i] = 0
+        heroAttr_paragonTalent[i] = 0
     end
 
     -- 怪兽替换
@@ -1579,9 +1873,11 @@ function BattleUtils.getHeroBaseAttr(heroD, level, slevel, star, masterys, globa
             if starInfo.ability_sort == 1 then
                 -- 加等级
                 if starInfo.ability_magic then
-                    local skillId = starInfo.ability_magic[1] or 0
-                    local addLevel = starInfo.ability_magic[2] or 0
-                    starChartsLevelUp[skillId] = (starChartsLevelUp[skillId] or 0) + addLevel
+                    for _ , info in pairs(starInfo.ability_magic) do
+                        local skillId = info[1] or 0
+                        local addLevel = info[2] or 0
+                        starChartsLevelUp[skillId] = (starChartsLevelUp[skillId] or 0) + addLevel
+                    end
                 end
             end
         end
@@ -1609,7 +1905,8 @@ function BattleUtils.getHeroBaseAttr(heroD, level, slevel, star, masterys, globa
                             monsterAttr4[systemIdx][i][k] = monsterAttr4[systemIdx][i][k] or {}
                             for n = 1, 4 do -- 体型
                                 monsterAttr4[systemIdx][i][k][n] = monsterAttr4[systemIdx][i][k][n] or {}
-                                for m = 101,110 do -- 职业
+                                for _, m in pairs(BattleUtils.bTeamRace) do -- 职业
+                                -- for m = 101,110 do
                                     monsterAttr4[systemIdx][i][k][n][m] = monsterAttr4[systemIdx][i][k][n][m] or {}
                                     local monsterAttriknm = monsterAttr4[systemIdx][i][k][n][m]
                                     local attrid = tonumber(starInfo.ability_team_sort) or 0
@@ -1620,11 +1917,11 @@ function BattleUtils.getHeroBaseAttr(heroD, level, slevel, star, masterys, globa
                                             and (tonumber(starInfo.ability_team_type) == 0 or (n == volumChange[tonumber(starInfo.ability_team_type)]-1))
                                             and (tonumber(starInfo.ability_team_camp) == 0 or m == tonumber(starInfo.ability_team_camp))
                                         then
-                                            local pro = 1
-                                            if tab.attClient[attrid] == 1 then
-                                                pro = 0.01
-                                            end
-                                            monsterAttriknm[attrid] = (monsterAttriknm[attrid] or 0) + starInfo.ability_team_num*actNum*pro
+                                            -- local pro = 1
+                                            -- if tab.attClient[attrid] and tab.attClient[attrid].attType == 1 then
+                                            --     pro = 0.01
+                                            -- end
+                                            monsterAttriknm[attrid] = (monsterAttriknm[attrid] or 0) + starInfo.ability_team_num*actNum                                            
                                         else
                                             monsterAttriknm[attrid] = monsterAttriknm[attrid] or 0
                                         end
@@ -1648,11 +1945,11 @@ function BattleUtils.getHeroBaseAttr(heroD, level, slevel, star, masterys, globa
                         local aid = tonumber(starInfo.ability_hero_type) or 0
                         local value = tonumber(starInfo.ability_hero) or 0
                         local _attr = aid - 100
-                        local pro = 1
-                        if tab.attClient[aid] == 1 then
-                            pro = 0.01
-                        end
-                        heroAttr[_attr] = heroAttr[_attr] + value*actNum*pro
+                        -- local pro = 1
+                        -- if tab.attClient[aid] and tab.attClient[aid].attType == 1 then
+                        --     pro = 0.01
+                        -- end
+                        heroAttr[_attr] = heroAttr[_attr] + value*actNum
                     end
                     if starInfo.heroMastery then
                         starChartsMasterys[#starChartsMasterys+1] = {tonumber(starInfo.heroMastery),1}
@@ -1698,8 +1995,9 @@ function BattleUtils.getHeroBaseAttr(heroD, level, slevel, star, masterys, globa
         for chartsId,chartsNum in pairs(hStar.smap or {}) do
             local starChartsTab = tab.starCharts 
             for i,chartsD in ipairs(starChartsTab) do
-                if tonumber(chartsD.hero) == tonumber(chartsId) 
-                    -- or chartsD.ability_sort == 2 
+                if (tonumber(chartsD.hero) == tonumber(chartsId)
+                    and  tonumber(chartsD.hero) == tonumber(heroD.id))
+                     or chartsD.ability_sort == 2 
                 then
                     -- local aid = tonumber(chartsD.quality_type1) or 0
                     -- local value = tonumber(chartsD.quality1) or 0
@@ -1724,8 +2022,101 @@ function BattleUtils.getHeroBaseAttr(heroD, level, slevel, star, masterys, globa
             end
         end
     end
+    if hformationData and backupData then
+        -- 英雄属性加成
+        for key, var in pairs(backupData) do
+            if var then
+                local slv2 = var["slv2"] or 1
+                local hformationDataTemp = tab.backupMain[tonumber(key)]
+                local _nUnckSk2 = tonumber(hformationDataTemp.skill2Unlock or 1)
+                local _nBaForLv = tonumber(var.lv or 1)
+                if  _nBaForLv >= _nUnckSk2 then
+                    if hformationDataTemp and hformationDataTemp["skill2Self"] then
+                        local hattr = hformationDataTemp["skill2Self"]
+                        for k = 1, #hattr do
+                            _attr = hattr[k][1] - 100
+                            _value = hattr[k][2] + hattr[k][3] * (slv2 - 1)
 
-    -- 怪兽技能追加 -- [飞行][兵种][体型]
+                            heroAttr[_attr] = heroAttr[_attr] + _value
+                        end
+                    end
+                    -- 降低别人属性
+                    if hformationDataTemp and hformationDataTemp["skill2Enemy"] then
+                        local hattr = hformationDataTemp["skill2Enemy"]
+                        for k = 1, #hattr do
+                            _attr = hattr[k][1] - 100
+                            _value = hattr[k][2] + hattr[k][3] * (slv2 - 1)
+                            heroAttrDec[_attr] = heroAttrDec[_attr] + _value
+                        end
+                    end
+                end
+            end
+        end
+        
+        if hformationData["specialSkill"] and backupData[hformationData["id"]] then
+            --for i = 1, #hformationData["specialSkill"] do
+                local specialSkillId = hformationData["specialSkill"]
+                local specialSkillLevel = backupData[hformationData["id"]]["lv"] or 1
+                specialSkills[#specialSkills + 1] = {specialSkillId, specialSkillLevel}
+            --end
+        end
+    end
+
+    -- 巅峰天赋属性加成 start
+
+    if paragonTalentData then
+        for k, v in pairs(paragonTalentData) do
+            local pLv = v.lv or 0
+            local pId = tonumber(k)
+            local sysTalentData = tab.paragonTalent[pId]
+            if pLv > 0 and sysTalentData then
+                -- 普通加成
+                local hattr = sysTalentData.heroAttr or {}
+                for k1, v1 in pairs(hattr) do
+                    local attrId = v1[1] - 100
+                    if attrId then
+                        for i = 2, pLv + 1 do
+                            heroAttr[attrId] = heroAttr[attrId] + v1[i]
+                            heroAttr_paragonTalent[attrId] = heroAttr_paragonTalent[attrId] + v1[i]
+                        end
+                    end
+                end
+
+                -- 特殊玩法加成
+                -- 全局兵团
+                -- 怪兽属性追加 --monsterAttr4  [飞行][兵种][体型][职业][属性]
+                local attrCondition = sysTalentData.attrCondition or {}
+                local attr = sysTalentData.Attr or {}
+                for key, con in pairs(attrCondition) do
+                    if con and con > 0 and con <= 100 then
+                        local systemIdx = con
+                        monsterAttr4[systemIdx] = monsterAttr4[systemIdx] or {}
+                        for i = 1, 2 do  -- 是否飞行
+                            monsterAttr4[systemIdx][i] = monsterAttr4[systemIdx][i] or {}
+                            for k = 1, 5 do -- 兵种
+                                monsterAttr4[systemIdx][i][k] = monsterAttr4[systemIdx][i][k] or {}
+                                for n = 1, 4 do -- 体型
+                                    monsterAttr4[systemIdx][i][k][n] = monsterAttr4[systemIdx][i][k][n] or {}
+                                    for _, m in pairs(BattleUtils.bTeamRace) do -- 职业
+                                        monsterAttr4[systemIdx][i][k][n][m] = monsterAttr4[systemIdx][i][k][n][m] or {}
+                                        local monsterAttriknm = monsterAttr4[systemIdx][i][k][n][m]
+                                        for _, attrList in pairs(attr) do
+                                            local attrId = attrList[1]
+                                            local attrNum = attrList[2] * pLv
+                                            monsterAttriknm[attrId] = (monsterAttriknm[attrId] or 0) + attrNum
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    -- 巅峰天赋属性加成 start
+
+    -- 怪兽技能追加 -- [飞行][兵种][体型] 所有兵团通用
     local monsterSkill = {{{{}, {}, {}, {}}, {{}, {}, {}, {}}, {{}, {}, {}, {}}, {{}, {}, {}, {}}, {{}, {}, {}, {}}}, {{{}, {}, {}, {}}, {{}, {}, {}, {}}, {{}, {}, {}, {}}, {{}, {}, {}, {}}, {{}, {}, {}, {}}}}
     -- 怪兽技能追加 -- label1
     local monsterSkill1 = {}
@@ -1737,6 +2128,8 @@ function BattleUtils.getHeroBaseAttr(heroD, level, slevel, star, masterys, globa
     local monsterSkill4 = {}
     -- 怪兽技能追加 -- 召唤物
     local monsterSkill5 = {}
+    -- 怪兽技能追加 -- [飞行][兵种][体型] 非召唤物
+    local monsterSkill6 = {{{{}, {}, {}, {}}, {{}, {}, {}, {}}, {{}, {}, {}, {}}, {{}, {}, {}, {}}, {{}, {}, {}, {}}}, {{{}, {}, {}, {}}, {{}, {}, {}, {}}, {{}, {}, {}, {}}, {{}, {}, {}, {}}, {{}, {}, {}, {}}}}
 
     -- 召唤物逻辑
     local summonDie_RecMana = 0
@@ -1747,16 +2140,20 @@ function BattleUtils.getHeroBaseAttr(heroD, level, slevel, star, masterys, globa
     if level < BattleUtils.ENABLE_MASTERY_LEVEL then
         masterys = {}
     end
-    local masterysArray = BattleUtils.getHeroMasterys(heroD, star, masterys, globalMasterys, treasureMasterys, uMastery, skillex,starChartsMasterys)
+    local _backupData = nil
+    if backupData and hformationData then
+        _backupData = backupData[hformationData["id"]]
+    end
+    local masterysArray = BattleUtils.getHeroMasterys(heroD, star, masterys, globalMasterys, treasureMasterys, uMastery, skillex, starChartsMasterys, hformationData, _backupData)
 
     local masteryD
     local oid, nid
     local morale, creplace, breplace, buffopen
     local addattrs, addattr, value, attrid
-    local apprange0, apprange1, apprange2, apprange3, apprange4, tagaddsk
+    local apprange0, apprange1, apprange2, apprange3, apprange4, tagaddsk, apprange5
     local _lv, count
     local _level,_stage -- alter by caijunjie for mastery
-    local detailsAttrTab = {heroAttr_special, heroAttr_treasure, heroAttr_mastery, heroAttr_skillBook}
+    local detailsAttrTab = {heroAttr_special, heroAttr_treasure, heroAttr_mastery, heroAttr_skillBook, heroAttr_starChartMasterys, heroAttr_backup}
     local detailAttrKind
     local oid, nid
     local mastery
@@ -1835,6 +2232,14 @@ function BattleUtils.getHeroBaseAttr(heroD, level, slevel, star, masterys, globa
             table.insert(heroSkills, masteryD["addsk"])
         end
 
+        if masteryD["addskunshow"] then
+            for key, var in ipairs(masteryD["addskunshow"]) do
+                if var then
+                    table.insert(conditionSkills, var)
+                end
+            end
+        end
+
         -- 英雄属性加成
         if masteryD["morale"] then
             morale = masteryD["morale"]
@@ -1847,6 +2252,7 @@ function BattleUtils.getHeroBaseAttr(heroD, level, slevel, star, masterys, globa
                 detailsAttrTab[detailAttrKind][_attr] = detailsAttrTab[detailAttrKind][_attr] + _value
             end
         end
+
         -- 降低别人属性
         if masteryD["morale1"] then
             morale = masteryD["morale1"]
@@ -1867,6 +2273,9 @@ function BattleUtils.getHeroBaseAttr(heroD, level, slevel, star, masterys, globa
         apprange1 = masteryD["apprange1"]
         apprange2 = masteryD["apprange2"] 
         apprange3 = masteryD["apprange3"]
+        apprange4 = masteryD["apprange4"]
+        --和apprange0 apprange1 apprange2 一起使用 排除召唤物
+        apprange5 = masteryD["apprange5"]
         if apprange1 and apprange2 and apprange0 then
             if addattrs then
                 for k = 1, #addattrs do
@@ -1882,7 +2291,13 @@ function BattleUtils.getHeroBaseAttr(heroD, level, slevel, star, masterys, globa
                                     for l = 1, 4 do
                                         -- 适用单位：16 9 4 1
                                         if apprange0[l] == 1 then
-                                            monsterAttr[n][m][l][attrid] = monsterAttr[n][m][l][attrid] + value
+                                            if not apprange5 then
+                                                --所有兵团
+                                                monsterAttr[n][m][l][attrid] = monsterAttr[n][m][l][attrid] + value
+                                            else
+                                                --排除召唤物
+                                                monsterAttr5[n][m][l][attrid] = monsterAttr5[n][m][l][attrid] + value
+                                            end
                                         end
                                     end
                                 end
@@ -1905,7 +2320,13 @@ function BattleUtils.getHeroBaseAttr(heroD, level, slevel, star, masterys, globa
                                         if apprange0[l] == 1 then
                                             -- tagaddsk[k][1] 技能ID
                                             -- tagaddsk[k][2] 技能类型
-                                            monsterSkill[n][m][l][tagaddsk[k][2]] = tagaddsk[k][1]
+                                            if not apprange5 then
+                                                --所有兵团
+                                                monsterSkill[n][m][l][tagaddsk[k][2]] = tagaddsk[k][1]
+                                            else
+                                                --排除召唤物
+                                                monsterSkill6[n][m][l][tagaddsk[k][2]] = tagaddsk[k][1]
+                                            end
                                         end
                                     end
                                 end
@@ -2405,6 +2826,23 @@ function BattleUtils.getHeroBaseAttr(heroD, level, slevel, star, masterys, globa
             end
         end
     end
+
+    --条件触发的技能，暂时等级默认为1
+    for i = 1, #conditionSkills do
+        if conditionSkills[i] then
+            local skillD = tab.playerSkillEffect[conditionSkills[i]]
+            conditionSkills[i] = {conditionSkills[i], 1}
+            if skillD and skillD["mgtrigerfrom"] and skillD["mgtrigerfrom"][1] then
+                for k = 1, #heroSkills do
+                    if heroSkills[k] and  heroSkills[k][1] == skillD["mgtrigerfrom"][1] then
+                        conditionSkills[i][2] = heroSkills[k][2]
+                        break
+                    end
+                end
+            end
+        end
+    end
+
     --[[
             heroSkills
             {
@@ -2421,6 +2859,7 @@ function BattleUtils.getHeroBaseAttr(heroD, level, slevel, star, masterys, globa
             }
     ]]
     -- dump(heroSkills, "a", 20)
+
     -- 学院中级大招几率
     local MGTriggerPro = {
     heroAttr[BattleUtils.HATTR_MGTriggerPro1], 
@@ -2434,7 +2873,9 @@ function BattleUtils.getHeroBaseAttr(heroD, level, slevel, star, masterys, globa
     local heroAttrEx_mastery = {}
     local heroAttrEx_talent = {}
     local heroAttrEx_skillBook = {}
-    local heroAttrEx_buff = {}
+    -- local heroAttrEx_buff = {}
+    local heroAttrEx_starChartMasterys = {}
+    local heroAttrEx_backup = {}
 
     local function setAttrEx(attrex, attr)
         attrex.cd = _setAttr(attr, BattleUtils.HATTR_CDProFire, true)
@@ -2446,6 +2887,8 @@ function BattleUtils.getHeroBaseAttr(heroD, level, slevel, star, masterys, globa
     setAttrEx(heroAttrEx_mastery, heroAttr_mastery)
     setAttrEx(heroAttrEx_talent, heroAttr_talent)
     setAttrEx(heroAttrEx_skillBook, heroAttr_skillBook)
+    setAttrEx(heroAttrEx_starChartMasterys, heroAttr_starChartMasterys)
+    setAttrEx(heroAttrEx_backup, heroAttr_backup)
 
     -- setAttrEx(heroAttrEx_buff, heroAttr_buff)
     -- dump(MGTriggerPro)
@@ -2483,11 +2926,15 @@ function BattleUtils.getHeroBaseAttr(heroD, level, slevel, star, masterys, globa
         autoSkills = autoSkills,
         weaponSkills = weaponSkills,
         skillBookPassive = skillBookPassive,
+        specialSkills = specialSkills,
+        conditionSkills = conditionSkills,
         monsterAttr = monsterAttr,
         monsterAttr1 = monsterAttr1,
         monsterAttr2 = monsterAttr2,
         monsterAttr3 = monsterAttr3,
         monsterAttr4 = monsterAttr4,
+        monsterAttr5 = monsterAttr5,
+
         teamReplace = teamReplace,
         buffReplace = buffReplace,
         buffOpen = buffOpen,
@@ -2497,6 +2944,7 @@ function BattleUtils.getHeroBaseAttr(heroD, level, slevel, star, masterys, globa
         monsterSkill3 = monsterSkill3,
         monsterSkill4 = monsterSkill4,
         monsterSkill5 = monsterSkill5,
+        monsterSkill6 = monsterSkill6,
 
         summonDie_RecMana = summonDie_RecMana,
         summonDie_DecCd = summonDie_DecCd * 0.001,
@@ -2510,6 +2958,9 @@ function BattleUtils.getHeroBaseAttr(heroD, level, slevel, star, masterys, globa
         heroAttr_talent = heroAttr_talent,
         heroAttr_skillBook = heroAttr_skillBook,
         -- heroAttr_buff = heroAttr_buff,
+        heroAttr_starChartMasterys = heroAttr_starChartMasterys,
+        heroAttr_backup = heroAttr_backup,
+        heroAttr_paragonTalent = heroAttr_paragonTalent,
 
         heroAttrEx_special = heroAttrEx_special,
         heroAttrEx_treasure = heroAttrEx_treasure,
@@ -2517,6 +2968,8 @@ function BattleUtils.getHeroBaseAttr(heroD, level, slevel, star, masterys, globa
         heroAttrEx_talent = heroAttrEx_talent,
         heroAttrEx_skillBook = heroAttrEx_skillBook,
         -- heroAttrEx_buff = heroAttrEx_buff,
+        heroAttrEx_starChartMasterys = heroAttrEx_starChartMasterys,
+        heroAttrEx_backup = heroAttrEx_backup,
 
         skillReplace = skillReplace
     }
@@ -2848,7 +3301,7 @@ function BattleUtils.doBattle(battleInfo, fastRes, noLoading, switch)
                         value2 = _team.onCheck
                         if value1 ~= value2 then
                             ViewManager:getInstance():showTip("战前数据出错_兵团")
-                            ViewManager:getInstance():onLuaError(serialize(teams[i]).."==="..serialize(_team))
+                            -- ViewManager:getInstance():onLuaError(serialize(teams[i]).."==="..serialize(_team))
                             break
                         end
                     end
@@ -2861,7 +3314,7 @@ function BattleUtils.doBattle(battleInfo, fastRes, noLoading, switch)
             local value2 = BattleUtils.checkPokedexScoreData(battleInfo.playerInfo.pokedex)
             if value1 ~= value2 then
                 ViewManager:getInstance():showTip("战前数据出错_图鉴")
-                ViewManager:getInstance():onLuaError(serialize(battleInfo.playerInfo.pokedex).."==="..serialize(pokedexModel:getScore()))
+                -- ViewManager:getInstance():onLuaError(serialize(battleInfo.playerInfo.pokedex).."==="..serialize(pokedexModel:getScore()))
             end
 
             -- 检查英雄
@@ -2873,7 +3326,7 @@ function BattleUtils.doBattle(battleInfo, fastRes, noLoading, switch)
                     local value2 = BattleUtils.checkHeroData(battleInfo.playerInfo.hero, true)
                     if value1 ~= value2 then
                         ViewManager:getInstance():showTip("战前数据出错_英雄")
-                        ViewManager:getInstance():onLuaError(serialize(battleInfo.playerInfo.hero).."==="..serialize(heroModel:getHeroData(battleInfo.playerInfo.hero.id)))
+                        -- ViewManager:getInstance():onLuaError(serialize(battleInfo.playerInfo.hero).."==="..serialize(heroModel:getHeroData(battleInfo.playerInfo.hero.id)))
                     end
                 end
             end
@@ -2884,7 +3337,7 @@ function BattleUtils.doBattle(battleInfo, fastRes, noLoading, switch)
             local value2 = BattleUtils.checkTreasureData(battleInfo.playerInfo.treasure)
             if value1 ~= value2 then
                 ViewManager:getInstance():showTip("战前数据出错_宝物")
-                ViewManager:getInstance():onLuaError(serialize(battleInfo.playerInfo.treasure).."==="..serialize(treasureModel:getData()))
+                -- ViewManager:getInstance():onLuaError(serialize(battleInfo.playerInfo.treasure).."==="..serialize(treasureModel:getData()))
             end
         end
     end
@@ -3142,6 +3595,23 @@ function BattleUtils.enterBattleView_Arena(playerInfo, enemyInfo, r1, r2, replay
                         isBranch = isFriend,
                         reverse = reverse,
                         r1 = r1, r2 = r2,
+                        resultcallback = resultcallback, endcallback = endcallback}
+    if cc.Director then cc.Director:getInstance():getTextureCache():removeUnusedTextures() end
+    if isReplay then BattleUtils.dontCheck = true end
+    local res, res1, res2 = BattleUtils.doBattle(battleInfo, fastRes)
+    if isReplay then BattleUtils.dontCheck = false end
+    return res, res1, res2
+end
+
+
+-- 进入荣耀竞技场战斗
+function BattleUtils.enterBattleView_GloryArena(playerInfo, enemyInfo, r1, r2, isReplay, resultcallback, endcallback, fastRes, reverse, isShare)
+    local battleInfo = {mode = BattleUtils.BATTLE_TYPE_GloryArena, playerInfo = playerInfo, enemyInfo = enemyInfo, 
+                        mapId = "jingjichang1",
+                        isReport = isReplay,
+                        reverse = reverse,
+                        r1 = r1, r2 = r2,
+                        isShare = isShare,
                         resultcallback = resultcallback, endcallback = endcallback}
     if cc.Director then cc.Director:getInstance():getTextureCache():removeUnusedTextures() end
     if isReplay then BattleUtils.dontCheck = true end
@@ -3625,6 +4095,26 @@ function BattleUtils.enterBattleView_GBOSS_3(level, kill, playerInfo, resultcall
     BattleUtils.doBattle(battleInfo)
 end
 
+-- BOSS战 世界boss
+function BattleUtils.enterBattleView_BOSS_WordBoss(playerInfo, resultcallback, endcallback, r1, r2, npcId, wordBoosMaxhurt, boosLevel, heroId, fastRes)
+    local enemyInfo = { 
+                        npc = {}, 
+                        hero = {
+                                npcHero = true,
+                                id = heroId or 70000001, 
+                                }
+                        }
+    local battleInfo = {mode = BattleUtils.BATTLE_TYPE_WORDBOSS, playerInfo = playerInfo, enemyInfo = enemyInfo, 
+                        mapId = "boss", bossId = npcId or 7110000,
+                        r1 = r1, r2 = r2, wordBoosMaxhurt = wordBoosMaxhurt or 0,
+                        bossLevel = boosLevel or 1,
+                        resultcallback = resultcallback, endcallback = endcallback}
+
+    if cc.Director then cc.Director:getInstance():getTextureCache():removeUnusedTextures() end
+    local res, res1, res2 = BattleUtils.doBattle(battleInfo, fastRes)
+    return res, res1, res2
+end
+
 function BattleUtils.crusadeSiegeUpdateFormation(enemyInfo, enemyD)
     -- 优化布阵
     -- 近战 8 12 4 16 15 3 11 7  
@@ -3711,6 +4201,41 @@ function BattleUtils.enterBattleView_GuildPVP(playerInfo, enemyInfo, resultcallb
     if cc.Director then cc.Director:getInstance():getTextureCache():removeUnusedTextures() end
     return BattleUtils.doBattle(battleInfo, fastRes)
 end
+
+-- 进入军团试炼
+function BattleUtils.enterBattleView_Legion(playerInfo, legionId, resultcallback, endcallback, r1, r2, fastRes)
+    local legionD = tab.professionBattle[legionId]
+    if legionD == nil then
+        print("配置关卡出错")
+        return
+    end
+    local enemyInfo = { 
+                        npc = {}, 
+                        hero = {
+                                npcHero = true,
+                                id = legionD["hero"], 
+                                }
+                        }
+    for i,v in ipairs(legionD.NPC) do
+        if v then
+            enemyInfo.npc[i] = v
+        end
+    end
+
+    local battleInfo = {mode = BattleUtils.BATTLE_TYPE_Legion, playerInfo = playerInfo, enemyInfo = enemyInfo,
+                        showNpc = nil,
+                        legionId = legionId,
+                        r1 = r1,
+                        r2 = r2,
+                        mapId = legionD["mapId"] or "shandi1",
+                        resultcallback = resultcallback, 
+                        endcallback = endcallback}
+
+    if cc.Director then cc.Director:getInstance():getTextureCache():removeUnusedTextures() end
+    local res, res1, res2 = BattleUtils.doBattle(battleInfo, fastRes)
+    return res, res1, res2
+end
+
 -- 前端快速战斗检查表格用
 function BattleUtils.checkTable_GuildPVP(playerInfo, enemyInfo)
     local teamTab = {}
@@ -3741,6 +4266,9 @@ end
 
 -- 进入积分战斗
 function BattleUtils.enterBattleView_League(playerInfo, enemyInfo, r1, r2, isReplay, resultcallback, endcallback, fastRes)
+    --由于不知道什么原因可能导致冠军对决服务器复盘和前端战斗的随机种子不一样，因此这里复盘和客户端战斗使用的随机种子都使用默认的
+    r1 = nil
+    r2 = nil
     local battleInfo = {mode = BattleUtils.BATTLE_TYPE_League, playerInfo = playerInfo, enemyInfo = enemyInfo, 
                         mapId = "jifenliansai1",
                         isReport = isReplay,
@@ -3885,6 +4413,74 @@ function BattleUtils.enterBattleView_Training(_playerInfo, trainingId, resultcal
     local battleInfo = {mode = BattleUtils.BATTLE_TYPE_Training, playerInfo = playerInfo, enemyInfo = enemyInfo,
                         battleId = trainingId,
                         trainingD = trainingD,
+                        r1 = trainingId,
+                        mapId = "xunlianchang1",
+                        resultcallback = resultcallback, endcallback = endcallback}
+
+    if cc.Director then cc.Director:getInstance():getTextureCache():removeUnusedTextures() end
+    BattleUtils.dontCheck = true
+    local res, res1, res2 = BattleUtils.doBattle(battleInfo, fastRes)
+    BattleUtils.dontCheck = false
+    return res, res1, res2
+end
+--木桩战斗 自己布阵
+function BattleUtils.enterBattleView_WoodPile_1(playerInfo, enemyInfo, resultcallback, endcallback, fastRes)
+    local isShare = (replayType == 2)
+    local isReplay = (replayType == 1 or isShare)
+    local isFriend = (replayType == 3)
+    local battleInfo = {mode = BattleUtils.BATTLE_TYPE_WoodPile_1, playerInfo = playerInfo, enemyInfo = enemyInfo, 
+                        mapId = "xunlianchang1",
+                        isReport = isReplay,
+                        isShare = isShare,
+                        isFriend = isFriend,
+                        isBranch = isFriend,
+                        reverse = reverse,
+                        r1 = r1, r2 = r2,
+                        resultcallback = resultcallback, endcallback = endcallback}
+    if cc.Director then cc.Director:getInstance():getTextureCache():removeUnusedTextures() end
+    if isReplay then BattleUtils.dontCheck = true end
+    local res, res1, res2 = BattleUtils.doBattle(battleInfo, fastRes)
+    if isReplay then BattleUtils.dontCheck = false end
+    return res, res1, res2
+end
+-- 木桩战斗 打npc
+function BattleUtils.enterBattleView_WoodPile_2(_playerInfo, trainingId, resultcallback, endcallback, fastRes)
+    local stakeD = tab.stakeBattle[trainingId]
+    local playerInfo
+    if _playerInfo then
+        playerInfo = _playerInfo
+    else
+        playerInfo = { 
+                            lv = 1,
+                            npc = {}, 
+                            hero = {
+                                    npcHero = true,
+                                    id = stakeD["hero1"], 
+                                    }
+                            }
+        for i = 1, #stakeD["npc1"] do
+            playerInfo.npc[i] = stakeD["npc1"][i]
+        end
+    end
+    -- 下面两行为快速复盘
+    -- playerInfo.npc = cjson.decode("[[94101,11],[94111,4],[94107,12],[94109,14],[94102,13],[94106,5],[94103,7],[94104,8]]")
+    -- playerInfo.skillList = cjson.decode("[[247,2,1172,436],[865,4,932,285],[964,2,1267,358],[1368,1,1578,420],[1654,2,1267,505],[2002,1,1608,337]]")
+
+    local enemyInfo = { 
+                        lv = 1,
+                        npc = {}, 
+                        hero = {
+                                npcHero = true,
+                                id = stakeD["enemyhero"], 
+                                }
+                        }
+    for i = 1, #stakeD["enemynpc"] do
+        enemyInfo.npc[i] = stakeD["enemynpc"][i]
+    end
+
+    local battleInfo = {mode = BattleUtils.BATTLE_TYPE_WoodPile_2, playerInfo = playerInfo, enemyInfo = enemyInfo,
+                        battleId = trainingId,
+                        trainingD = stakeD,
                         r1 = trainingId,
                         mapId = "xunlianchang1",
                         resultcallback = resultcallback, endcallback = endcallback}
@@ -4084,17 +4680,24 @@ function BattleUtils.enterBattleView_ClimbTower(playerInfo, enemyInfo, r1, r2 ,r
     local jxSkill1 = cfg["jxSkill1"]
     local jxSkill2 = cfg["jxSkill2"]
     local jxSkill3 = cfg["jxSkill3"]
+    local heroSpellPower = cfg["herospellpower"]
     -- 拼接hero信息
     local hero = enemyInfo.hero 
     hero.id = enemyInfo.hero.heroId
     hero.star = cfg.herostar or 1
     hero.level = 1
     local slevel = cfg.heroskill or 1
+    for i = 1, 5 do
+        hero["sl" .. i] = slevel
+    end
     hero.slevel = {slevel, slevel, slevel, slevel, slevel}
+    -- hero.slot = {}
+    -- hero.slot.s = slevel
     hero.hAb = {}
     for i=1, 4 do
         hero.hAb[tostring(i)] = cfg.herobase[i]
     end
+    enemyInfo.lv = cfg.lv or 1
    
     if enemyInfo.hero and enemyInfo.hero.exSkill then
         hero.skillex = enemyInfo.hero.exSkill
@@ -4113,7 +4716,19 @@ function BattleUtils.enterBattleView_ClimbTower(playerInfo, enemyInfo, r1, r2 ,r
         count = count + 1
     end
     enemyInfo.teams = nil
-    
+    if hero.treasures then
+        enemyInfo.treasure = {}
+        for k, v in pairs(hero.treasures) do
+            enemyInfo.treasure[k] = {stage = v, treasureDev = {}, inTForm = true}
+        end
+    end    
+    if heroSpellPower and #heroSpellPower == 2 then
+        local enemyBuff = hero.buff or {}
+        enemyBuff[heroSpellPower[1]] = (enemyBuff[heroSpellPower[1]] or 0) + heroSpellPower[2]
+        hero.buff = enemyBuff
+    end
+
+    -- dump(enemyInfo, "==============", 10)
     local battleInfo = { mode = BattleUtils.BATTLE_TYPE_ClimbTower,
                          playerInfo = playerInfo, 
                          enemyInfo = enemyInfo,
@@ -4123,6 +4738,34 @@ function BattleUtils.enterBattleView_ClimbTower(playerInfo, enemyInfo, r1, r2 ,r
 
     if cc.Director then cc.Director:getInstance():getTextureCache():removeUnusedTextures() end
     return BattleUtils.doBattle(battleInfo, fastRes)
+end
+
+-- 进入跨服诸神战斗
+-- replayType
+-- 0: 正常
+-- 1: 战报回放
+-- 2: 战报分享
+-- 3: 好友切磋
+function BattleUtils.enterBattleView_CrossGodWar(playerInfo, enemyInfo, r1, r2, replayType, reverse, showDraw, showSkill, resultcallback, endcallback, fastRes)
+    local isShare = (replayType == 2)
+    local isReplay = (replayType == 1 or isShare)
+    local isFriend = (replayType == 3)
+    local battleInfo = {mode = BattleUtils.BATTLE_TYPE_CrossGodWar, playerInfo = playerInfo, enemyInfo = enemyInfo, 
+                        mapId = "migongbaozang1",
+                        showDraw = showDraw,
+                        showSkill = showSkill,
+                        isReport = isReplay,
+                        isShare = isShare,
+                        isFriend = isFriend,
+                        isBranch = isFriend,
+                        reverse = reverse,
+                        r1 = r1, r2 = r2,
+                        resultcallback = resultcallback, endcallback = endcallback}
+    if cc.Director then cc.Director:getInstance():getTextureCache():removeUnusedTextures() end
+    BattleUtils.dontCheck = true
+    local res, res1, res2 = BattleUtils.doBattle(battleInfo, fastRes)
+    BattleUtils.dontCheck = false
+    return res, res1, res2
 end
 
 -- 进入新手引导战斗
@@ -4246,24 +4889,38 @@ function BattleUtils.battleDemo_Fuben()
     tab:initProcBattle()
     BattleUtils.dontInitTab = true
     BattleUtils.dontCheck = true
-    if BattleUtils.fubenBranch then
-        BattleUtils.enterBattleView_FubenBranch(playerInfo, BattleUtils.PVE_INTANCE_ID, false,
-        function (info, callback)
-            callback(info)
-        end,
-        function ()
 
-        end)
-    else
+    -- local file1=io.open("C:\\Users\\playcrab\\AppData\\Local\\war\\".."test.txt", "r+") 
+    -- local str=file1:read()
+    -- file1:close()
+    -- local attackTypeData = cjson.decode(str)
+    -- local playerInfo = BattleUtils.jsonData2lua_battleData(attackTypeData["atk"])
+    -- -- dump(playerInfo)
+    BattleUtils.enterBattleView_BOSS_WordBoss(playerInfo, function(info, callback)
+        callback(info)
+    end, function()
+    
+    
 
-        BattleUtils.enterBattleView_Fuben(playerInfo, BattleUtils.PVE_INTANCE_ID,false,
-        function (info, callback)
-            callback(info)
-        end,
-        function ()
+    end, nil, nil)
+    -- if BattleUtils.fubenBranch then
+    --     BattleUtils.enterBattleView_FubenBranch(playerInfo, BattleUtils.PVE_INTANCE_ID, false,
+    --     function (info, callback)
+    --         callback(info)
+    --     end,
+    --     function ()
 
-        end)
-    end
+    --     end)
+    -- else
+
+    --     BattleUtils.enterBattleView_Fuben(playerInfo, BattleUtils.PVE_INTANCE_ID,false,
+    --     function (info, callback)
+    --         callback(info)
+    --     end,
+    --     function ()
+
+    --     end)
+    -- end
     BattleUtils.dontCheck = false
 end
 
@@ -4330,7 +4987,7 @@ function BattleUtils.battleDemo_Arena()
     -- playerInfo.hero.skin = 6010201
     -- BattleUtils.enterBattleView_League(playerInfo, enemyInfo, 19870515, 1, false,
     BattleUtils.enterBattleView_Arena(playerInfo, enemyInfo, 19870515, 1, 2, false,
-    -- BattleUtils.enterBattleView_GodWar(playerInfo, enemyInfo, 19870515, 1, 1, true,
+    -- BattleUtils.enterBattleView_CrossGodWar(playerInfo, enemyInfo, 19870515, 1, 1, true, true, true, 
     -- BattleUtils.enterBattleView_HeroDuel(playerInfo, enemyInfo, 19870515, 1, 0, true,
     function (info, callback)
         -- 战斗结束
@@ -4996,9 +5653,10 @@ local keyTable2 = {"frontoat_h", "frontoat_v","backoat_h", "backoat_v", "frontdi
                     "frontimp_v1", "frontimp_h1", "backimp_v1", "backimp_h1", "frontlink1", "backlink1",
                     "frontimp_v2", "frontimp_h2", "backimp_v2", "backimp_h2", "frontlink2", "backlink2"}
 local dieEffName = {nil, "ranshaosiwang", "bingdongsiwang", "dianjisiwang"}
-function BattleUtils.countSkillRes(skillid, camp, roleMap, effMap, npcMap, soundTab)
+function BattleUtils.countSkillRes(skillid, camp, roleMap, effMap, npcMap, soundTab, fieldMap)
     local skillD = tab.skill[skillid]
     local buffD, totemD
+    fieldMap = fieldMap or {}
     -- print("skillid ", skillid)
     if skillD == nil then
         print("skillid ", skillid)
@@ -5096,6 +5754,39 @@ function BattleUtils.countSkillRes(skillid, camp, roleMap, effMap, npcMap, sound
                 BattleUtils.countNpcRes(totemD["summon"..i], camp, roleMap, effMap, npcMap, soundTab)
             end
         end
+        --领域过场动画资源 start
+        local spaceoat_v = totemD["spaceoat_v"]
+        if spaceoat_v then
+            for i,v in ipairs(spaceoat_v) do
+                if v then
+                    effMap[getResFileName(v[1])] = true
+                end
+            end
+        end
+        local spaceoat_h = totemD["spaceoat_h"]
+        if spaceoat_h then
+            for i,v in ipairs(spaceoat_h) do
+                if v then
+                    effMap[getResFileName(v[1])] = true
+                end
+            end
+        end
+        local spaceoat_r = totemD["spaceoat_r"]
+        if spaceoat_r then
+            for i,v in ipairs(spaceoat_r) do
+                if v then
+                    effMap[getResFileName(v[1])] = true
+                end
+            end
+        end
+
+        --领域地图统计
+        -- local afterEffect1 = totemD["afterEffect1"]
+        -- if afterEffect1 then
+        --     fieldMap[afterEffect1] = true
+        -- end
+
+        --领域过场动画资源 end
     end
 end
 
@@ -5174,7 +5865,11 @@ function BattleUtils.countPlayerSkillRes(skillid, camp, roleMap, effMap, npcMap,
                 effMap[getResFileName(totemD[keyTable2[i]])] = true
             end
         end
+
         local quanpingstk = totemD["quanpingstk"]
+        if heroSkinD and heroSkinD["quanpingstk_obj"] and totemD["quanpingstk" .. heroSkinD["quanpingstk_obj"]] then
+            quanpingstk = totemD["quanpingstk" .. heroSkinD["quanpingstk_obj"]]
+        end
         if quanpingstk then
             for i = 1, #quanpingstk do
                 effMap[getResFileName(quanpingstk[i][1])] = true
@@ -5206,39 +5901,87 @@ function BattleUtils.countPlayerSkillRes(skillid, camp, roleMap, effMap, npcMap,
 end
 local AnimAP = require "base.anim.AnimAP"
 -- 统计team资源
-function BattleUtils.countTeamRes(teamid, skillLevel, camp, roleMap, effMap, npcMap, soundTab)
+function BattleUtils.countTeamRes(teamid, skillLevel, camp, roleMap, effMap, npcMap, soundTab, sIdMap, reverse, exSkill, fieldMap)
     -- print("teamid", teamid)
     local jx = teamid > JX_ID_ADD
     local teamD = tab.team[teamid % JX_ID_ADD]
-    if jx then
-        -- 觉醒
-        if AnimAP["mcList"][teamD["jxart"]] then
-            effMap[teamD["jxart"]] = true
-        else
-            if roleMap[teamD["jxart"]] == nil then 
-                roleMap[teamD["jxart"]] = camp
-            elseif camp ~= roleMap[teamD["jxart"]] then
-                roleMap[teamD["jxart"]] = 3
+    local isChanged = BattleUtils.checkTeamChanged(teamD.id)
+    local dealWithTeamRes = function(sId)
+        if sId and tonumber(sId) ~= 0 then
+            local skinart = tab.teamSkin[sId]["skinart"]
+            --skinget 3 运营活动皮肤  优先级最高
+            local skinget = tab.teamSkin[sId]["skinget"]
+            if tonumber(skinget) ~= 3 and isChanged then
+                if tonumber(skinget) == 2 then   --觉醒皮肤
+                    skinart = teamD["jxart"]
+                else
+                    skinart = teamD["art"]
+                end
             end
-        end     
-    else
-        if AnimAP["mcList"][teamD["art"]] then
-            effMap[teamD["art"]] = true
+
+            if AnimAP["mcList"][skinart] then
+                effMap[skinart] = true
+            else
+                if roleMap[skinart] == nil then 
+                    roleMap[skinart] = camp
+                elseif camp ~= roleMap[skinart] then
+                    roleMap[skinart] = 3
+                end
+            end 
         else
-            if roleMap[teamD["art"]] == nil then 
-                roleMap[teamD["art"]] = camp
-            elseif camp ~= roleMap[teamD["art"]] then
-                roleMap[teamD["art"]] = 3
+            if jx then
+                -- 觉醒
+                if AnimAP["mcList"][teamD["jxart"]] then
+                    effMap[teamD["jxart"]] = true
+                else
+                    if roleMap[teamD["jxart"]] == nil then 
+                        roleMap[teamD["jxart"]] = camp
+                    elseif camp ~= roleMap[teamD["jxart"]] then
+                        roleMap[teamD["jxart"]] = 3
+                    end
+                end     
+            else
+                if AnimAP["mcList"][teamD["art"]] then
+                    effMap[teamD["art"]] = true
+                else
+                    if roleMap[teamD["art"]] == nil then 
+                        roleMap[teamD["art"]] = camp
+                    elseif camp ~= roleMap[teamD["art"]] then
+                        roleMap[teamD["art"]] = 3
+                    end
+                end
             end
         end
     end
+
+    if 3 == camp then
+        local sId1 = sIdMap[1][teamid] or 0
+        local sId2 = sIdMap[2][teamid] or 0
+        if sId1 ~= sId2 then
+            dealWithTeamRes(sId1)
+            dealWithTeamRes(sId2)
+        else
+            dealWithTeamRes(sId1)
+        end
+    else
+        local sId = sIdMap[camp][teamid] or 0
+        dealWithTeamRes(sId)
+    end
+
     if teamD["boom1"] then
         effMap[getResFileName(teamD["boom1"])] = true
     end
 
     local skillMap = BattleUtils.getSkillMap(teamD, skillLevel, jx)
+    if exSkill then
+        for key, var in pairs(exSkill) do
+            if key then
+                skillMap[key] = true
+            end
+        end
+    end
     for skillid, _ in pairs(skillMap) do
-        BattleUtils.countSkillRes(skillid, camp, roleMap, effMap, npcMap, soundTab)
+        BattleUtils.countSkillRes(skillid, camp, roleMap, effMap, npcMap, soundTab, fieldMap)
     end
 end
 
@@ -5289,6 +6032,48 @@ function BattleUtils.countHeroTeamSkill(values, teamIdMap, npcIdMap, roleMap, ef
     local skillMap = {}
     local _skills
     local skills = values.monsterSkill
+    local _v
+    for _, teamD in pairs(teamDs) do
+        _v = teamD["volume"] - 1
+        if _v > 4 then
+            _v = 4
+        end
+        if _v < 1 then
+            _v = 1
+        end
+        _skills = skills[teamD["movetype"]][teamD["class"]][_v]
+        if _skills then
+            for id, _type in pairs(_skills) do
+                if _type == 1 then
+                    skillMap[id] = true
+                end
+            end
+        end
+    end
+    for _, npcD in pairs(npcDs) do
+        _v = npcD["volume"]
+        if _v == nil then
+            _v = tab.team[npcD["match"]]["volume"]
+        end
+        _v = _v - 1
+        if _v > 4 then
+            _v = 4
+        end
+        if _v < 1 then
+            _v = 1
+        end
+        _skills = skills[npcD["mot"]][npcD["class"]][_v]
+        if _skills then
+            for id, _type in pairs(_skills) do
+                if _type == 1 then
+                    skillMap[id] = true
+                end
+            end
+        end
+    end
+
+    --非召唤物的加成技能（用于英雄专精表）
+    local skills = values.monsterSkill6
     local _v
     for _, teamD in pairs(teamDs) do
         _v = teamD["volume"] - 1
@@ -5410,12 +6195,14 @@ function BattleUtils.countHeroTeamSkill(values, teamIdMap, npcIdMap, roleMap, ef
     end
 end
 
-function BattleUtils.ResCount(teamIdMap, teamSkillLevel, npcIdMap, playerInfo, enemyInfo, battleMode)
+
+function BattleUtils.ResCount(teamIdMap, teamSkillLevel, npcIdMap, playerInfo, enemyInfo, battleMode, hformationIdMap, heroSidMap, reverse, exSkill)
     local EX = require("game.view.battle.rule.BattleResEx")
     local heroInfo1 = playerInfo.hero
     local heroInfo2 = enemyInfo.hero
     local teamEx, npcEx, effEx = EX.teamEx, EX.npcEx, EX.effEx
     local teams = teamEx[battleMode]
+    exSkill = exSkill or {}
     if teams then
         for i = 1, #teams do
             local id = teams[i][1]
@@ -5438,6 +6225,8 @@ function BattleUtils.ResCount(teamIdMap, teamSkillLevel, npcIdMap, playerInfo, e
     local picMap = {}
     local npcMap = {}
     local soundTab = {}
+    --统计领域的地图id
+    local fieldMap = {}
     local teamD
     for teamid, camp in pairs(teamIdMap) do
         teamD = tab.team[teamid % JX_ID_ADD]
@@ -5463,8 +6252,7 @@ function BattleUtils.ResCount(teamIdMap, teamSkillLevel, npcIdMap, playerInfo, e
                 soundTab[movesound] = true
             end
         end
-
-        BattleUtils.countTeamRes(teamid, teamSkillLevel[teamid], camp, roleMap, effMap, npcMap, soundTab)
+        BattleUtils.countTeamRes(teamid, teamSkillLevel[teamid], camp, roleMap, effMap, npcMap, soundTab, heroSidMap, reverse, exSkill[teamid], fieldMap)
     end
     for npcid, camp in pairs(npcIdMap) do
         BattleUtils.countNpcRes(npcid, camp, roleMap, effMap, npcMap, soundTab)
@@ -5508,7 +6296,8 @@ function BattleUtils.ResCount(teamIdMap, teamSkillLevel, npcIdMap, playerInfo, e
                 _open[4] = true
             elseif BattleUtils.CUR_BATTLE_TYPE == BattleUtils.BATTLE_TYPE_Arena 
                 or BattleUtils.CUR_BATTLE_TYPE == BattleUtils.BATTLE_TYPE_ServerArena
-                or BattleUtils.CUR_BATTLE_TYPE == BattleUtils.BATTLE_TYPE_GuildPVP
+                or BattleUtils.CUR_BATTLE_TYPE == BattleUtils.BATTLE_TYPE_GuildPVP 
+                or BattleUtils.CUR_BATTLE_TYPE == BattleUtils.BATTLE_TYPE_CrossGodWar
                 or BattleUtils.CUR_BATTLE_TYPE == BattleUtils.BATTLE_TYPE_GodWar then
                 for i = 1, #_open do
                     _open[i] = true
@@ -5576,7 +6365,11 @@ function BattleUtils.ResCount(teamIdMap, teamSkillLevel, npcIdMap, playerInfo, e
             picMap[heroD["halfcut"]] = true
         end
     end
-
+    --英雄法相
+    if playerInfo.shadow and string.len(tostring(playerInfo.shadow)) > 0 then
+        local art = tab.heroShadow[playerInfo.shadow]["art"]
+        effMap[art] = true
+    end
     -- 敌方英雄资源
     local heroSkinD2
     if heroInfo2.skin then
@@ -5651,11 +6444,37 @@ function BattleUtils.ResCount(teamIdMap, teamSkillLevel, npcIdMap, playerInfo, e
             picMap[heroD["halfcut"]] = true
         end
     end
-
+    if enemyInfo.shadow and string.len(tostring(enemyInfo.shadow)) > 0 then
+        local art = tab.heroShadow[enemyInfo.shadow]["art"]
+        effMap[art] = true
+    end
 
     local roles = {}
     for k, v in pairs(roleMap) do
         table.insert(roles, {k, v})
+    end
+
+    if hformationIdMap then
+        for i = 1, #hformationIdMap do
+            local hformationData = tab.backupMain[hformationIdMap[i]]
+            if hformationData then
+                if hformationData["humen_frontstk_v"] then
+                    effMap[hformationData["humen_frontstk_v"]] = true
+                end
+
+                if hformationData["humen_backstk_h"] then
+                    effMap[hformationData["humen_backstk_h"]] = true
+                end
+
+                if hformationData["ground_frontstk_v"] then
+                    effMap[hformationData["ground_frontstk_v"]] = true
+                end
+
+                if hformationData["ground_backstk_h"] then
+                    effMap[hformationData["ground_backstk_h"]] = true
+                end
+            end
+        end
     end
 
     local effex = effEx[battleMode]
@@ -5675,7 +6494,7 @@ function BattleUtils.ResCount(teamIdMap, teamSkillLevel, npcIdMap, playerInfo, e
         table.insert(effs, k)
     end
 
-    return roles, effs, picMap, npcMap, soundTab
+    return roles, effs, picMap, npcMap, soundTab, fieldMap
 end
 
 BattleUtils.weatherTab = 
@@ -5698,18 +6517,112 @@ BattleUtils.weatherTab =
     xueyuan2 = "xiaxue",
 }
 
+--获取战斗中额外添加的技能
+function BattleUtils.getBattleteamExSkill(teamData, teamId, exSkill)
+--    local exSkill = {}
+    if teamData == nil then
+        return
+    end
+
+
+    function totalSkill(nType, skillID)
+        if nType == 1 then
+            exSkill[skillID] = true
+        elseif nType == 2 then
+            local compose = tab.skillPassive[skillID]["compose"]
+            if compose then
+                for k = 1, #compose do
+                    if compose[k][1] == 1 then
+                        exSkill[compose[k][2]] = true
+                    end
+                end
+            end
+        end
+    end
+
+    local teamD = tab.team[teamId]
+    --战阵添加的技能统计
+    if teamData.battleArray then
+        if teamD and teamD.race then
+            local battleArraySkill = {}
+            local battleArrayData = nil
+            for key, var in pairs(teamData.battleArray) do
+                if var and tonumber(key) == teamD.race[1] then
+                    battleArrayData = var
+                    break
+                end
+            end
+            if battleArrayData then
+                local _battleUp = tab.battleUp
+                if _battleUp then
+                    for key, var in pairs(_battleUp) do
+                        if var and var.effect2 and var.battleId == teamD.race[1] and battleArrayData.lv >= var.battleLevel then
+                            for _key, _var in pairs(var.effect2) do
+                                if _var then
+                                    battleArraySkill[#battleArraySkill + 1] = _var
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+
+            if #battleArraySkill > 0 then
+                for key, var in ipairs(battleArraySkill) do
+                    if var then
+                        totalSkill(var[1], var[2])
+                    end
+                end
+            end
+
+        end
+    end
+    -- 专属武器技能统计
+    if teamData.zStar and teamData.zStar > 0 then
+        local exclusiveData = tab.exclusive[teamId]
+        local exStarLv = (teamData.zStar or 0) - 1
+        if exStarLv >= 0 and exclusiveData and exclusiveData.isOpen and exclusiveData.isOpen == 1 then
+            local effects = exclusiveData.effect
+            for i = 0, exStarLv do
+                local effect = effects[i + 1]
+                if effect and effect[1] == 2 then
+                    totalSkill(effect[2], effect[3])
+                end
+            end
+        end
+    end
+
+    --兵团额外技能
+    local skillLevels = teamData.skill
+    if skillLevels and teamD and teamD["additionalTeamSkill"] then
+        for i, v in ipairs(teamD["additionalTeamSkill"]) do
+            if v then
+                if v[1] == 0 then
+                    totalSkill(v[2], v[3])
+                elseif skillLevels[v[1]] and skillLevels[v[1]] > 0 then
+                    totalSkill(v[2], v[3])
+                end
+            end
+        end
+    end
+
+    return
+end
+
 function BattleUtils.getBattleRes(battleInfo)
     local teamIdMap = {} -- 1为左方 2为右方
-    local npcIdMap = {} 
-
+    local npcIdMap = {}
+    local hformationIdMap = {}
+    local exSkill = {} --额外添加的技能，（战阵，专属武器）
     local teamSkillLevel = {}
-
+    local heroSidMap = {{}, {}}   --兵团皮肤数据 1为左方 2为右方
     local buffReplace = {}
     -- 英雄专精替换怪兽
     local playerInfo = battleInfo.playerInfo
+    local reverse = playerInfo.reverse
     -- dump(battleInfo, "a", 20)
-    local teams = playerInfo.team
-    if teams then
+    local dealWithPlayerInfo = function(teamsData)
+        if not teamsData then return end
         local hero = playerInfo.hero
         local heroD, star, mastery
         if playerInfo.hero.npcHero then
@@ -5763,8 +6676,8 @@ function BattleUtils.getBattleRes(battleInfo)
         local id
         local _team
         local isReplace
-        for i = 1, #teams do
-            _team = teams[i]
+        for i = 1, #teamsData do
+            _team = teamsData[i]
             if teamReplace[_team.id] then
                 id = teamReplace[_team.id]
             else
@@ -5776,10 +6689,10 @@ function BattleUtils.getBattleRes(battleInfo)
             end
             teamIdMap[id] = 1
             if teamSkillLevel[id] == nil then
-                teamSkillLevel[id] = {0, 0, 0, 0}
+                teamSkillLevel[id] = {0, 0, 0, 0, 0, 0, 0}
             end
             for k = 1, #_team.skill do
-                if _team.skill[k] > teamSkillLevel[id][k] then
+                if _team.skill[k] > (teamSkillLevel[id][k] or 0) then
                     teamSkillLevel[id][k] = _team.skill[k]
                 end
             end
@@ -5808,11 +6721,24 @@ function BattleUtils.getBattleRes(battleInfo)
                     teamSkillLevel[id].jxSkill = {lv1, lv2, lv3}
                 end
             end
+            heroSidMap[1][id] = _team.sId
+            if exSkill[id] == nil then
+                exSkill[id] = {}
+            end
+            BattleUtils.getBattleteamExSkill(_team, id, exSkill[id])
         end
     end
+
+    dealWithPlayerInfo(playerInfo.team)
+    dealWithPlayerInfo(playerInfo.helpteams)
+    if playerInfo.hformationId and playerInfo.hformationId > 0 then
+        table.insert(hformationIdMap, playerInfo.hformationId)
+    end
+
     local enemyInfo = battleInfo.enemyInfo
-    local teams = enemyInfo.team
-    if teams then
+
+    local dealWithEnemyInfo = function(teamsData)
+        if not teamsData then return end
         local hero = enemyInfo.hero
         local heroD, star, mastery
         -- dump(enemyInfo.hero,"a",2)
@@ -5841,7 +6767,18 @@ function BattleUtils.getBattleRes(battleInfo)
             if masteryD["crehero"] == nil or masteryD["crehero"] == hero.id then
                 if creplace then
                     for k = 1, #creplace do
-                        teamReplace[creplace[k][1]] = creplace[k][2]
+                        local oid = creplace[k][1]
+                        local nid = creplace[k][2]
+                        -- A->B B->C
+                        -- 如果A已经变成B, 后面对A的变化均无效
+                        for id1, id2 in pairs(teamReplace) do
+                            if id2 == oid then
+                                teamReplace[id1] = nid
+                            end
+                        end
+                        if teamReplace[oid] == nil then
+                            teamReplace[oid] = nid
+                        end
                     end
                 end
             end
@@ -5854,37 +6791,73 @@ function BattleUtils.getBattleRes(battleInfo)
             end
         end
         local id, _team
-        for i = 1, #teams do
-            _team = teams[i]
+        for i = 1, #teamsData do
+            _team = teamsData[i]
             if teamReplace[_team.id] then
                 id = teamReplace[_team.id]
             else
                 id = _team.id
             end
+
             if _team.jx then
                 -- 觉醒
-                if teamIdMap[JX_ID_ADD + id] == 1 then
-                    teamIdMap[JX_ID_ADD + id] = 3
-                elseif teamIdMap[JX_ID_ADD + id] ~= 3 then
-                    teamIdMap[JX_ID_ADD + id] = 2
-                end      
-            else
-                if teamIdMap[id] == 1 then
-                    teamIdMap[id] = 3
-                elseif teamIdMap[id] ~= 3 then
-                    teamIdMap[id] = 2
-                end
+                id = JX_ID_ADD + id
             end
+
+            if teamIdMap[id] == 1 then
+                teamIdMap[id] = 3
+            elseif teamIdMap[id] ~= 3 then
+                teamIdMap[id] = 2
+            end
+
             if teamSkillLevel[id] == nil then
-                teamSkillLevel[id] = {0, 0, 0, 0}
+                teamSkillLevel[id] = {0, 0, 0, 0, 0, 0, 0}
             end
             for k = 1, #_team.skill do
-                if _team.skill[k] > teamSkillLevel[id][k] then
+                if _team.skill[k] > (teamSkillLevel[id][k] or 0) then
                     teamSkillLevel[id][k] = _team.skill[k]
                 end
             end
+            if _team.jx then
+                if teamSkillLevel[id].jxSkill == nil then
+                    teamSkillLevel[id].jxSkill = {_team.jxSkill1, _team.jxSkill2, _team.jxSkill3}
+                else
+                    local lv1 = teamSkillLevel[id].jxSkill[1]
+                    local lv2 = teamSkillLevel[id].jxSkill[2]
+                    local lv3 = teamSkillLevel[id].jxSkill[3]
+                    if lv1 == nil then
+                        lv1 = _team.jxSkill1
+                    elseif lv1 ~= 3 and _team.jxSkill1 and lv1 ~= _team.jxSkill1 then
+                        lv1 = 3
+                    end
+                    if lv2 == nil then
+                        lv2 = _team.jxSkill2
+                    elseif lv2 ~= 3 and _team.jxSkill2 and lv2 ~= _team.jxSkill2 then
+                        lv2 = 3
+                    end
+                    if lv3 == nil then
+                        lv3 = _team.jxSkill3
+                    elseif lv3 ~= 3 and _team.jxSkill3 and lv3 ~= _team.jxSkill3 then
+                        lv3 = 3
+                    end
+                    teamSkillLevel[id].jxSkill = {lv1, lv2, lv3}
+                end
+            end
+            heroSidMap[2][id] = _team.sId
+
+            if exSkill[id] == nil then
+                exSkill[id] = {}
+            end
+            BattleUtils.getBattleteamExSkill(_team, id, exSkill[id])
         end
     end
+
+    dealWithEnemyInfo(enemyInfo.team)
+    dealWithEnemyInfo(enemyInfo.helpteams)
+    if enemyInfo.hformationId and enemyInfo.hformationId > 0 then
+        table.insert(hformationIdMap, enemyInfo.hformationId)
+    end
+
     local npcs = playerInfo.npc
     if npcs then
         for i = 1, #npcs do
@@ -5966,7 +6939,8 @@ function BattleUtils.getBattleRes(battleInfo)
     end
 
     BattleUtils.buffReplace = buffReplace
-    local roles, effs, picMap, npcMap, soundTab = BattleUtils.ResCount(teamIdMap, teamSkillLevel, npcIdMap, battleInfo.playerInfo, battleInfo.enemyInfo, battleInfo.mode)
+
+    local roles, effs, picMap, npcMap, soundTab, fieldMap = BattleUtils.ResCount(teamIdMap, teamSkillLevel, npcIdMap, battleInfo.playerInfo, battleInfo.enemyInfo, battleInfo.mode, hformationIdMap, heroSidMap, reverse, exSkill)
 
     local checkValue
     if not BATTLE_PROC and GameStatic.checkTable and battleInfo.mode ~= BattleUtils.BATTLE_TYPE_Guide then
@@ -6088,7 +7062,7 @@ function BattleUtils.getBattleRes(battleInfo)
             siegeWeaponD = tab.siegeWeapon[weapons2[i].id]
             effs[#effs + 1] = siegeWeaponD["steam"]
         end
-    end
+    end 
 
     -- 地图场景资源
     local mapRes = "asset/map/" .. battleInfo.mapId .. "/" .. battleInfo.mapId
@@ -6099,6 +7073,26 @@ function BattleUtils.getBattleRes(battleInfo)
                     mapRes.."_far.png",
                     mapRes.."_bg.jpg"
                 }
+
+
+    ---领域地图资源
+    -- if  fieldMap then
+    --     for key, var in pairs(fieldMap) do
+    --         if key and var then
+    --             local _mapRes = "asset/map/" .. key .. "/" .. key
+    --             maps[#maps + 1] = _mapRes .. "_land.jpg"
+    --             maps[#maps + 1] = _mapRes .. "_fg.png"
+    --             maps[#maps + 1] = _mapRes .. "_mg.png"
+    --             maps[#maps + 1] = _mapRes .. "_far.png"
+    --             maps[#maps + 1] = _mapRes .. "_bg.jpg"
+    --         end
+    --     end
+    -- end
+
+--    print("&&&&&&&&&&&&&&&&&")
+--    dump(fieldMap)
+--    dump(maps)
+--    print("&&&&&&&&&&&&&&&&&")
 
     -- 天气资源
     local battleWeather = SystemUtils.loadGlobalLocalData("battleWeather")
@@ -6205,6 +7199,7 @@ function BattleUtils.playBattleMusic(mode, isElite)
         audioMgr:playMusic("siegeBgm", true)
     elseif mode == BattleUtils.BATTLE_TYPE_Arena
         or mode == BattleUtils.BATTLE_TYPE_ServerArena 
+        or mode == BattleUtils.BATTLE_TYPE_CrossGodWar 
         or mode == BattleUtils.BATTLE_TYPE_GodWar then
         audioMgr:playMusic("siegeBgm", true)
     elseif mode == BattleUtils.BATTLE_TYPE_Fuben or mode == BattleUtils.BATTLE_TYPE_ServerArenaFuben then
@@ -6238,7 +7233,8 @@ function BattleUtils.playExitBattleMusic(mode, subType, isElite)
     elseif mode == BattleUtils.BATTLE_TYPE_CCSiege then
         audioMgr:playMusic("mainmenu", true)
     elseif mode == BattleUtils.BATTLE_TYPE_Arena 
-        or mode == BattleUtils.BATTLE_TYPE_ServerArena
+        or mode == BattleUtils.BATTLE_TYPE_ServerArena 
+        or mode == BattleUtils.BATTLE_TYPE_CrossGodWar
         or mode == BattleUtils.BATTLE_TYPE_GodWar then
         audioMgr:playMusic("mainmenu", true)
     elseif mode == BattleUtils.BATTLE_TYPE_Fuben or mode == BattleUtils.BATTLE_TYPE_ServerArenaFuben then
@@ -6402,6 +7398,8 @@ function BattleUtils.getHeroAttributes(heroData, nextLevel, specifiedLevelAndInd
     local treasureModel = ModelManager:getInstance():getModel("TreasureModel")
     local talentModel = ModelManager:getInstance():getModel("TalentModel")
     local heroModel = ModelManager:getInstance():getModel("HeroModel")
+    local backUpModel = ModelManager:getInstance():getModel("BackupModel")
+    local paragonModel = ModelManager:getInstance():getModel("ParagonModel")
     local level = userModel:getData().lvl or 1
     local masterys = {}
     if ModelManager:getInstance():getModel("HeroModel"):checkHero(id) then
@@ -6440,17 +7438,26 @@ function BattleUtils.getHeroAttributes(heroData, nextLevel, specifiedLevelAndInd
     if not heroTableData then
         heroTableData = heroData
     end
+    local bformationInfo = {}
+    local backUps = backUpModel:getBackupData()
+    local backupData = {}
+    for key, var in pairs(backUps) do
+        if var then
+            backupData[tonumber(key)] = var
+        end
+    end
 
+    local paragonTalentData = paragonModel:getData() or {}
 
     return BattleUtils.getHeroBaseAttr(heroTableData, level, slevel, heroData.star, masterys, 
-        userModel:getGlobalMasterys(), treasureModel:getData(), nil, talentModel:getData(), userModel:getGlobalAttributes(), userModel:getuMastery(), heroData.skillex,nil,nil,nil,nil,nil,userModel:getHeroStarHAb()
-        ,heroModel:getStarInfo(id),userModel:getHeroStarInfo())
+        userModel:getGlobalMasterys(), treasureModel:getData(), heroData.buff, talentModel:getData(), userModel:getGlobalAttributes(), 
+        userModel:getuMastery(), heroData.skillex,nil,nil,nil,nil,nil,userModel:getHeroStarHAb()
+        ,heroModel:getStarInfo(id),userModel:getHeroStarInfo(),nil,{},backupData,paragonTalentData)
         -- hAb, uMastery)
 end
 
 --排行榜获取英雄详情 
-function BattleUtils.getRankHeroAttributes(playerLvl,heroData,globalSpecial,treasureData,talentData,hAb,uMastery)
-    --dump(heroData, "heroData", 5)
+function BattleUtils.getRankHeroAttributes(playerLvl,heroData,globalSpecial,treasureData,talentData,hAb,uMastery, backupData, pTalents)
     local id = heroData.id or heroData.heroId
     local level = playerLvl
     local masterys = {}
@@ -6472,22 +7479,12 @@ function BattleUtils.getRankHeroAttributes(playerLvl,heroData,globalSpecial,trea
     for i = 1, 5 do
         slevel[i] = heroData["sl" .. i]
     end
-
-    -- dump(globalSpecial,"globalSpecial==>>>")
-    -- print("+==================+",id)
     
-    return BattleUtils.getHeroBaseAttr(tab.hero[id], 
-                                        level, 
-                                        slevel, 
-                                        heroData.star, 
-                                        masterys, 
-                                        globalSpecial, 
-                                        treasureData,
-                                        nil,
-                                        talentData,
-                                        hAb,
-                                        uMastery,
-                                        heroData.skillex)
+    return BattleUtils.getHeroBaseAttr(tab.hero[id], level, slevel, heroData.star, masterys, 
+                                        globalSpecial, treasureData, nil, talentData, hAb,
+                                        uMastery, heroData.skillex, nil, nil, nil, 
+                                        nil, nil, nil, nil, nil, 
+                                        nil, {}, backupData, pTalents)
 end
 
 function BattleUtils.getDescription(iconType, iconId, attributeValues, skillIndex, specifiedDescriptionId, battleType, spTalent)
@@ -6647,7 +7644,9 @@ function BattleUtils.getDescription(iconType, iconId, attributeValues, skillInde
         if skillData.buffid1 then
             bufferData = tab.skillBuff[skillData.buffid1]
         end
-        varibleNameToValue["$ap"] = attributeValues.ap[skillData["mgtype"]][skillData["type"]]
+        if attributeValues.ap then
+            varibleNameToValue["$ap"] = attributeValues.ap[skillData["mgtype"]][skillData["type"]]
+        end
         varibleNameToValue["$valueadd11"] = skillData["valueadd1"] and skillData["valueadd1"][1] or 0
         varibleNameToValue["$valueadd12"] = skillData["valueadd1"] and skillData["valueadd1"][2] or 0
         varibleNameToValue["$valueadd21"] = skillData["valueadd2"] and skillData["valueadd2"][1] or 0
@@ -6706,24 +7705,40 @@ function BattleUtils.getDescription(iconType, iconId, attributeValues, skillInde
         end
 
         varibleNameToValue["$a101"] = attributeValues.apAdd
+        if attributeValues.ap then
+            for i=1, 5 do
+                local attrId = 121 + i
+                varibleNameToValue["$a" .. attrId] = attributeValues.ap[4][i]
+            end
 
-        for i=1, 5 do
-            local attrId = 121 + i
-            varibleNameToValue["$a" .. attrId] = attributeValues.ap[4][i]
-        end
+            for i=1, 5 do
+                local attrId = 126 + i
+                varibleNameToValue["$a" .. attrId] = attributeValues.ap[1][i]
+            end
 
-        for i=1, 5 do
-            local attrId = 126 + i
-            varibleNameToValue["$a" .. attrId] = attributeValues.ap[1][i]
-        end
-
-        for i=1, 5 do
-            local attrId = 131 + i
-            varibleNameToValue["$a" .. attrId] = attributeValues.ap[2][i]
+            for i=1, 5 do
+                local attrId = 131 + i
+                varibleNameToValue["$a" .. attrId] = attributeValues.ap[2][i]
+            end
         end
 
         description = specifiedDescriptionId and lang(specifiedDescriptionId) or lang(skillData.des)
         --isRound = true
+    elseif iconType == BattleUtils.kIconTypeBackupSkill2 then
+        local backupData = tab.backupMain[iconId]
+        varibleNameToValue["$skill2Self11"] = (backupData["skill2Self"] and backupData["skill2Self"][1]) and backupData["skill2Self"][1][1] or 0
+        varibleNameToValue["$skill2Self12"] = (backupData["skill2Self"] and backupData["skill2Self"][1]) and backupData["skill2Self"][1][2] or 0
+        varibleNameToValue["$skill2Self13"] = (backupData["skill2Self"] and backupData["skill2Self"][1]) and backupData["skill2Self"][1][3] or 0
+        varibleNameToValue["$skill2Self21"] = (backupData["skill2Self"] and backupData["skill2Self"][2]) and backupData["skill2Self"][2][1] or 0
+        varibleNameToValue["$skill2Self22"] = (backupData["skill2Self"] and backupData["skill2Self"][2]) and backupData["skill2Self"][2][2] or 0
+        varibleNameToValue["$skill2Self23"] = (backupData["skill2Self"] and backupData["skill2Self"][2]) and backupData["skill2Self"][2][3] or 0
+        varibleNameToValue["$skill2Enemy11"] = (backupData["skill2Enemy"] and backupData["skill2Enemy"][1]) and backupData["skill2Enemy"][1][1] or 0
+        varibleNameToValue["$skill2Enemy12"] = (backupData["skill2Enemy"] and backupData["skill2Enemy"][1]) and backupData["skill2Enemy"][1][2] or 0
+        varibleNameToValue["$skill2Enemy13"] = (backupData["skill2Enemy"] and backupData["skill2Enemy"][1]) and backupData["skill2Enemy"][1][3] or 0
+        varibleNameToValue["$skill2Enemy21"] = (backupData["skill2Enemy"] and backupData["skill2Enemy"][2]) and backupData["skill2Enemy"][2][1] or 0
+        varibleNameToValue["$skill2Enemy22"] = (backupData["skill2Enemy"] and backupData["skill2Enemy"][2]) and backupData["skill2Enemy"][2][2] or 0
+        varibleNameToValue["$skill2Enemy23"] = (backupData["skill2Enemy"] and backupData["skill2Enemy"][2]) and backupData["skill2Enemy"][2][3] or 0
+        description = specifiedDescriptionId and lang(specifiedDescriptionId) or lang(backupData.skill2Des)
     end
 
     -- print("description:",iconType,"...", description)
@@ -6758,11 +7773,12 @@ function BattleUtils.getDescription(iconType, iconId, attributeValues, skillInde
 
         
     end
+    --非（）里面的数值
     description = string.gsub(description, "%b{}", function(substring)
         local result = string.format("%.4f", caculate(substring))
         return BattleUtils.formatNumber(result)
     end)
-
+    --（）里面的数值
     description = string.gsub(description, "%b<>", function(substring)
         local result = caculate(substring)
         if 0 == result then return "" end
@@ -6953,16 +7969,30 @@ function BattleUtils.getSkillBookTalent(skillBookTalent, skillReplace)
                 -- 技能表考虑子物体
                 local playerSkillEffect = tab.playerSkillEffect
                 local object =  tab.object
-                local objectid = playerSkillEffect[skillId]["objectid"] 
+                ---dongcheng 2018.5.11修改 因策华需求如果playerSkillEffect表中没有数据就索引到heroMastery表
+                local skillInfo = playerSkillEffect[skillId]
+                if skillInfo == nil then
+                    skillInfo = tab.heroMastery[skillId]
+                end
+                local objectid = skillInfo["objectid"] 
                 if object[objectid] then
                     skillBTalent["targetSkills"][objectid] = objectid 
                 end 
             end
         end
+
+
+
+        --[[
+            应策华需求，以前这里是加成是所有的宝物属性加在一起，现在改成，每个宝物只对配置表里面配置的技能生效 dongcheng 2019.01.15
+        --]]
+
+
         for i = 1, kindCount do
            -- key: 加成类型
            -- value：加成值来源魔法天赋ID，总加成值，总生效技能
-           skillBTalent["totalValues"][i] = {{},0,{}}
+        --    skillBTalent["totalValues"][i] = {{},0,{}}
+            skillBTalent["totalValues"][i] = {}
         end
 
         for k,v in pairs(skillBTalent.datas) do
@@ -6971,10 +8001,14 @@ function BattleUtils.getSkillBookTalent(skillBookTalent, skillReplace)
             local talentT  = v[5]
 
             for i = 1, kindCount do
-                skillBTalent["totalValues"][i][2] = skillBTalent["totalValues"][i][2] + values[i]
+                -- skillBTalent["totalValues"][i][2] = skillBTalent["totalValues"][i][2] + values[i]
                 -- 生效技能
                 if talentT[i] then
-                    skillBTalent["totalValues"][i][1][k] = k
+                    -- value：加成值来源魔法天赋ID，加成值，生效技能
+                    local _skillBTalent = {{},0,{}}
+                    -- skillBTalent["totalValues"][i][1][k] = k
+                    _skillBTalent[2] = _skillBTalent[2] + values[i]
+                    _skillBTalent[1][k] = k
                     for m = 1, #skillIds do
                         local skillId = skillIds[m]
 
@@ -6985,15 +8019,26 @@ function BattleUtils.getSkillBookTalent(skillBookTalent, skillReplace)
                         -- 技能表考虑子物体
                         local playerSkillEffect = tab.playerSkillEffect
                         local object =  tab.object
-                        local objectid = playerSkillEffect[skillId]["objectid"]
+
+                        ---dongcheng 2018.5.11修改 因策华需求如果playerSkillEffect表中没有数据就索引到heroMastery表
+                        local skillInfo = playerSkillEffect[skillId]
+                        if skillInfo == nil then
+                            skillInfo = tab.heroMastery[skillId]
+                        end
+
+                        local objectid = skillInfo["objectid"]
 
                         if object[objectid] then
-                            skillBTalent["totalValues"][i][3][objectid] = objectid
+                            -- skillBTalent["totalValues"][i][3][objectid] = objectid
+                            _skillBTalent[3][objectid] = objectid
                         end
-                        skillBTalent["totalValues"][i][3][skillId] = skillId
+                        -- skillBTalent["totalValues"][i][3][skillId] = skillId
+                        _skillBTalent[3][skillId] = skillId
+
+                        
                     end
+                    skillBTalent["totalValues"][i][#skillBTalent["totalValues"][i] + 1] = _skillBTalent
                 end
-                
             end
         end
     end
@@ -7038,32 +8083,40 @@ function BattleUtils._countSkillBookTalent(skillId, values, talentType, camp, ke
     end
 
     if BC.H_SkillBookTalent[camp] and BC.H_SkillBookTalent[camp]["targetSkills"][skillId] then
-
-        local totalValue = BC.H_SkillBookTalent[camp]["totalValues"][talentType][2]
-        local targetSkills = BC.H_SkillBookTalent[camp]["totalValues"][talentType][3]
-        -- 单个总加成值作用技能判断
-        if targetSkills[skillId] and totalValue > 0 then
-            if talentType <= 2 then
-                result = updateValueData(values, totalValue)
-            elseif talentType <= 4 then
-                updateTBData(values, "duration", totalValue)
-            elseif talentType <= 6 then
-                result = updateValueData(values, totalValue) 
-            elseif talentType <= 8 then
-                updateTBData(values, "shield", totalValue)
-            elseif talentType <= 10 then
-                updateTBData(values, "mana", totalValue, true)
-            elseif talentType <= 12 then
-                updateTBData(values, "cd", totalValue, true)
-                updateTBData(values, "maxCD", totalValue, true)
-            elseif talentType == 13 then
-                updateTBData(values, BC.ATTR_HP, totalValue)
-                updateTBData(values, BC.ATTR_Atk, totalValue)
-            elseif talentType == 14 then
-                updateTBData(values, BC.ATTR_HPPro, totalValue)
-                updateTBData(values, BC.ATTR_AtkPro, totalValue)
+        local totalAttriAdd = BC.H_SkillBookTalent[camp]["totalValues"][talentType]
+        if totalAttriAdd and next(totalAttriAdd) ~= nil then
+            -- local totalValue = BC.H_SkillBookTalent[camp]["totalValues"][talentType][2]
+            -- local targetSkills = BC.H_SkillBookTalent[camp]["totalValues"][talentType][3]
+            local totalValue = 0
+            for i,v in ipairs(totalAttriAdd) do
+                if v and v[3] and v[3][skillId] then
+                    totalValue = totalValue + (v[2] or 0)
+                end
+            end
+            -- 单个总加成值作用技能判断
+            if totalValue > 0 then
+                if talentType <= 2 then
+                    result = updateValueData(values, totalValue)
+                elseif talentType <= 4 then
+                    updateTBData(values, "duration", totalValue)
+                elseif talentType <= 6 then
+                    result = updateValueData(values, totalValue) 
+                elseif talentType <= 8 then
+                    updateTBData(values, "shield", totalValue)
+                elseif talentType <= 10 then
+                    updateTBData(values, "mana", totalValue, true)
+                elseif talentType <= 12 then
+                    updateTBData(values, "cd", totalValue, true)
+                    updateTBData(values, "maxCD", totalValue, true)
+                elseif talentType == 13 then
+                    updateTBData(values, BC.ATTR_HP, totalValue)
+                    updateTBData(values, BC.ATTR_Atk, totalValue)
+                elseif talentType == 14 then
+                    updateTBData(values, BC.ATTR_HPPro, totalValue)
+                    updateTBData(values, BC.ATTR_AtkPro, totalValue)
+                end 
             end 
-        end 
+        end
     end 
 
 
@@ -7121,6 +8174,39 @@ function BattleUtils.getHolyMasterLevel(rune, runes)
         end
     end
     return level
+end
+
+function BattleUtils.getHelpPosData(tableData, userData)
+    local retData = {}
+    local hformationData = clone(tableData)
+    local bpos = userData["bpos"]
+    local gridRow = 4
+    local minPos = 16
+    local maxPos = 0
+    for k, v in pairs(hformationData) do
+        if v[2] < minPos then
+            minPos = v[2]
+        end
+        if v[2] > maxPos then
+            maxPos = v[2]
+        end
+    end
+    local minPosRow = math.ceil(minPos / gridRow)
+    local maxPosRow = math.ceil(maxPos / gridRow)
+    bpos = bpos or minPosRow
+    local changeRow = bpos - minPosRow
+    for k, v in pairs(hformationData) do
+        v[2] = v[2] + (changeRow * gridRow)
+    end
+
+    for i = 1, 3 do
+        local tid = userData["bt" .. i]
+        if tid and tid ~= 0 then
+            retData[tid] = hformationData[i][2]
+        end
+    end
+
+    return retData
 end
 
 function BattleUtils.useFormulaCalculate(baseParams, advanceParams, lv, bookLevel)
@@ -7186,6 +8272,44 @@ function BattleUtils.formatRichNumber(num)
     else
         return string.format("[color=48b946, fontsize=20](%+d)[-]", num)
     end
+end
+
+
+function BattleUtils.checkTeamChanged(teamId)
+    if teamId == nil or tab.setting["TEAMSKIN_WHITELIST"] == nil then 
+        return false 
+    end
+    local changedIdList = tab.setting["TEAMSKIN_WHITELIST"].value
+    for i,v in pairs(changedIdList) do
+       if v == teamId then
+            return true      
+       end
+    end
+    return false
+end
+
+function BattleUtils.formatnumberDecimal( value, num )
+    local initValue = value
+    num = num or 5
+    if num > 5 then num = 5 end
+    local fValue = math.floor(value)
+    if fValue == value then -- 没有小数
+        return value
+    end
+    -- 有小数
+    local decNum = 0
+    for i = 1, num do
+        value = value * 10
+        fValue = math.floor(value)
+        if value > fValue then
+            decNum = decNum + 1
+        elseif value == fValue then
+            decNum = decNum + 1
+            break
+        end
+    end
+    local res = string.format("%0." .. decNum .. "f", initValue)
+    return res
 end
 
 function BattleUtils.dtor()

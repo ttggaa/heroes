@@ -135,6 +135,12 @@ local ruleTabs =
     [_BattleUtils.BATTLE_TYPE_ServerArenaFuben] = "BattleRule_PVE1",
     [_BattleUtils.BATTLE_TYPE_ClimbTower] = "BattleRule_PVE1",
     [_BattleUtils.BATTLE_TYPE_GuildFAM] = "BattleRule_PVP2",
+    [_BattleUtils.BATTLE_TYPE_CrossGodWar] = "BattleRule_PVP1",
+    [_BattleUtils.BATTLE_TYPE_WoodPile_1] = "BattleRule_PVP2",
+    [_BattleUtils.BATTLE_TYPE_WoodPile_2] = "BattleRule_PVE1",
+    [_BattleUtils.BATTLE_TYPE_GloryArena] = "BattleRule_PVP1",
+    [_BattleUtils.BATTLE_TYPE_WORDBOSS] = "BattleRule_BOSS_WordBoss",
+    [_BattleUtils.BATTLE_TYPE_Legion] = "BattleRule_PVE1",
 }
 local _updateBeginTick = nil
 local _updateBeginTime = 0
@@ -208,6 +214,11 @@ function BattleScene:initScene()
 
     -- 血条下面的头像
     self:initHeadUI(logic:getOriginalTeamId())
+
+    self:initBackupInfo()
+
+    self:initEnergyIcon()
+
     if BC.fastBattle then
         BC.jump = true
         self._topLayer:setVisible(true)
@@ -288,6 +299,10 @@ function BattleScene:initScene()
 
     -- 法术刻印被动技能图标
     self._skillBookPassiveIcon = {{}, {}}
+
+    -- 后援特技图标倒计时
+    self._specialIcon = {{}, {}}
+    self._specialIconDirty = {false, false}
 
     -- 引导帮助战斗
     self._guideHelpState = GBHU.checkGuideState(self._battleInfo.mode, self._battleInfo.battleId)
@@ -447,6 +462,35 @@ function BattleScene:procBattle()
         local v1, v2, v3, v4 = logic:getSummonHP()
         local hp = {value1+v1, value2+v2, value3+v3, value4+v4}
         local hpex = {value1, value2, value3, value4}
+--        local remainHpProp1 = hp[1] / hp[2] * 30
+--        local remainHpProp2 = hp[3] / hp[4] * 30
+--        local remainTeamProp1 = ex.remainTeamCount1 / ex.maxTeamCount1 * 70
+--        local remainTeamProp2 = ex.remainTeamCount2 / ex.maxTeamCount2 * 70
+        local remainHpProp1 = 0 
+        if hp[2] ~= 0 then
+            remainHpProp1 = hp[1] / hp[2] * 30
+        end
+        local remainHpProp2 = 0
+        if hp[4] ~= 0 then
+            remainHpProp2 = hp[3] / hp[4] * 30
+        end
+        
+        local remainTeamProp1 = 0
+        if ex.maxTeamCount1 ~= 0 then
+            remainTeamProp1 = ex.remainTeamCount1 / ex.maxTeamCount1 * 70
+        end
+        local remainTeamProp2 = 0
+        if ex.maxTeamCount2 ~= 0 then
+            remainTeamProp2 = ex.remainTeamCount2 / ex.maxTeamCount2 * 70
+        end
+        local atkRid = "0"
+        local defRid = "0"
+        if self._battleInfo and self._battleInfo.playerInfo then
+            atkRid = self._battleInfo.playerInfo.rid or "0"
+        end
+        if self._battleInfo and self._battleInfo.enemyInfo then
+            defRid = self._battleInfo.enemyInfo.rid or "0"
+        end
         resData = 
         {
             hp = hp, 
@@ -465,6 +509,12 @@ function BattleScene:procBattle()
             totalRealDamage2 = ex.totalRealDamage2,
             dieCount1 = ex.dieCount1,
             dieCount2 = ex.dieCount2,
+            remainHpProp1 = remainHpProp1,
+            remainHpProp2 = remainHpProp2,
+            remainTeamProp1 = remainTeamProp1,
+            remainTeamProp2 = remainTeamProp2,
+            atkRid = atkRid,
+            defRid = defRid,
         }
         resData.teamInfo = self:getTeamInfo(leftData, rightData)
         res = {hp = hp, hpex = hpex, leftData=leftData, rightData=rightData, win=self._isWin, time=floor(time), dieList = dieList, dieCount = dieCount, 
@@ -740,6 +790,13 @@ function BattleScene:battleBeginMC(noBeginAnim)
         hpFg2_1:setPositionX(hpFg2_1:getPositionX() - hpFg2_1:getContentSize().width * 0.5)
         hpFg2_1:setScaleX(0)
         hpFg2_1:runAction(cc.Sequence:create(cc.DelayTime:create(0.2), cc.ScaleTo:create(0.2, 1)))
+
+        if self._hTeamNode then
+            for k, v in pairs(self._hTeamNode) do
+                local width = v:getContentSize().width * v:getScale()
+                v:runAction(cc.MoveBy:create(0.2, cc.p(k == 1 and width or -width, 0)))
+            end
+        end
     end
     if not noBeginAnim then
         self:battleBeginMCEx()
@@ -851,11 +908,25 @@ function BattleScene:initShareUI(callback)
             if lv == nil then
                 lv = 1
             end
+            local plvl = info.plvl
             local centerX = bg:getContentSize().width * 0.5
-            local nameLabel = cc.Label:createWithTTF(name .. " Lv." .. lv, UIUtils.ttfName, 24)
-            nameLabel:setAnchorPoint(0.5, 0.5)
-            nameLabel:setPosition(centerX, 336)
+
+            local nameLabel = cc.Label:createWithTTF(name .. " ", UIUtils.ttfName, 24)
+            nameLabel:setAnchorPoint(1, 0.5)
+            nameLabel:setPosition(centerX - 5, 336)
             bg:addChild(nameLabel)
+
+            local lvlLabel = cc.Label:createWithTTF("Lv." .. lv, UIUtils.ttfName, 24)
+            lvlLabel:setAnchorPoint(0, 0.5)
+            lvlLabel:setPosition(centerX + 5, 336)
+            bg:addChild(lvlLabel)
+
+            local tempLvl = lvlLabel
+            local inParam = {lvlStr = "Lv." .. lv, lvl = lv, plvl = plvl}
+            tempLvl = UIUtils:adjustLevelShow(lvlLabel, inParam, 1)
+            local tempWid = nameLabel:getContentSize().width + tempLvl:getContentSize().width
+            nameLabel:setPositionX(centerX + nameLabel:getContentSize().width - tempWid * 0.5)
+            tempLvl:setPositionX(centerX + tempWid * 0.5 - tempLvl:getContentSize().width)
 
             local guildName = info.guildName
             if guildName == nil then
@@ -912,7 +983,7 @@ function BattleScene:initShareUI(callback)
             for i = 1, #teams do
                 data = teams[i]
                 local quality = BattleUtils.TEAM_QUALITY[data.stage]
-                local icon = IconUtils:createTeamIconById({teamData = {id = data.id, star = data.star, level = data.level, ast = data.jx and 3 or 0},
+                local icon = IconUtils:createTeamIconById({teamData = {id = data.id, star = data.star, sId = data.sId, level = data.level, ast = data.jx and 3 or 0},
                 sysTeamData = tab.team[data.id], quality = quality[1], quaAddition = quality[2], eventStyle = 0})        
                 icon:setScale(0.6)
                 a, b = math.modf((i - 1) / 4) 
@@ -1112,8 +1183,10 @@ function BattleScene:update(dt)
             self:updateStar()
             -- 更新屏外敌人提示
             self:updateOutEnemy()
-
+            -- 更新宝物的技能头像显示
             self:updateTreasureSkillIcon()
+
+            self:updateSpecialSkillIcon()
 
             self:updateTime()
 
@@ -1245,6 +1318,101 @@ function BattleScene:jump()
 end
 
 local ETeamStateDIE = ETeamState.DIE
+
+--创建跳过设置的Icon
+function BattleScene:initJumpIcon(team, camp)
+    local dieIcon, proBg, proHp, sp
+    local pic = TeamUtils.getNpcTableValueByTeam(team.D, team.jx and "jxart1" or "art1")
+    local isChanged = TeamUtils:checkTeamChanged(team.D.id)
+    --判断是否有皮肤属性
+    if team.teamData and team.teamData.sId then
+        local skinTable = tab.teamSkin[team.teamData.sId]
+        pic = skinTable["skinart1"]
+        local skinget = tab.teamSkin[team.teamData.sId]["skinget"] or 1
+        if tonumber(skinget) ~= 3 and isChanged then
+            if tonumber(skinget) == 2 then
+                pic = team.D["jxart1"]
+            else
+                pic = team.D["art1"]
+            end
+        end
+    end
+
+    local className = TeamUtils:getClassIconNameByTeamD(team.teamData, "classlabel", team.D)
+    local class = className .. ".png"
+
+    local icon = cc.Node:create()
+    icon:setScale(.8)
+    self._skipLayer:addChild(icon)
+
+    local headNode = cc.Node:create()
+    icon:addChild(headNode)
+    icon.headNode = headNode
+
+    local head = cc.Sprite:createWithSpriteFrameName(pic .. ".jpg")
+    if camp == 1 then
+        head:setScale(0.68)
+    else
+        head:setScale(-0.68, 0.68)
+    end
+
+    headNode:addChild(head)
+
+    dieIcon = cc.Sprite:createWithSpriteFrameName("globalImageUI4_dead.png")
+    icon:addChild(dieIcon)
+
+    dieIcon:setScale(0.8)
+    icon.die = dieIcon
+    proBg = cc.Sprite:createWithSpriteFrameName("jumpHeadBg_"..camp..".png")
+
+    proBg:setPositionY(-18)
+    headNode:addChild(proBg)
+
+    local classIcon = cc.Sprite:createWithSpriteFrameName(class)
+
+    classIcon:setPosition(-22, 22)
+
+    classIcon:setScale(.6)
+    headNode:addChild(classIcon)
+
+    sp = cc.Sprite:createWithSpriteFrameName("jumpHP_"..camp..".png")
+    proHp = cc.ProgressTimer:create(sp)
+    proHp:setType(cc.PROGRESS_TIMER_TYPE_BAR)
+    proHp:setMidpoint(cc.p(0, 0.5))
+    proHp:setBarChangeRate(cc.p(1, 0))   
+
+    proHp:setAnchorPoint(1, 0)
+    if camp == 2 then
+        proHp:setScaleX(-1)
+        proHp:setAnchorPoint(0, 0) 
+    end
+
+    proHp:setPercentage(team.curHP / team.maxHP * 100)
+    proHp:setPosition(70, 28)
+    proBg:addChild(proHp)
+    icon.hp = proHp
+    icon:setPosition(-1000, -1000)
+
+    if team.state == ETeamStateDIE then
+        icon.headNode:setSaturation(-100)
+    else
+        dieIcon:setVisible(false)
+    end
+    return icon
+end
+
+--
+function BattleScene:addBattleJumpIcon(team, camp, index)
+    if BC_reverse then
+        camp = 3 - camp
+    end
+    if self["_jumpIcon" .. camp] then
+        local icon = self:initJumpIcon(team, camp)
+        icon._nIndex = index
+        self["_jumpIcon" .. camp][#self["_jumpIcon" .. camp] + 1] = icon
+    end
+end
+
 -- 跳过界面初始化
 function BattleScene:initSkipLayer()
     local notShowHero2 = false
@@ -1256,7 +1424,8 @@ function BattleScene:initSkipLayer()
         mode == BattleUtils.BATTLE_TYPE_GBOSS_3 or
         mode == BattleUtils.BATTLE_TYPE_GBOSS_2 or
         mode == BattleUtils.BATTLE_TYPE_AiRenMuWu or
-        mode == BattleUtils.BATTLE_TYPE_Zombie then
+        mode == BattleUtils.BATTLE_TYPE_Zombie or
+        mode == BattleUtils.BATTLE_TYPE_WORDBOSS then
         notShowHero2 = true
     end
 
@@ -1362,144 +1531,46 @@ function BattleScene:initSkipLayer()
     local dieIcon, proBg, proHp, sp
     local team, info, star, stage, teamid, npcD, x, y
     local count1 = 0
-    for i = 1, #logic._teams[mainCamp] do
-        team = logic._teams[mainCamp][i]
-        if team.original then
-            count1 = count1 + 1
-        end
-    end
+--    for i = 1, #logic._teams[mainCamp] do
+--        team = logic._teams[mainCamp][i]
+--        if team.original then
+--            count1 = count1 + 1
+--        end
+--    end
     -- 左方兵团
     self._jumpIcon1 = {}
     self._jumpIcon2 = {}
-    for i = 1, 8 do
-        if i > count1 then break end
+    for i = 1, #logic._teams[mainCamp] do
+--        if i > 8 then break end
         team = logic._teams[mainCamp][i]
-        local pic = TeamUtils.getNpcTableValueByTeam(team.D, team.jx and "jxart1" or "art1")
 
-        local class = TeamUtils.getNpcTableValueByTeam(team.D, "classlabel") .. ".png"
-
-        local icon = cc.Node:create()
-        icon:setScale(.8)
-        layer:addChild(icon)
-
-        local headNode = cc.Node:create()
-        icon:addChild(headNode)
-        icon.headNode = headNode
-
-        local head = cc.Sprite:createWithSpriteFrameName(pic .. ".jpg")
-
-        head:setScale(0.68)
-
-        headNode:addChild(head)
-
-        dieIcon = cc.Sprite:createWithSpriteFrameName("globalImageUI4_dead.png")
-        icon:addChild(dieIcon)
-
-        dieIcon:setScale(0.8)
-        icon.die = dieIcon
-
-        proBg = cc.Sprite:createWithSpriteFrameName("jumpHeadBg_"..mainCamp..".png")
-        proBg:setPositionY(-18)
-        headNode:addChild(proBg)
-
-        local classIcon = cc.Sprite:createWithSpriteFrameName(class)
-
-        classIcon:setPosition(-22, 22)
-
-        classIcon:setScale(.6)
-        headNode:addChild(classIcon)
-
-        sp = cc.Sprite:createWithSpriteFrameName("jumpHP_"..mainCamp..".png")
-        proHp = cc.ProgressTimer:create(sp)
-        proHp:setType(cc.PROGRESS_TIMER_TYPE_BAR)
-        proHp:setMidpoint(cc.p(0, 0.5))
-        proHp:setBarChangeRate(cc.p(1, 0))   
-
-        proHp:setAnchorPoint(1, 0)
-
-        proHp:setPercentage(team.curHP / team.maxHP * 100)
-        proHp:setPosition(70, 28)
-        proBg:addChild(proHp)
-        icon.hp = proHp
-        icon:setPosition(-1000, -1000)
-
-        if team.state == ETeamStateDIE then
-            icon.headNode:setSaturation(-100)
-        else
-            dieIcon:setVisible(false)
+        if team.original or team.assistance then
+            local icon = self:initJumpIcon(team, mainCamp)
+            self._jumpIcon1[#self._jumpIcon1 + 1] = icon
+            icon._nIndex = i
         end
-        self._jumpIcon1[i] = icon
     end
 
     local count2 = 0
-    for i = 1, #logic._teams[subCamp] do
-        team = logic._teams[subCamp][i]
-        if team.original then
-            count2 = count2 + 1
-        end
-    end
+--    for i = 1, #logic._teams[subCamp] do
+--        team = logic._teams[subCamp][i]
+--        if team.original then
+--            count2 = count2 + 1
+--        end
+--    end
     -- 右方兵团
-    for i = 1, 8 do
-        if i > count2 then break end
+    for i = 1, #logic._teams[subCamp] do
+--        if i > 8 then break end
         team = logic._teams[subCamp][i]
 
-        local pic = TeamUtils.getNpcTableValueByTeam(team.D, team.jx and "jxart1" or "art1")
-
-        local class = TeamUtils.getNpcTableValueByTeam(team.D, "classlabel") .. ".png"
-
-        local icon = cc.Node:create()
-        icon:setScale(.8)
-        layer:addChild(icon)
-
-        local headNode = cc.Node:create()
-        icon:addChild(headNode)
-        icon.headNode = headNode
-
-        local head = cc.Sprite:createWithSpriteFrameName(pic .. ".jpg")
-
-        head:setScale(-0.68, 0.68)
-
-        headNode:addChild(head)
-
-        dieIcon = cc.Sprite:createWithSpriteFrameName("globalImageUI4_dead.png")
-        icon:addChild(dieIcon)
-        
-        dieIcon:setScale(0.8)
-        icon.die = dieIcon
-
-        proBg = cc.Sprite:createWithSpriteFrameName("jumpHeadBg_"..subCamp..".png")
-        proBg:setPositionY(-18)
-        headNode:addChild(proBg)
-
-        local classIcon = cc.Sprite:createWithSpriteFrameName(class)
-
-        classIcon:setPosition(22, 22)
-
-        classIcon:setScale(.6)
-        headNode:addChild(classIcon)
-
-        sp = cc.Sprite:createWithSpriteFrameName("jumpHP_"..subCamp..".png")
-        proHp = cc.ProgressTimer:create(sp)
-        proHp:setType(cc.PROGRESS_TIMER_TYPE_BAR)
-        proHp:setMidpoint(cc.p(0, 0.5))
-        proHp:setBarChangeRate(cc.p(1, 0))  
-
-        proHp:setScaleX(-1)
-        proHp:setAnchorPoint(0, 0) 
-
-        proHp:setPercentage(team.curHP / team.maxHP * 100)
-        proHp:setPosition(70, 28)
-        proBg:addChild(proHp)
-        icon.hp = proHp
-        icon:setPosition(-1000, -1000)
-
-        if team.state == ETeamStateDIE then
-            icon.headNode:setSaturation(-100)
-        else
-            dieIcon:setVisible(false)
+        if team.original or team.assistance then
+            local icon = self:initJumpIcon(team, subCamp)
+            self._jumpIcon2[#self._jumpIcon2 + 1] = icon
+            icon._nIndex = i
         end
-        self._jumpIcon2[i] = icon
     end
+    count1 = #self._jumpIcon1
+    count2 = #self._jumpIcon2
     self._jumpDieText = math.random(count1 + count2)
     if self._jumpDieText > count1 then
         self._jumpDieTextCamp = 2
@@ -1537,47 +1608,55 @@ function BattleScene:updateSkipLayer()
     local BC_reverse = BC.reverse
     for i = 1, #self._jumpIcon1 do
         icon = self._jumpIcon1[i]
-        team = logic._teams[mainCamp][i]
-        if team.state == ETeamStateDIE then
-            icon.headNode:setSaturation(-100)
-            icon.die:setVisible(true)
-            if self._jumpDieTextCamp == mainCamp then
-                if self._jumpDieText == i then
-                    self._jumpDieTextCamp = 0
-                    local str = lang("JUMPDES_02_0"..math.random(3))
-                    str = string.gsub(str, "{$deadname}", lang(team.D["name"]))
-                    self._skipText:setString(str)
+        if logic._teams[mainCamp] and icon then
+            team = logic._teams[mainCamp][icon._nIndex]
+            if team then
+                if team.state == ETeamStateDIE then
+                    icon.headNode:setSaturation(-100)
+                    icon.die:setVisible(true)
+                    if self._jumpDieTextCamp == mainCamp then
+                        if self._jumpDieText == i then
+                            self._jumpDieTextCamp = 0
+                            local str = lang("JUMPDES_02_0"..math.random(3))
+                            str = string.gsub(str, "{$deadname}", lang(team.D["name"]))
+                            self._skipText:setString(str)
+                        end
+                    end
+                else
+                    icon.headNode:setSaturation(0)
+                    icon.die:setVisible(false)
                 end
+                icon.hp:setPercentage(team.curHP / team.maxHP * 100)
+                x, y = BC_reverse and MAX_SCENE_WIDTH_PIXEL - team.x or team.x, team.y
+                icon:setPositionAndLocalZorder((x - bx) * scalex, (y + by) * scaley, 8000-y)
             end
-        else
-            icon.headNode:setSaturation(0)
-            icon.die:setVisible(false)
         end
-        icon.hp:setPercentage(team.curHP / team.maxHP * 100)
-        x, y = BC_reverse and MAX_SCENE_WIDTH_PIXEL - team.x or team.x, team.y
-        icon:setPositionAndLocalZorder((x - bx) * scalex, (y + by) * scaley, 8000-y)
     end
     for i = 1, #self._jumpIcon2 do
         icon = self._jumpIcon2[i]
-        team = logic._teams[subCamp][i]
-        if team.state == ETeamStateDIE then
-            icon.headNode:setSaturation(-100)
-            icon.die:setVisible(true)
-            if self._jumpDieTextCamp == subCamp then
-                if self._jumpDieText - #self._jumpIcon1 == i then
-                    self._jumpDieTextCamp = 0
-                    local str = lang("JUMPDES_02_0"..math.random(3))
-                    str = string.gsub(str, "{$deadname}", lang(team.D["name"]))
-                    self._skipText:setString(str)
+        if logic._teams[subCamp] and icon then
+            team = logic._teams[subCamp][icon._nIndex]
+            if team then
+                if team.state == ETeamStateDIE then
+                    icon.headNode:setSaturation(-100)
+                    icon.die:setVisible(true)
+                    if self._jumpDieTextCamp == subCamp then
+                        if self._jumpDieText - #self._jumpIcon1 == i then
+                            self._jumpDieTextCamp = 0
+                            local str = lang("JUMPDES_02_0"..math.random(3))
+                            str = string.gsub(str, "{$deadname}", lang(team.D["name"]))
+                            self._skipText:setString(str)
+                        end
+                    end
+                else
+                    icon.headNode:setSaturation(0)
+                    icon.die:setVisible(false)
                 end
+                icon.hp:setPercentage(team.curHP / team.maxHP * 100)
+                x, y = BC_reverse and MAX_SCENE_WIDTH_PIXEL - team.x or team.x, team.y
+                icon:setPositionAndLocalZorder((x - bx) * scalex, (y + by) * scaley, 8000-y)
             end
-        else
-            icon.headNode:setSaturation(0)
-            icon.die:setVisible(false)
         end
-        icon.hp:setPercentage(team.curHP / team.maxHP * 100)
-        x, y = BC_reverse and MAX_SCENE_WIDTH_PIXEL - team.x or team.x, team.y
-        icon:setPositionAndLocalZorder((x - bx) * scalex, (y + by) * scaley, 8000-y)
     end
     if self._isWin ~= nil then
         local win
@@ -1641,9 +1720,14 @@ function BattleScene:countHP()
         local hp1, maxhp1, hp2, maxhp2 = logic:getCurHP()
         local shp1, maxshp1, shp2, maxshp2 = logic:getSummonHP()
         local str1 = hp1 + shp1 .. "/" .. maxhp1 + maxshp1 .. "\n" .. string.format("%.3f", (hp1 + shp1) / (maxhp1 + maxshp1) * 100) .. "%"
-        self._debugHPLabel1:setString(str1)
         local str2 = hp2 + shp2 .. "/" .. maxhp2 + maxshp2 .. "\n" .. string.format("%.3f", (hp2 + shp2) / (maxhp2 + maxshp2) * 100) .. "%"
-        self._debugHPLabel2:setString(str2)
+        if BC.reverse then
+            self._debugHPLabel1:setString(str2)
+            self._debugHPLabel2:setString(str1)
+        else
+            self._debugHPLabel1:setString(str1)
+            self._debugHPLabel2:setString(str2)
+        end
     end
     
     if BC.reverse then
@@ -1798,6 +1882,22 @@ function BattleScene:onBattleEnd(leftData, rightData, dieList, dieCount, isTimeU
     res.totalRealDamage2 = ex.totalRealDamage2
     res.dieCount1 = ex.dieCount1
     res.dieCount2 = ex.dieCount2
+    res.heroDamage1 = 0
+    res.heroDamage2 = 0
+    if teamInfo and teamInfo.leftTeam and teamInfo.leftTeam.hero then
+        for i,v in pairs(teamInfo.leftTeam.hero.realDamage or {}) do
+            if v then
+                res.heroDamage1 = res.heroDamage1 + abs(v)
+            end
+        end
+    end
+    if teamInfo and teamInfo.rightTeam and teamInfo.rightTeam.hero then 
+        for i,v in pairs(teamInfo.rightTeam.hero.realDamage or {}) do
+            if v then
+                res.heroDamage2 = res.heroDamage2 + abs(v)
+            end
+        end
+    end
     res.serverInfoEx.teamInfo = teamInfo
     res.serverInfoEx = cjson.encode(res.serverInfoEx)
     if self._war_render then
@@ -1808,6 +1908,43 @@ function BattleScene:onBattleEnd(leftData, rightData, dieList, dieCount, isTimeU
 
 
     self:onBattleEndEx(res)
+
+    if BattleUtils.BATTLE_PROC_RECORD_DATA and BattleUtils._forcSaveAttackData then
+        --复盘战斗数据的保存
+        local table = {}
+        table.teamInfo = teamInfo
+        table.exInfo = res.exInfo
+        table.r1 = self._battleInfo.r1
+        table.r2 = self._battleInfo.r2
+        table.hero1 = hero1
+        table.dieList = dieList
+        table.ex = ex
+        table.isTimeUp = isTimeUp
+        table.attackType = self._battleInfo.mode
+        table._isWin = self._isWin
+        table.battleTime = time
+        table._playCastTime = logic._playCastTime
+        table.atkRid = "0"
+        table.defRid = "0"
+        if self._battleInfo and self._battleInfo.playerInfo then
+            table.atkRid = self._battleInfo.playerInfo.rid or "0"
+        end
+        if self._battleInfo and self._battleInfo.enemyInfo then
+            table.defRid = self._battleInfo.enemyInfo.rid or "0"
+        end
+
+        if table.attackType == BattleUtils.BATTLE_TYPE_WORDBOSS then 
+            local def = {}
+            def.bossId = self._battleInfo.bossId
+            def.bossLevel = self._battleInfo.bossLevel
+            def.heros = self._battleInfo.enemyInfo.hero.id
+            table.def = def
+            table.curTotalHurt = res.curTotalHurt
+        end
+
+        BattleUtils._forcSaveAttackData(table)
+    end
+
     self._callback("onBattleEnd", res)
     -- print(logic:getCurHP())
     -- print(logic:getSummonHP())
@@ -1825,6 +1962,7 @@ function BattleScene:getTeamInfo(leftData, rightData)
             {
                 damage = v.damage,
                 heal = v.heal,
+                realDamage = v.realDamage
             }
         else
             if v.original and v.DType == 1 then
@@ -2188,7 +2326,7 @@ function BattleScene:onTouchesEnded(touches)
         end
     end
 
-    if BC.CAN_SELECT_TEAM and self._toucheRole and BC.BATTLE_TICK - self._toucheDownTick <= selectRoleTick then
+    if (BC.CAN_SELECT_TEAM or BattleUtils.SHOW_SKILL_DEBUG[BattleUtils.CUR_BATTLE_TYPE])and self._toucheRole and BC.BATTLE_TICK - self._toucheDownTick <= selectRoleTick then
         logic:selectTeam(self:getSceneLayerPt(touches[1]))
         return
     end
@@ -2252,7 +2390,8 @@ function BattleScene:adjustPos(x, y)
         local BATTLE_TYPE = BC.BATTLE_TYPE
         if BATTLE_TYPE == BattleUtils.BATTLE_TYPE_BOSS_DuLong
             or BATTLE_TYPE == BattleUtils.BATTLE_TYPE_BOSS_XnLong
-            or BATTLE_TYPE == BattleUtils.BATTLE_TYPE_BOSS_SjLong then 
+            or BATTLE_TYPE == BattleUtils.BATTLE_TYPE_BOSS_SjLong
+            or BATTLE_TYPE == BattleUtils.BATTLE_TYPE_WORDBOSS then 
             width = 2000
         elseif BATTLE_TYPE == BattleUtils.BATTLE_TYPE_GBOSS_1
             or BATTLE_TYPE == BattleUtils.BATTLE_TYPE_GBOSS_2
@@ -2799,6 +2938,171 @@ function BattleScene:initHeadUI(list)
         end
     end
 end
+
+--应援助功能需求，添加了援助兵团的死亡头像显示
+function BattleScene:addHeadUIIcon(team, camp)
+    local topLayer = self._topLayer
+    local posk
+    if BC.reverse then
+        posk = {1, -1}
+    else
+        posk = {-1, 1}
+    end
+    if self._teamIdList then
+        local headBg = cc.Sprite:createWithSpriteFrameName("headbg".. camp .."_battle.png")
+        local head = cc.Sprite:createWithSpriteFrameName(IconUtils.iconPath .. team.headPic..".jpg")
+        head:setScale(0.4)
+        head:setPosition(19, 19)
+        headBg:addChild(head, -1)
+        headBg:setScale(1.2)
+        headBg:setPosition(480 + 70 * posk[camp] + ((#self._teamIdList - 1) * 46) * posk[camp], -12)
+        headBg.ID = team.ID
+        self._teamIdList[team.ID] = headBg
+        self._teamIdList[team.ID]:setVisible(false)
+        topLayer:addChild(headBg)
+    end
+end
+
+function BattleScene:initBackupInfo(  )
+    local hteams, hformations, backupData = logic:getHelpTeamData()
+    self._hTeamNode = {}
+    for camp = 1, 2 do
+        local data = hteams[camp]
+        if data and data.havehteams then
+            local iconNode = cc.Node:create()
+            iconNode:setScale(0.7)
+            iconNode:setContentSize(82, 82)
+            iconNode:setAnchorPoint(0, 0)
+            if camp == 1 then
+                iconNode:setPosition(cc.p(-iconNode:getContentSize().width * iconNode:getScale(), MAX_SCREEN_HEIGHT / 3 * 2 + 15))
+            else
+                iconNode:setPosition(cc.p(MAX_SCREEN_WIDTH, MAX_SCREEN_HEIGHT / 3 * 2 + 15))
+            end
+            self._uiLayer:addChild(iconNode)
+
+            local icon = ccui.ImageView:create()
+            icon:loadTexture(hformations[camp].specialSkillIcon .. ".png", 1)
+            icon:setPosition(iconNode:getContentSize().width / 2, iconNode:getContentSize().height / 2)
+            iconNode:addChild(icon, 2)
+
+            local board = ccui.ImageView:create()
+            board:loadTexture('hero_skill_bg2_forma.png', 1)
+            board:setPosition(icon:getPosition())
+            iconNode:addChild(board, 3)
+
+            local infoNode = cc.Node:create()
+            infoNode:setName("infoNode")
+            infoNode:setPosition(0, 10)
+            infoNode:setVisible(false)
+            infoNode:setScale(1.3)
+            iconNode:addChild(infoNode, 3)
+
+            local infoBG = cc.Scale9Sprite:createWithSpriteFrameName("globalImageUI_fuwennumbg.png")
+            infoBG:setContentSize(320, 100)
+            infoBG:setAnchorPoint(0, 0.5)
+            local posX = camp == 1 and iconNode:getContentSize().width or -infoBG:getContentSize().width - 15
+            infoBG:setPosition(posX, 0)
+            infoBG:setName("infoBG")
+            infoNode:addChild(infoBG)
+
+            local infoName = ccui.Text:create()
+            infoName:setFontSize(22)
+            infoName:setFontName(UIUtils.ttfName)
+            infoName:setColor(cc.c3b(236, 222, 201))
+            infoName:setString(lang(hformations[camp].name) .. " ")
+            infoName:setAnchorPoint(0, 0)
+            infoName:setPosition(10, 58)
+            infoBG:addChild(infoName)
+
+            local infoLvl = ccui.Text:create()
+            infoLvl:setFontSize(22)
+            infoLvl:setFontName(UIUtils.ttfName)
+            infoLvl:setColor(cc.c3b(236, 222, 201))
+            infoLvl:setString(lang("Lv." .. (backupData[camp].lv or 1)))
+            infoLvl:setAnchorPoint(0, 0)
+            infoLvl:setPosition(infoName:getPositionX() + infoName:getContentSize().width + 3, 58)
+            infoBG:addChild(infoLvl)
+            local inParam = {lvlStr = "Lv." .. (backupData[camp].lv or 1), lvl = (backupData[camp].lv or 1), plvl = backupData[camp].plvl}
+            UIUtils:adjustLevelShow(infoLvl, inParam, 1)
+            infoLvl:setString(infoLvl:getString() .. "(前置冷却".. (hformations[camp].skillstart or 0) .. "秒)")
+            local infoLab = ccui.Text:create()
+            infoLab:setFontSize(20)
+            infoLab:setFontName(UIUtils.ttfName)
+            infoLab:setColor(cc.c3b(236, 222, 201))
+            local tips = ""
+            local dieCount = data.tcount - data.diedCount
+            if dieCount >= 1 then
+                tips = "再有" .. dieCount .. "个兵团死亡后抵达战场"
+            else
+                tips = "兵团血量低于50%后抵达战场"
+            end
+            infoLab:setString(tips)
+            infoLab:setAnchorPoint(0, 0)
+            infoLab:setPosition(10, 18)
+            infoLab:setName("infoLab")
+            infoBG:addChild(infoLab)
+
+            registerTouchEvent(board, function (sender, x, y)
+                local infoNode = sender:getParent():getChildByFullName("infoNode")
+                infoNode:setVisible(not infoNode:isVisible())
+            end,  
+            function ()
+            end, 
+            function ()
+            end, 
+            function ()
+            end)
+
+            iconNode._inMaxTime = hformations[camp].skillstart or 0
+
+            self._hTeamNode[camp] = iconNode
+        end
+    end
+end
+
+function BattleScene:updateBackupInfoNode( camp, bType, curV, maxV )
+    local node = self._hTeamNode[camp]
+    if node == nil or not node:isVisible() then
+        return
+    end
+    local percent = curV / maxV
+    if percent < 0.25 then
+        if node:getChildByFullName("mc1") then
+            node:removeChildByName("mc1")
+        end
+        if node:getChildByFullName("mc2") then
+            node:removeChildByName("mc2")
+        end
+    elseif percent < 0.5 then
+        if node:getChildByFullName("mc2") then
+            node:removeChildByName("mc2")
+        end
+        if not node:getChildByFullName("mc1") then
+            local mc1 = mcMgr:createViewMC("houyuanhuoyan1_houyuantubiaotexiao", true)
+            mc1:setPosition(node:getContentSize().width / 2, node:getContentSize().height / 2)
+            mc1:setName("mc1")
+            node:addChild(mc1, 1)
+        end
+    elseif percent < 1 then
+        if node:getChildByFullName("mc1") then
+            node:removeChildByName("mc1")
+        end
+        if not node:getChildByFullName("mc2") then
+            local mc2 = mcMgr:createViewMC("houyuanhuoyan2_houyuantubiaotexiao", true)
+            mc2:setPosition(node:getContentSize().width / 2, node:getContentSize().height / 2)
+            mc2:setName("mc2")
+            node:addChild(mc2, 1)
+        end
+    elseif (node._inMaxTime  + 0.00000001) <= (logic.battleTime) then
+        node:setVisible(false)
+    end
+    if bType == 1 then
+        local infoLab = node:getChildByFullName("infoNode"):getChildByFullName("infoBG"):getChildByFullName("infoLab")
+        infoLab:setString("再有" .. (math.abs(maxV - curV)) .. "个兵团死亡后抵达战场")
+    end
+
+end
+
 local insert = table.insert
 local removebyvalue = table.removebyvalue
 function BattleScene:onTeamDieOrRevive(id, camp, die, height, lastone)
@@ -4064,7 +4368,8 @@ function BattleScene:addSkillBookPassiveIcon(index, skillId, camp, done, hide)
     local skillTableData = tab.heroMastery[skillId]
     if not skillTableData then return end
     local bg = cc.Sprite:createWithSpriteFrameName("hero_skill_bg4_forma.png")
-    if 1 == camp then
+    local realCamp = BC.reverse and 3 - camp or camp
+    if 1 == realCamp then
         bg:setPosition(85 + (index - 1) * 60, MAX_SCREEN_HEIGHT - 40)
     else
         bg:setPosition(MAX_SCREEN_WIDTH - 85 - (index - 1) * 60, MAX_SCREEN_HEIGHT - 40)
@@ -4113,6 +4418,146 @@ function BattleScene:addSkillBookPassiveIcon(index, skillId, camp, done, hide)
     end
 end
 
+function BattleScene:addSpecialSkillIcon(camp, index, skillData, time)
+    local skillTableData = tab.playerSkillEffect[skillData.id]
+    if not skillTableData then return end
+    local bg = cc.Sprite:createWithSpriteFrameName("hero_skill_bg4_forma.png")
+    if 1 == camp then
+        bg:setPosition(145 + (index - 1) * 60, MAX_SCREEN_HEIGHT - 40)
+    else
+        bg:setPosition(MAX_SCREEN_WIDTH - 145 - (index - 1) * 60, MAX_SCREEN_HEIGHT - 40)
+    end
+    bg:setScale(0.55)
+    bg:setVisible(not (not not hide))
+    self._uiLayer:addChild(bg, 1000)
+
+    local icon = ccui.ImageView:create()
+    icon:loadTexture(skillTableData.art .. ".png", 1)
+    icon:setScale(0.9)
+    icon:setPosition(40, 40)
+
+    local mask = cc.Sprite:createWithSpriteFrameName("skillCdMask_battle.png")
+    local cdmask = cc.ProgressTimer:create(mask)
+    cdmask:setType(cc.PROGRESS_TIMER_TYPE_RADIAL)
+    cdmask:setReverseProgress(true)
+    cdmask:setPosition(40, 40)
+    bg:addChild(cdmask, -1)
+
+    registerTouchEvent(icon, function (_, x, y)
+        --[[
+        -- to do
+        local heroData = logic:getHero(camp)
+        if not heroData then return end
+        local spTalent = nil
+        if 1 == camp then
+            spTalent = self._battleInfo.playerInfo.spTalent
+        else
+            spTalent = self._battleInfo.enemyInfo.spTalent
+        end
+        local sklevel = heroData.skillBookPassive[1][2]
+        local skillLevel = heroData.skillBookPassive[1][3]
+        ViewManager:getInstance():showHintView("global.GlobalTipView",{
+            tipType = 2, node = icon, id = skillId,
+            skillLevel = skillLevel, sklevel = sklevel, posCenter = false, spTalent = spTalent, notAutoClose = true})
+        ]]
+    end, 
+    function ()
+    end, 
+    function ()
+    end, 
+    function ()
+    end)
+    bg:addChild(icon, -2) 
+
+    self._specialIcon[camp][#self._specialIcon[camp] + 1] = 
+    {
+        overTick = time * 0.001,
+        icon = bg,
+        event = icon,
+        cdmask = cdmask,
+    }
+    self._specialIconDirty[camp] = true
+end
+
+function BattleScene:updateSpecialSkillIcon()
+    if BC.reverse then
+        if self._specialIconDirty[1] then
+            self._specialIconDirty[1] = false
+            local data
+            for i = 1, #self._specialIcon[1] do
+                data = self._specialIcon[1][i]
+                if data then
+                    data.icon:setPosition(MAX_SCREEN_WIDTH - 35 - (i - 1) * 60, MAX_SCREEN_HEIGHT - 40)
+                end
+            end
+        end
+        if self._specialIconDirty[2] then
+            self._specialIconDirty[2] = false
+            local data
+            for i = 1, #self._specialIcon[2] do
+                data = self._specialIcon[2][i]
+                if data then
+                    data.icon:setPosition(35 + (i - 1) * 60, MAX_SCREEN_HEIGHT - 40)
+                end
+            end
+        end
+    else
+        if self._specialIconDirty[1] then
+            self._specialIconDirty[1] = false
+            local data
+            for i = 1, #self._specialIcon[1] do
+                data = self._specialIcon[1][i]
+                if data then
+                    data.icon:setPosition(35 + (i - 1) * 60, MAX_SCREEN_HEIGHT - 40)
+                end
+            end
+        end
+        if self._specialIconDirty[2] then
+            self._specialIconDirty[2] = false
+            local data
+            for i = 1, #self._specialIcon[2] do
+                data = self._specialIcon[2][i]
+                if data then
+                    data.icon:setPosition(MAX_SCREEN_WIDTH - 35 - (i - 1) * 60, MAX_SCREEN_HEIGHT - 40)
+                end
+            end
+        end
+    end
+    if logic.battleTime then
+        for i = 1, 2 do
+            for k, data in pairs(self._specialIcon[i]) do
+                data.cdmask:setPercentage(logic.battleTime / data.overTick / 100)
+                if data.overTick < logic.battleTime then
+                    if pressIcon then
+                        data.event:eventUpCallback()
+                        pressIcon = false
+                    end
+                    data.icon:removeFromParent()
+                    self._specialIcon[i][k] = nil
+                    self._specialIconDirty[i] = true
+                end
+            end
+        end
+    end
+end
+
+function BattleScene:clearSpecialSkillIcon()
+    if self._specialIcon == nil then return end
+    -- 宝物技能图标倒计时
+    for i = 1, #self._specialIcon[1] do
+        if self._specialIcon[1][i] then
+            self._specialIcon[1][i].icon:removeFromParent()
+        end
+    end
+    for i = 1, #self._specialIcon[2] do
+        if self._specialIcon[2][i] then
+            self._specialIcon[2][i].icon:removeFromParent()
+        end
+    end
+    self._specialIcon = {{}, {}}
+    self._specialIconDirty = {false, false}
+end
+
 -- 增加宝物技能倒计时图标
 -- time为持续时间
 local pressIcon = false
@@ -4156,13 +4601,21 @@ function BattleScene:addTreasureSkillIcon(treasureid, quality, skillD, level, ca
     function ()
     end)
     bg:addChild(icon, -2) 
-
+    local text = nil
+    if treasureid == 41 and logic.firstDie[camp] then
+        --天使联盟的消失是根据，是否将复活兵团效果使用才消失的
+        text = cc.Label:createWithTTF("1", UIUtils.ttfName, 30)
+        text:setPosition(cc.p(bg:getContentSize().width - 15, 15))
+        bg:addChild(text, -2)
+    end
     self._treasureIcon[camp][#self._treasureIcon[camp] + 1] = 
     {
         overTick = time * 0.001,
         icon = bg,
         event = icon,
         cdmask = cdmask,
+        treasureid = treasureid,
+        text = text,
     }
     self._treasureIconDirty[camp] = true
 end
@@ -4214,15 +4667,29 @@ function BattleScene:updateTreasureSkillIcon()
     if logic.battleTime then
         for i = 1, 2 do
             for k, data in pairs(self._treasureIcon[i]) do
-                data.cdmask:setScaleY(logic.battleTime / data.overTick)
-                if data.overTick < logic.battleTime then
-                    if pressIcon then
-                        data.event:eventUpCallback()
-                        pressIcon = false
+                local bIsCondition = false
+                
+                if data.treasureid == 41 then
+                    bIsCondition = true
+                    if not logic.firstDie[i] then
+                        if data.text then
+                            data.text:setString("0")
+                        end
+                        bIsCondition = false
                     end
-                    data.icon:removeFromParent()
-                    self._treasureIcon[i][k] = nil
-                    self._treasureIconDirty[i] = true
+                end
+                if data.overTick < logic.battleTime then
+                    if not bIsCondition then
+                        if pressIcon then
+                            data.event:eventUpCallback()
+                            pressIcon = false
+                        end
+                        data.icon:removeFromParent()
+                        self._treasureIcon[i][k] = nil
+                        self._treasureIconDirty[i] = true
+                    end
+                else
+                    data.cdmask:setScaleY(logic.battleTime / data.overTick)
                 end
             end
         end
@@ -4386,6 +4853,61 @@ function BattleScene:playSurpriseMC(index)
     label:runAction(cc.ScaleTo:create(0.15, 1.0))
 end
 
+function BattleScene:initEnergyIcon()
+    self._energyIconNode = {{}, {}}
+    for k = 1, 2 do
+        for i = 1, 3 do
+            local posX = MAX_SCREEN_WIDTH / 2
+            local nIsRight = -1
+            if k == 2 then
+                nIsRight = 1
+            end
+            local node = cc.Node:create()
+            self._uiLayer:addChild(node)
+            node:setPosition(posX + (i * 30 + 50) * nIsRight, MAX_SCREEN_HEIGHT / 10 * 9.7)
+
+            local energyIconBg = ccui.ImageView:create()
+            node:addChild(energyIconBg)
+--            energyIconBg:addTo(node):move(0, 0)
+            energyIconBg:loadTexture("energyIcon_bg_battle.png", ccui.TextureResType.plistType)
+            node.energyIconBg = energyIconBg
+
+            local energuIcon = ccui.ImageView:create()
+--            energuIcon:addTo(node):move(0, 0)
+            node:addChild(energuIcon)
+            energuIcon:loadTexture("energyIcon_1_battle.png", ccui.TextureResType.plistType)
+            node.energuIcon = energuIcon
+--            node:hide()
+            node:setVisible(false)
+            self._energyIconNode[k][i] = node
+        end
+    end
+end
+
+function BattleScene:setVisibleEnergyIcon(camp, nIndex, nType)
+    if self._energyIconNode and self._energyIconNode[camp] and self._energyIconNode[camp][nIndex] and nType then
+        local node = self._energyIconNode[camp][nIndex]
+        node:stopAllActions()
+        node:setVisible(true)
+        if node.energuIcon then
+            node.energuIcon:loadTexture("energyIcon_" .. nType .. "_battle.png", ccui.TextureResType.plistType)
+        end
+    end
+end
+
+function BattleScene:allVisibleEnergyIcon(camp)
+    if self._energyIconNode and self._energyIconNode[camp] then
+        for key, var in ipairs(self._energyIconNode[camp]) do
+            if var then
+                var:runAction(cc.Sequence:create(cc.DelayTime:create(1.5), cc.CallFunc:create(function ()
+                     var:setVisible(false)
+                end)))
+            end
+        end
+    end
+end
+
+
 function BattleScene:onHUDTypeChange()
     objLayer:onHUDTypeChange()
 end
@@ -4399,6 +4921,12 @@ end
 function BattleScene:checkTime()
     if logic then
         return logic:checkTime()
+    end
+end
+
+function BattleScene:setMapSceneRes(upMapId, lowMapId, bisCreate, bIsAnim)
+    if self._mapLayer then
+        self._mapLayer:setMapSceneRes(upMapId, lowMapId, bisCreate, objLayer, bIsAnim)
     end
 end
 

@@ -44,6 +44,8 @@ UIUtils.bmfName_hduel_win = "asset/fnt/hDuel_win.fnt"
 UIUtils.bmfName_activity = "asset/fnt/font_activity_count_down.fnt"
 
 UIUtils.bmfName_Lottery = "asset/fnt/font_Lottery.fnt"
+UIUtils.bmfName_backFlow = "asset/fnt/backFlowFont.fnt"
+
 
 UIUtils.autoCloseTip = true -- 手离开屏幕前是否自动关闭tip by guojun
 
@@ -1563,6 +1565,7 @@ function UIUtils:showFloatItems( gifts,param )
     local delayInterval = 0.3
     local avatarGifts = {}
     local skinGifts = {}
+    local teamSkinGifts = {}
     for i,data in ipairs(gifts) do
         local itemType = data[1] or data.type
         local itemId = data[2] or data.typeId 
@@ -1624,6 +1627,8 @@ function UIUtils:showFloatItems( gifts,param )
             table.insert(avatarGifts,data)
         elseif itemType == "hSkin" then
             table.insert(skinGifts,data)
+        elseif itemType == "tSkin" then
+            table.insert(teamSkinGifts,data)
         else
             createItem(itemId,itemNum,(i-1)*delayInterval,exDes,itemType)
         end
@@ -1638,6 +1643,10 @@ function UIUtils:showFloatItems( gifts,param )
             if #skinGifts > 0 then 
                local skinItemID = skinGifts[1].typeId or skinGifts[1][2]
                DialogUtils.showSkinGetDialog({skinId = skinItemID})
+            end 
+            if #teamSkinGifts > 0 then 
+               local skinItemID = teamSkinGifts[1].typeId or teamSkinGifts[1][2]
+               DialogUtils.showTeamSkinGetDialog({skinId = skinItemID})
             end 
             -- if callbackNow then
             --     if callback then callback() end
@@ -1742,6 +1751,24 @@ function UIUtils:showNotOPenTip( system )
     else
         ViewManager:getInstance():showTip(openLevel .. "级开启")
     end
+end
+
+function UIUtils:getNotOPenTip(inSys)
+    if not inSys then 
+        return 
+    end
+
+    local tips = "暂无开启"
+    if tab.systemOpen[inSys] then
+        local unOpenTip = tab.systemOpen[inSys][3]
+        if not unOpenTip then
+            tips = tab.systemOpen[inSys][1] .. "级开启"
+        else
+            tips = lang(unOpenTip)
+        end
+    end
+
+    return tips
 end
 
 -- 大世界使用气泡
@@ -2106,6 +2133,69 @@ function UIUtils:createHolyDetailBtn( node ,param )
     return btn
 end
 
+function UIUtils:createExclusiveInfoNode( parent, param )
+    if not param then return end
+    local teamData = param.teamData
+    if not teamData or not parent then
+        return
+    end
+    if not teamData.zLv and not teamData.zStar then
+        local excData = tab.exclusive[teamData.teamId] or {}
+        local isOpen = excData.isOpen
+        if isOpen and isOpen == 1 then
+            teamData.zLv = 0
+        else
+            return
+        end
+    end
+    local node = cc.Node:create()
+    if param.pos then
+        node:setPosition(param.pos)
+    else
+        node:setPosition(0, 0)
+    end
+    parent:addChild(node)
+    local icon = ccui.ImageView:create()
+    icon:loadTexture("globalImage_exclusive_icon.png", 1)
+    icon:setScale(0.5)
+    icon:setPosition(0, 0)
+    node:addChild(icon)
+
+    local lvLab = ccui.Text:create()
+    lvLab:setFontSize(18)
+    lvLab:setFontName(UIUtils.ttfName)
+    lvLab:setString(teamData.zLv or 0)
+    lvLab:setAnchorPoint(cc.p(0, 0.5))
+    lvLab:setColor(cc.c4b(255, 255, 255, 255))
+    lvLab:enableOutline(cc.c4b(0, 0, 0, 255), 1)
+    node:addChild(lvLab)
+
+    local h = -icon:getContentSize().height * icon:getScale() / 2 - 10
+    local starNum = (teamData.zStar or 0) - 1
+    if starNum >= 0 then
+        local starImg = ccui.ImageView:create()
+        starImg:loadTexture("globalImageUI6_star4.png", 1)
+        starImg:setPosition(-10, h)
+        starImg:setScale(0.8)
+        node:addChild(starImg)
+
+        if starNum > 0 then
+            starImg:loadTexture("globalImageUI6_star3.png", 1)
+            local starLab = ccui.Text:create()
+            starLab:setFontSize(18)
+            starLab:setFontName(UIUtils.ttfName)
+            starLab:setString(starNum)
+            starLab:setPosition(starImg:getContentSize().width * starImg:getScale() / 2 + 2, starImg:getContentSize().height * starImg:getScale() / 2 + 2)
+            starLab:enableOutline(cc.c4b(0, 0, 0, 255), 1)
+            starImg:addChild(starLab)
+        end
+
+        lvLab:setPosition(0, h)
+    else
+        lvLab:setPosition(-lvLab:getContentSize().width / 2, h)
+    end
+end
+
 function UIUtils:getAttrStrWithAttrName(id, num, notSpace)
 	local attrTab = tab.attClient[id]
 	local attrStr = lang("ATTR_" .. id)
@@ -2129,12 +2219,138 @@ function UIUtils:getAttrValueStr(id, num)
 	return attrStr
 end
 
+--[[
+--! @function adjustLevelShow
+--! @desc 巅峰等级替换
+--！@param
+    lvlLab          原level元件
+    inType          1水平 2垂直
+    inData 
+    {   lvlStr      原level元件setstring()的值(字符串形式)
+        lvl         等级(非当前玩家可省)  
+        plvl        巅峰等级(非当前玩家可省)
+        disX, disY  位置微调 (可省)
+        disScale    缩放比例（可省）
+    }
+--! @return table
+--]]
+function UIUtils:adjustLevelShow(lvlLab, inData, inType)
+    local userData = ModelManager:getInstance():getModel("UserModel"):getData()
+    local maxlevel = tab:Setting("MAX_LV").value
+    local lvlStr = inData.lvlStr or ""
+    local curLvl = inData.lvl or 0
+    local plvl = inData.plvl or 0
+    if not inData.lvl then
+        curLvl = userData.lvl or 0
+        plvl = userData.plvl or 0
+    end
+    
+    if curLvl < maxlevel or plvl < 1 then
+        lvlLab:setString(lvlStr)
+        lvlLab:setVisible(curLvl > 0)
+        if lvlLab._lvlNode then
+            lvlLab._lvlNode:setVisible(false)
+        end
+        return lvlLab
+    end
+
+    --初始化必需数据
+    inData = {
+        disX = inData.disX or 0, 
+        disY = inData.disY or 0,
+        disScale = inData.disScale or 1
+    }
+
+    local tFontSize
+    if lvlLab.getTTFConfig then
+        tFontSize = lvlLab:getTTFConfig().fontSize
+    else
+        tFontSize = lvlLab:getFontSize()
+    end
+    local tAnchor = lvlLab:getAnchorPoint()
+    lvlLab:setString("")
+
+    if not lvlLab._lvlNode then
+        local node = ccui.Layout:create()
+        node:setBackGroundColorOpacity(0)
+        node:setBackGroundColorType(1)
+        node:setBackGroundColor(cc.c3b(100, 100, 0))
+        node:setAnchorPoint(cc.p(0, 0.5))
+        lvlLab:getParent():addChild(node)
+        lvlLab._lvlNode = node
+
+        --img
+        local img = cc.Sprite:createWithSpriteFrameName("gImage_pLevel_icon.png")
+        node:addChild(img)
+        local imgAnim = mcMgr:createViewMC("dianfengdengji_dianfengdengji", true, false)
+        imgAnim:setPosition(img:getContentSize().width / 2, img:getContentSize().height / 2)
+        img:addChild(imgAnim)
+        lvlLab._img = img
+
+        --lvl
+        local lvl = cc.Label:createWithTTF("", UIUtils.ttfName, tFontSize)
+        lvl:setColor(cc.c4b(255, 234, 61, 255))
+        lvl:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
+        node:addChild(lvl)
+        lvlLab._lvl = lvl
+    end
+    lvlLab._lvlNode:setVisible(true)
+    local node, img, lvl = lvlLab._lvlNode, lvlLab._img, lvlLab._lvl
+    lvl:setString(plvl)
+
+    local wid, hei = 0, 10
+    if inType == 1 then   --水平
+        lvl:setAnchorPoint(cc.p(0, 0.5))
+
+        wid = img:getContentSize().width * img:getScale() + 5 + lvl:getContentSize().width
+        hei = math.max(lvl:getContentSize().height, img:getContentSize().height * img:getScale())
+        node:setContentSize(cc.size(wid, hei))
+
+        img:setPosition(img:getContentSize().width * img:getScale() * 0.5 , hei * 0.5)
+        lvl:setPosition(img:getContentSize().width * img:getScale() + 5, hei * 0.5)
+    elseif inType == 2 then  --垂直
+        lvl:setAnchorPoint(cc.p(0.5, 0.5))
+        img:setScale(inData.disScale)
+
+        wid = math.max(lvl:getContentSize().width, img:getContentSize().width * img:getScale())
+        hei = lvl:getContentSize().height + img:getContentSize().height * img:getScale()
+        node:setContentSize(cc.size(wid, hei))
+
+        lvl:setPosition(wid * 0.5, lvl:getContentSize().height * 0.5)
+        img:setPosition(wid * 0.5, lvl:getContentSize().height + img:getContentSize().height * img:getScale() * 0.5)
+    end
+
+    --调位置
+    local posX, poxY = lvlLab:getPositionX(), lvlLab:getPositionY()
+    if tAnchor.x == 0 then          --左对齐
+        if inType == 1 then
+            node:setPosition(posX + inData.disX, poxY + inData.disY)
+        elseif inType == 2 then  
+            node:setPosition(posX + inData.disX, poxY + hei * 0.5  + inData.disY)
+        end
+        
+    elseif tAnchor.x == 1 then      --右对齐
+        if inType == 1 then
+            node:setPosition(posX + -wid + inData.disX, poxY + inData.disY)
+        elseif inType == 2 then  
+            node:setPosition(posX + -wid + inData.disX, poxY + hei * 0.5  + inData.disY)
+        end
+    else
+        if inType == 1 then
+            node:setPosition(posX + -wid * 0.5 + inData.disX, poxY + inData.disY)
+        elseif inType == 2 then  
+            node:setPosition(posX + -wid * 0.5 + inData.disX, poxY + hei * 0.5  + inData.disY)
+        end
+    end
+    
+    return node
+end
+
 function UIUtils.dtor()
     tc = nil
     UIUtils = nil
     fu = nil
 end 
-
 
 --[[
     s  ==> "xxxx{0}xxxx{1}xxxxx{2}"

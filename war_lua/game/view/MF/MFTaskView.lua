@@ -59,6 +59,10 @@ function MFTaskView:onInit()
         -- self._viewMgr:showTip("lalalalalalala")
     end)
 
+    self._autoJiasu = self:getUI("bg.downBg.autoJiasu")
+    self:registerClickEvent(self._autoJiasu, function()
+        self:applyTool(true)
+    end)
 
 	local daoyuIcon = self:getUI("bg.daoyuBg.daoyuIcon")
 	local cityTab = tab:MfOpen(self._selectIndex)
@@ -304,6 +308,7 @@ function MFTaskView:updateTask()
             startTask:setTitleText("领取奖励")
             self._quickAdd:setSaturation(-100)
             self._jiasu:setVisible(false)
+            self._autoJiasu:setVisible(false)
             -- self._timeBg:setVisible(false)
             self:registerClickEvent(startTask, function()
                 local tempFtask = self._mfModel:getFTask()
@@ -318,6 +323,7 @@ function MFTaskView:updateTask()
                         self._baoxiang:setVisible(false)
                         -- self._quickAdd:setVisible(true)
                         self._jiasu:setVisible(false)
+                        self._autoJiasu:setVisible(false)
                         self._xuanrenAnim = false
                         self._heros = {}
                         self._teams = {}
@@ -355,6 +361,7 @@ function MFTaskView:updateTask()
             self._quickAdd:setTouchEnabled(false)
             self._quickAdd:setSaturation(-100)
             self._jiasu:setVisible(true)
+            self._autoJiasu:setVisible(true)
             startTask:setTitleText("取消任务")
             self:registerClickEvent(startTask, function()
                 self._viewMgr:showDialog("global.GlobalSelectDialog", {desc = "你确定要取消任务？现在取消任务无法获得任何奖励", button1 = "", callback1 = function( )
@@ -368,6 +375,7 @@ function MFTaskView:updateTask()
         self._quickAdd:setTouchEnabled(true)
         self._quickAdd:setSaturation(0)
         self._jiasu:setVisible(false)
+        self._autoJiasu:setVisible(false)
 		startTask:setTitleText("开始任务")
         if self._jindutiao then
             self._jindutiao:setVisible(false)
@@ -1060,9 +1068,6 @@ function MFTaskView:startMF()
                 self._callback()
             end
             local tempFtask = self._mfModel:getFTask()
-            if tempFtask ~= 1 then
-                self:close()
-            end
         end
 	end)
 end
@@ -1105,17 +1110,22 @@ function MFTaskView:setHanghaiBg()
 end
 
 -- 道具使用
-function MFTaskView:applyTool()
+function MFTaskView:applyTool(isAll)
     local mfData = self._modelMgr:getModel("MFModel"):getTasksById(self._selectIndex)
     local taskTab = tab:MfTask(mfData.taskId)
 
     local itemModel = self._modelMgr:getModel("ItemModel")
     local _, tempItemCount = itemModel:getItemsById(400001)
     if tempItemCount >= 1 then
+        local num = 1 
         local mfData = self._modelMgr:getModel("MFModel"):getTasksById(self._selectIndex)
         local curServerTime = self._modelMgr:getModel("UserModel"):getCurServerTime()
         if mfData["finishTime"] and (mfData["finishTime"] - curServerTime) > 0 then
-            local param = {goodsId = 400001, goodsNum = 1, extraParams = json.encode({pos = self._selectIndex})}
+            if isAll then
+                num = math.ceil((mfData["finishTime"] - curServerTime)/1800)
+                num = math.min(num,tempItemCount)
+            end
+            local param = {goodsId = 400001, goodsNum = num, extraParams = json.encode({pos = self._selectIndex})}
             self._serverMgr:sendMsg("ItemServer", "useItem", param, true, {}, function(result) 
                 -- dump(result, "result ===", 10)
                 -- 进度条缓慢增长

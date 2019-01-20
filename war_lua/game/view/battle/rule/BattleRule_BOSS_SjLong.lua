@@ -1098,7 +1098,7 @@ function BattleLogic:onHPChangeEx(soldier, change)
                     end
                 end
             elseif self._bossStep == 2 then
-                if self._shuijingHP and change < 0 then
+                if self._shuijingHP and change <= 0 then
                     self._shuijingHP = self._shuijingHP - 1
                     self.subDestValue2 = self._shuijingHP / MAX_SHIELD * 100
                     if self._shuijingHP == 0 then

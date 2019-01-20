@@ -16,6 +16,7 @@ local point = {
 	t_mofaxianling = {120,72},
 	t_meidusha = {120, 72},
 	t_jiutouguai = {120, 60},
+	t_meirenyu = {70, 60}
 }
 
 local ActivityWeekSignView = class("ActivityWeekSignView",BasePopView)

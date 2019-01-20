@@ -96,14 +96,17 @@ function StarChartsModel:getAllBodySkillLevelValue()
     for _ , v in  pairs(self.includeBodyTable) do
         local ability_magic = starChartBodyTab[v]["ability_magic"]
         if ability_magic ~= nil and ability_magic ~= 0 then
-            local magicId = ability_magic[1]
-            local magicNum = ability_magic[2]
-            if skillTable[magicId] == nil then
-                skillTable[magicId] = {}
-                skillTable[magicId].num = magicNum
-            else
-                skillTable[magicId].num = skillTable[magicId].num + magicNum
+            for _ , info in pairs(ability_magic) do
+                local magicId = info[1]
+                local magicNum = info[2]
+                if skillTable[magicId] == nil then
+                    skillTable[magicId] = {}
+                    skillTable[magicId].num = magicNum
+                else
+                    skillTable[magicId].num = skillTable[magicId].num + magicNum
+                end
             end
+
         end
     end
     print("=========skillTable========")
@@ -118,14 +121,16 @@ function StarChartsModel:getActivitedBodySkillLevelValue()
     for id , v in  pairs(self.starInfo["ssIds"]) do
         local ability_magic = starChartBodyTab[tonumber(id)]["ability_magic"]
         if ability_magic ~= nil and ability_magic ~= 0 then
-            local magicId = ability_magic[1]
-            local magicNum = ability_magic[2]
-            if skillTable[magicId] == nil then
-                skillTable[magicId] = {}
-                skillTable[magicId].num = magicNum
-            else
-                skillTable[magicId].num = skillTable[magicId].num + magicNum
-            end            
+            for _ , info in pairs(ability_magic) do
+                local magicId = info[1]
+                local magicNum = info[2]
+                if skillTable[magicId] == nil then
+                    skillTable[magicId] = {}
+                    skillTable[magicId].num = magicNum
+                else
+                    skillTable[magicId].num = skillTable[magicId].num + magicNum
+                end 
+            end
         end
     end
     return skillTable
@@ -152,16 +157,16 @@ function StarChartsModel:getAllBodyQualitValue()
         if (abilitySort and abilitySort == 2) and (abilityShowtype and abilityShowtype == 1) then
             local aid = tonumber(starChartBodyTab[tonumber(v)]["ability_hero_type"])
             if aid then
-                local pro = 1
-                if tab.attClient[aid] == 1 then
-                    pro = 0.01
-                end
+                -- local pro = 1
+                -- if tab.attClient[aid] and tab.attClient[aid].attType == 1 then
+                --     pro = 0.01
+                -- end
                 local value = starChartBodyTab[tonumber(v)]["ability_hero"]
                 if qualityTable[aid] == nil then
                     qualityTable[aid] = {}
-                    qualityTable[aid].value = value*pro
+                    qualityTable[aid].value = value
                 else
-                    qualityTable[aid].value = qualityTable[aid].value + value*pro
+                    qualityTable[aid].value = qualityTable[aid].value + value
                 end
             end
         end
@@ -192,7 +197,7 @@ function StarChartsModel:getActivitedBodyQualitValue()
             local aid = tonumber(starChartBodyTab[tonumber(v)]["ability_hero_type"])
             if aid then
                 local pro = 1
-                if tab.attClient[aid] == 1 then
+                if tab.attClient[aid] and tab.attClient[aid].attType == 1 then
                     pro = 0.01
                 end
                 local value = starChartBodyTab[tonumber(v)]["ability_hero"]

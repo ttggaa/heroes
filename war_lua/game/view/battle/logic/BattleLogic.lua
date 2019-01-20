@@ -27,6 +27,7 @@ local ECamp = BC.ECamp
 local EState = BC.EState
 
 local EEffFlyType = BC.EEffFlyType
+local delayCall = BC.DelayCall.dc
 
 local BattleLogic = class("BattleLogic")
 
@@ -94,6 +95,12 @@ function BattleLogic:initLogic(battleInfo, procBattle)
     self._damageShareValue = {0, 0, 0}
     self._lastCheckDS = 0
 
+
+    -- 伤害转移容器，按照阵营区分
+    self._damageTransfer = {{}, {}, {}}
+    -- 转移的伤害按照兵团的的阵容的id区分
+    self._damageTransferValue = {}
+
     -- 方阵数量 我/敌
     self.teamCount = {0, 0} 
 
@@ -108,6 +115,10 @@ function BattleLogic:initLogic(battleInfo, procBattle)
     self.race2Count = {{}, {}}
     self.classCount = {{[1] = 0, [2] = 0, [3] = 0, [4] = 0, [5] = 0}, {[1] = 0, [2] = 0, [3] = 0, [4] = 0, [5] = 0}}
 
+    -- 召唤物种族的数量
+    self.race1CountSum = {{}, {}}
+    self.race2CountSum = {{}, {}}
+
     -- 建立部队
     -- 方阵寻路用
     -- [阵营][行号]
@@ -115,6 +126,10 @@ function BattleLogic:initLogic(battleInfo, procBattle)
 
     -- 怪兽
     self._teams = {{}, {}}
+    self._hteamsDistance = 104
+    self._hformationData = {{}, {}}
+    self._hteams = {{}, {}}
+    self._backups = {{}, {}}
     self._allTeams = {}
     -- 英雄
     self._heros = {nil, nil}
@@ -212,7 +227,7 @@ function BattleLogic:initLogic(battleInfo, procBattle)
     self._playerDamage = {{}, {}}
     self._playerDamage1 = {{}, {}}
     self._playerHeal = {{}, {}}
-
+    self._playerReleaseSkillCount = {}
     -- 选择方阵
     self._selectTeamList = {}
 
@@ -462,6 +477,8 @@ function BattleLogic:initBattleHeroSkill_Share(callback)
             end
         end
         ScheduleMgr:delayCall(1000, self, function()
+            self:initBattleHeroSkillBookPassiveSkill(1)
+            self:initBattleHeroSkillBookPassiveSkill(2)
             callback()
         end)
     end)
@@ -525,21 +542,52 @@ function BattleLogic:removeFromUpdateList(team)
 end
 
 function BattleLogic:_raceCountAdd(camp, race1, race2)
-    if self.race1Count[camp][race1] == nil then
+    if race1 and self.race1Count[camp][race1] == nil then
         self.race1Count[camp][race1] = 1
-    else
+    elseif race1 then
         self.race1Count[camp][race1] = self.race1Count[camp][race1] + 1
     end
-    if self.race2Count[camp][race2] == nil then
+    if race2 and self.race2Count[camp][race2] == nil then
         self.race2Count[camp][race2] = 1
-    else
+    elseif race2 then
         self.race2Count[camp][race2] = self.race2Count[camp][race2] + 1
     end
 end
 
 function BattleLogic:_raceCountDec(camp, race1, race2)
-    self.race1Count[camp][race1] = self.race1Count[camp][race1] - 1
-    self.race2Count[camp][race2] = self.race2Count[camp][race2] - 1
+    if race1 and self.race1Count[camp][race1] then
+        self.race1Count[camp][race1] = self.race1Count[camp][race1] - 1
+    end
+    if race2 and self.race2Count[camp][race2] then
+        self.race2Count[camp][race2] = self.race2Count[camp][race2] - 1
+    end
+end
+
+-- self.race1CountSum = {{}, {}}
+-- self.race2CountSum = {{}, {}}
+
+function BattleLogic:_raceCountAddSum(camp, race1, race2)
+
+    if race1 and self.race1CountSum[camp][race1] == nil then
+        self.race1CountSum[camp][race1] = 1
+    elseif race1 then
+        self.race1CountSum[camp][race1] = self.race1CountSum[camp][race1] + 1
+    end
+    if race2 and self.race2CountSum[camp][race2] == nil then
+        self.race2CountSum[camp][race2] = 1
+    elseif race2 then
+        self.race2CountSum[camp][race2] = self.race2CountSum[camp][race2] + 1
+    end
+end
+
+function BattleLogic:_raceCountDecSum(camp, race1, race2)
+    if race1 and self.race1CountSum[camp][race1] then
+        self.race1CountSum[camp][race1] = self.race1CountSum[camp][race1] - 1
+    end
+
+    if race2 and self.race2CountSum[camp][race2] then
+        self.race2CountSum[camp][race2] = self.race2CountSum[camp][race2] - 1
+    end
 end
 
 -- 统计兵种
@@ -795,6 +843,41 @@ function BattleLogic:_initLeftTeam()
     self._initTeamPos = {}
     self.teamCount[camp] = #self._teams[camp]
     self._initTeamPos[camp] = teamArr
+
+    --初始化援助
+    local hteams = playerInfo.helpteams
+    self._hteams[camp] = {}
+    
+    if hteams then
+        local hcount = #hteams
+        local tcount = self.teamCount[camp]
+        if hcount > 0 then
+            self._hteams[camp].havehteams = true
+            self._hteams[camp].diedCount = tcount == 1 and 0.7 or (tcount - math.ceil(tcount * 0.3))
+            self._hteams[camp].tcount = tcount
+            for i=1, hcount do
+                local hteam = hteams[i]
+                self._hteams[camp][#self._hteams[camp] + 1] = hteam
+            end
+        end
+    end
+    local hformationId = playerInfo.hformationId
+    self._hformationData[camp] = {}
+    if hformationId and hformationId > 0 then
+        local hformationData = tab.backupMain[hformationId]
+        if hformationData then
+            self._hformationData[camp] = hformationData
+        end
+    end
+
+    self._backups[camp] = {}
+    local backups = playerInfo.backups or {}
+    if hformationId and hformationId > 0 then
+        local backupData = backups[tostring(hformationId)]
+        if backupData then
+            self._backups[camp] = backupData
+        end
+    end
 end
 
 -- 初始化敌方
@@ -928,6 +1011,39 @@ function BattleLogic:_initRightTeam()
 
     self.teamCount[camp] = #self._teams[camp]
     self._initTeamPos[camp] = teamArr
+
+    local hteams = enemyInfo.helpteams
+    self._hteams[camp] = {}
+    if hteams then
+        local hcount = #hteams
+        local tcount = self.teamCount[camp]
+        if hcount > 0 then
+            self._hteams[camp].havehteams = true
+            self._hteams[camp].diedCount = tcount == 1 and 0.7 or (tcount - math.ceil(tcount * 0.3))
+            self._hteams[camp].tcount = tcount
+            for i=1, hcount do
+                local hteam = hteams[i]
+                self._hteams[camp][#self._hteams[camp] + 1] = hteam
+            end
+        end
+    end
+    local hformationId = enemyInfo.hformationId
+    self._hformationData[camp] = {}
+    if hformationId and hformationId > 0 then
+        local hformationData = tab.backupMain[hformationId]
+        if hformationData then
+            self._hformationData[camp] = hformationData
+        end
+    end
+
+    self._backups[camp] = {}
+    local backups = enemyInfo.backups or {}
+    if hformationId and hformationId > 0 then
+        local backupData = backups[tostring(hformationId)]
+        if backupData then
+            self._backups[camp] = backupData
+        end
+    end
 end
 
 function BattleLogic:getTeamMap()
@@ -1017,6 +1133,9 @@ function BattleLogic:clear()
     self._control = nil
     objLayer = nil
 
+    self._damageTransfer = nil
+    self._damageTransferValue = nil
+
     self._damageShareList = nil
     self._damageShareValue = nil
     self.teamCount = nil
@@ -1045,6 +1164,9 @@ function BattleLogic:clear()
     -- self._summonMaxHP = nil
     self._playerSkillCountData = nil
     self._selectTeamList = nil
+
+    self.race1CountSum = nil
+    self.race2CountSum = nil
 
 end
 
@@ -1094,6 +1216,15 @@ function BattleLogic:BattleBegin()
             for k = 1, #team.soldier do
                 team.soldier[k]:setCanCaught(false)
                 team.soldier[k]:changeMotion(EMotionBORN)
+            end
+        end
+        if  team.playBornAnim then
+            for k = 1, #team.soldier do
+                -- 出生动画
+--                print("+++++++++++++++++++++++++++++++")
+                -- objLayer:setVisible(team.soldier[k].ID, true)
+                team.soldier[k]:changeMotion(EMotionBORN)
+--                team:setState(ETeamStateIDLE)
             end
         end
         if not BATTLE_PROC then
@@ -1294,25 +1425,38 @@ function BattleLogic:BattleEnd(isTimeUp, isSurrender, isSkip, pos)
             end
         end
     end
+    -- 统计技能个数
+    local skillCastCount = {{}, {}}
+    for _,v in pairs(self._playerReleaseSkillCount) do
+        if not skillCastCount[v.camp][tostring(v.skillid)] then
+            skillCastCount[v.camp][tostring(v.skillid)] = 1
+        else
+            skillCastCount[v.camp][tostring(v.skillid)] = skillCastCount[v.camp][tostring(v.skillid)] + 1
+        end
+    end
 
     self._control:battleEnd()
     local leftData = {}
     local rightData = {}
-    local dieList = {{}, {}}
+    local leftHelp = {}
+    local rightHelp = {}
+    local dieList = {{}, {}, {}, {}}
     local count, team, data, vd
     local totalDamage1 = 0
     local totalRealDamage1 = 0
     local dieCount1 = 0
+    local remainTeamCount1, maxTeamCount1 = self:getTeamCountInfo(1)
     count = #self._teams[1]
     for i = 1, count do
         team = self._teams[1][i]
         totalDamage1 = totalDamage1 + team.damage
         totalRealDamage1 = totalRealDamage1 + team.damage1
-        if team.original or team.summon then
+        if team.original or team.summon or team.assistance then
             data = {
                     damage = team.damage,
                     realDamage = team.damage1,
                     damageSkill = team.damageSkill,
+                    damageSkillCount = team.damageSkillCount,
                     skills = team.skillmap,
                     hurt = team.hurt,
                     realHurt = team.hurt1,
@@ -1329,14 +1473,23 @@ function BattleLogic:BattleEnd(isTimeUp, isSurrender, isSkip, pos)
                     copy = team.copy,
                     jx = team.jx,
                     isMercenary = team.isMercenary,
+                    assistance = team.assistance,
                     }
             if team.replaceId then
                 data.D = tab.team[team.replaceId]
             end
-            leftData[#leftData + 1] = data
+            if not team.assistance then
+                leftData[#leftData + 1] = data
+            else
+                leftHelp[#leftHelp + 1] = data
+            end
             if team.state == ETeamState.DIE then
                 if not team.reviveing then
                     dieList[1][tostring(data.D["id"])] = true
+                    --添加一个列表区分是否是召唤出来的队列，有些玩法需要做区分
+                    if not dieList[3][tostring(data.D["id"])] then
+                        dieList[3][tostring(data.D["id"])] = not team.summon
+                    end
                 end
                 if team.original then
                     dieCount1 = dieCount1 + 1
@@ -1344,20 +1497,24 @@ function BattleLogic:BattleEnd(isTimeUp, isSurrender, isSkip, pos)
             end
         end
     end
-    leftData[0] = {realDamage = self._playerDamage[1], damage = self._playerDamage1[1], heal = self._playerHeal[1]}
+     
+    leftData[0] = {realDamage = self._playerDamage[1], damage = self._playerDamage1[1], heal = self._playerHeal[1],skillCastCount = skillCastCount[1]}
+    leftData.helpData = leftHelp
     count = #self._teams[2]
     local totalDamage2 = 0
     local totalRealDamage2 = 0
     local dieCount2 = 0
+    local remainTeamCount2, maxTeamCount2 = self:getTeamCountInfo(2)
     for i = 1, count do
         team = self._teams[2][i]
         totalDamage2 = totalDamage2 + team.damage
         totalRealDamage2 = totalRealDamage2 + team.damage1
-        if team.original or team.summon then
+        if team.original or team.summon or team.assistance then
             data = {
                     damage = team.damage,
                     realDamage = team.damage1,
                     damageSkill = team.damageSkill,
+                    damageSkillCount = team.damageSkillCount,
                     skills = team.skillmap,
                     hurt = team.hurt,
                     realHurt = team.hurt1,
@@ -1378,14 +1535,24 @@ function BattleLogic:BattleEnd(isTimeUp, isSurrender, isSkip, pos)
                     copy = team.copy,
                     jx = team.jx,
                     isMercenary = team.isMercenary,
+                    assistance = team.assistance,
                     }
             if team.replaceId then
                 data.D = tab.team[team.replaceId]
             end
-            rightData[#rightData + 1] = data
+            if not team.assistance then
+                rightData[#rightData + 1] = data
+            else
+                rightHelp[#rightHelp + 1] = data
+            end
+            
             if team.state == ETeamState.DIE then
                 if not team.reviveing then
                     dieList[2][tostring(data.D["id"])] = true
+                    --添加一个列表区分是否是召唤出来的队列，有些玩法需要做区分
+                    if not dieList[4][tostring(data.D["id"])] then
+                        dieList[4][tostring(data.D["id"])] = not team.summon
+                    end
                 end
                 if team.original then
                     dieCount2 = dieCount2 + 1
@@ -1393,8 +1560,8 @@ function BattleLogic:BattleEnd(isTimeUp, isSurrender, isSkip, pos)
             end
         end
     end
-    rightData[0] = {realDamage = self._playerDamage[2], damage = self._playerDamage1[2], heal = self._playerHeal[2]}
-
+    rightData[0] = {realDamage = self._playerDamage[2], damage = self._playerDamage1[2], heal = self._playerHeal[2],skillCastCount = skillCastCount[2]}
+    rightData.helpData = rightHelp
     local mode = self._battleInfo.mode
     if BattleUtils.BATTLE_TYPE_BOSS_SjLong == mode then
         -- 水晶龙把所有小龙统计在一起
@@ -1544,7 +1711,12 @@ function BattleLogic:BattleEnd(isTimeUp, isSurrender, isSkip, pos)
         totalRealDamage2 = totalRealDamage2,
         dieCount1 = dieCount1,
         dieCount2 = dieCount2,
+        remainTeamCount1 = remainTeamCount1,
+        remainTeamCount2 = remainTeamCount2,
+        maxTeamCount1 = maxTeamCount1,
+        maxTeamCount2 = maxTeamCount2,
     }
+     
     self._control:onBattleEnd(self._leftData, self._rightData, dieList, self.originalDieCount - self._reviveCount[1], isTimeUp, isSurrender, isSkip,
                                 self._heros[1], self._heros[2], self._playCastTime, ex, zuobi)
 end
@@ -1732,19 +1904,108 @@ function BattleLogic:update()
         local tick = self.battleTime
         if tick > self._lastCheckDS + DAMAGESHARE_TICK_INV then
             self._lastCheckDS = tick
-            -- 灵魂连接结算
+
+            --现在伤害转移，法术反弹写在一起了，所以，这里的一定注意，伤害转移是自己家的人，法术反弹是别人家的（写在一起是减少运算量，提高速度）
+            --伤害转移 > 法术伤害反弹 > 灵魂链接
+            for i = 1, 2 do
+                for key, var in pairs(self._damageTransfer[i]) do
+                    local count = 0
+                    local array = {}
+                    --计算之前，先根据优先级区分，使用哪个
+                    if var and type(var) == "table" then
+                        local curVar = nil
+                        for __key, __var in pairs(var) do
+                            if __var then
+                                if curVar == nil then
+                                    curVar = __var
+                                else
+                                    if curVar[1] > __var[1] then
+                                        --相等不考虑了，所以一个兵团身上有两个伤害转移，只有一个有效
+                                        curVar = __var
+                                    end
+                                end
+                            end
+                        end
+                        
+                        if key and curVar ~= nil and self._damageTransferValue[key] and self._damageTransferValue[key][curVar[1]] and self._damageTransferValue[key][curVar[1]] ~= 0 then
+                            local ___camp = i
+                            if curVar[1] == 3 or curVar[1] == 2 then
+                                --法术反弹，反弹的是别人
+                                ___camp = 3 - i
+                            end
+--                            dump(curVar)
+--                            dump(self._damageTransferValue[key])
+                            for _key, _var in ipairs(self._teams[___camp]) do
+                                if _var and _var.ID ~= key and _var.state ~= ETeamStateDIE then
+                                    local soldier = _var.aliveSoldier[1]
+                                    if soldier and soldier:hasBuff(curVar[2] or 0) ~= 0 then
+                                        count = count + 1
+                                        array[count] = _var
+                                    end
+                                end
+                            end
+                            if count > 0 then
+                                local value = floor((self._damageTransferValue[key][curVar[1]] * ((curVar[3] or 0) / 100)) / count)
+                                for i = 1, count do
+    --                                array[i]:HPChange(nil, value, false, 1)
+                                    local curTemp = array[i]
+                                    if curTemp then
+                                        local aliveCount = #curTemp.aliveSoldier
+                                        if aliveCount > 0 then
+                                            local __value = floor(value / aliveCount)
+                                            for _, __var in ipairs(curTemp.aliveSoldier) do
+                                                if __var then
+--                                                    print("---------------------", __value)
+                                                    __var:HPChange(nil, __value, false, 1)
+                                                end
+                                            end
+                                        end
+                                    end
+                                end
+                                self._damageTransferValue[key] = {}
+                            end
+                        end
+                    end
+                end
+            end
+            
+            -- 灵魂连接结算（计算的时候需要去除伤害转移的单位）
             for i = 1, 2 do
                 if self._damageShareValue[i] ~= 0 then
                     local count = 0
                     local array = {}
                     if next(self._damageShareList[i]) ~= nil then
                         for k, v in pairs(self._damageShareList[i]) do
-                            count = count + 1
-                            array[count] = v
+                            local curVar = nil
+                            local bIsGen = true
+                            if v and v.team and self._damageTransfer[i][v.team.ID] then
+                                for __key, __var in pairs(self._damageTransfer[i][v.team.ID]) do
+                                    if __var then
+                                        if curVar == nil then
+                                            curVar = __var
+                                        else
+                                            if curVar[1] > __var[1] then
+                                                --相等不考虑了，所以一个兵团身上有两个伤害转移，只有一个有效
+                                                curVar = __var
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                            if curVar and curVar[1] and curVar[1] == 1 then
+                                -- _print("++++++++++++++++++1", curVar[1], curVar[2], curVar[3], v.team.ID)
+                                bIsGen = false
+                            end 
+                            if v and v.team and bIsGen then
+                                count = count + 1
+                                array[count] = v
+                            end
                         end
-                        local value = floor(self._damageShareValue[i] / count)
-                        for i = 1, count do
-                            array[i]:HPChange(nil, value, false, 1)
+                        if count > 0 then
+                            local value = floor(self._damageShareValue[i] / count)
+                            for i = 1, count do
+                                array[i]:HPChange(nil, value, false, 1)
+                            end
                         end
                     end
                     self._damageShareValue[i] = 0
@@ -1846,6 +2107,12 @@ function BattleLogic:updateBattle()
         -- 更新每个兵团里每个士兵的位置以及刷新每个士兵的状态
         BattleTeam_update(self._updateList[i], tick, delta, updateSoldier)
     end
+
+    --兵团援助
+    if self.battleState == EStateING then
+        self:updateHelpTeam()
+    end
+
     if not BC.jump then
         self._heros[1]:update(tick)
         self._heros[2]:update(tick)
@@ -1948,14 +2215,28 @@ function BattleLogic:updateTeam(team)
     -- 移动状态
     elseif state == ETeamStateMOVE then
         if team.attackArea > 0 and team.walk then
-            -- 找到目标后会调用attackToTarget或者moveToTarget
-            self:findTarget(team, 
-                function () -- 没找到目标
-                    -- 停止移动
-                    if team.isMove then
-                        team:stopMove(true)
-                    end
-                end)
+            if team.isOneBirth then
+                if self.battleTime > team.stateChangeTime + (team.bornDelay or 0) then
+                    --出生动画结束之后回到原来的逻辑
+                    team.isOneBirth = false
+                    self:findTarget(team, 
+                        function () -- 没找到目标
+                            -- 原地不动
+                        end, nil,
+                        function ()
+                            -- 警戒范围内有人, 也不动
+                        end)
+                end
+            else
+                -- 找到目标后会调用attackToTarget或者moveToTarget
+                self:findTarget(team, 
+                    function () -- 没找到目标
+                        -- 停止移动
+                        if team.isMove then
+                            team:stopMove(true)
+                        end
+                    end)
+            end
         end
     -- 攻击状态
     elseif state == ETeamStateATTACK then
@@ -1998,6 +2279,273 @@ function BattleLogic:updateTeam(team)
     end    
     team:onTickSkill()
 end
+
+function BattleLogic:calcHelpTeamScenePos(camp)
+    local teams = self._teams[camp]
+    local dieCount = self._teamDieCount[camp]
+    local teamsCount = #teams
+    local team, backTeam, backRangeTeam, frontTeam
+    local isLeft = 1
+    if camp == 2 then
+        isLeft = -1
+    end
+    for i = 1, #teams do
+        team = teams[i]
+        repeat
+            --因为可能会出现瞬间被敌方秒掉，这个时候就以第一个队列里面的兵团为援助出现位置
+            if not team or (team.state == ETeamStateDIE and dieCount ~= teamsCount) then 
+                break 
+            end
+
+            if not frontTeam or ((team.x - frontTeam.x) * isLeft > 0) then
+                --获取最前排兵团
+                frontTeam = team
+            end
+            if 4 == team.D.class or 5 == team.D.class then
+                --获取射手和魔法兵团的最后排
+                if not backRangeTeam  or ((team.x - backRangeTeam.x) * isLeft < 0) then
+                    backRangeTeam = team
+                end
+            else
+                --获取非射手和魔法兵团的最后排
+                if not backTeam or ((team.x - backTeam.x) * isLeft < 0) then
+                    backTeam = team
+                end
+            end
+        until true
+        if dieCount == teamsCount then
+            break
+        end
+    end
+    --[[
+    if backTeam and backRangeTeam and backTeam.ID ~= backRangeTeam.ID then
+        backTeam = backRangeTeam
+    end
+    ]]
+    local _hteamsDistance =  self._hteamsDistance * isLeft
+
+    if backRangeTeam then
+        local hteams = self._hteams[camp]
+        local hteam, leftTeam
+        local deltaX, targetX = 0, backRangeTeam.x
+        local bApone = isLeft
+        if frontTeam and abs(frontTeam.x - backRangeTeam.x) > 468 then
+            bApone = -1 * isLeft
+            targetX = backRangeTeam.x + _hteamsDistance
+        end
+        local count = #hteams
+        for i = 1, count do
+            local hteam = hteams[i]
+            hteam.helpx, hteam.helpy = BC.getFormationScenePos(hteam.pos, camp)
+            if not leftTeam or ((hteam.helpx - leftTeam.helpx) * bApone > 0 ) then
+                leftTeam = hteam
+                deltaX = targetX - leftTeam.helpx
+            end
+        end
+        for i = 1, count do
+            local hteam = hteams[i]
+            hteam.helpx = hteam.helpx + deltaX
+        end
+    else
+        if backTeam  == nil then
+            --这种情况肯定不会出现
+            backTeam = teams[1]
+        end
+        local hteams = self._hteams[camp]
+        local hteam, rightTeam
+        local deltaX, targetX = 0, backTeam.x - _hteamsDistance
+        local count = #hteams
+        for i = 1, count do
+            local hteam = hteams[i]
+            hteam.helpx, hteam.helpy = BC.getFormationScenePos(hteam.pos, camp)
+            if not rightTeam or ((hteam.helpx - rightTeam.helpx) * isLeft > 0) then
+                rightTeam = hteam
+                deltaX = targetX - rightTeam.helpx
+            end
+        end
+        for i = 1, count do
+            local hteam = hteams[i]
+            hteam.helpx = hteam.helpx + deltaX
+        end
+    end
+end
+
+function BattleLogic:updateHelpTeam()
+    for camp=1, 2 do
+        repeat
+            local hteams = self._hteams[camp]
+            if not (hteams and hteams.havehteams and not hteams.added) then break end
+            local hfoaData = self._hformationData[camp]
+            --援助的出现添加时间限制
+            if not (hfoaData and hfoaData.skillstart and self.battleTime >= (hfoaData.skillstart + 0.00000001)) then
+                break
+            end
+            if hteams.diedCount >= 1 then
+                if self.teamCount[camp] <= hteams.diedCount then
+                    self:addHelpTeam(camp)
+                end
+            else
+                local curHP = self._HP[camp]
+                local maxHP = self._MaxHP[camp]
+                if curHP <= hteams.diedCount * maxHP then
+                    self:addHelpTeam(camp)
+                end
+            end
+        until true
+    end
+end
+
+function BattleLogic:initBattleHeroSpecialSkill(camp, hformationData)
+    local playSpecialSkills = self._playSpecialSkills[camp]
+    if 0 == #playSpecialSkills then return end
+--    if not BATTLE_PROC and not BC.jump then
+--        for i = 1, #playSpecialSkills do
+--            ScheduleMgr:delayCall(1000 + 500 * (i - 1), self, function()
+--                local skillD = tab.playerSkillEffect[playSpecialSkills[i].id]
+--                local level = playSpecialSkills[i].level
+--                local showTime, time = 0, hformationData["SkillShowTime"]
+--                if time then
+--                    showTime = time[1] + time[2] * (level - 1)
+--                end
+--                self._control:heroSkillAnim(camp, lang(skillD["name"]), nil, self._heros[1].heroHeadName, 3)
+--                if 0 ~= showTime then
+--                    self._control:addSpecialSkillIcon(camp, i, skillD, showTime)
+--                end
+--            end)
+--        end
+--    end
+    
+    local _x, _y = 0, 0
+    if 1 == camp then
+        _x, _y = self:getLeftTeamCenterPoint()
+    else
+        _x, _y = self:getRightTeamCenterPoint()
+    end
+    for i = 1, #playSpecialSkills do
+        delayCall((1000 + 500 * (i - 1)) * 0.001, self, function()
+            self:quickCastPlayerSpecialSkill(camp, i, {x = _x, y = _y})
+        end)
+    end
+end
+
+function BattleLogic:addHelpTeam(camp)
+    local hteams = self._hteams[camp]
+    local hformationData = self._hformationData[camp]
+    local teamReplace = self._heros[camp].teamReplace
+    self:calcHelpTeamScenePos(camp)
+    local count = #hteams
+    local midX, midY, minX, minY, maxX, maxY = 0, 0, 0, 0, 0, 0
+    for i=1, count do
+        local teamInfo = hteams[i]
+        local team = BattleTeam.new(camp)   
+        team.dhr = teamInfo.dhr
+        local x, y = teamInfo.helpx, teamInfo.helpy
+        -- x, y = BC.getFormationScenePos(teamInfo.pos, camp)
+        if 0 == minX or x < minX then
+            minX = x
+        end
+
+        if 0 == minY or y < minY then
+            minY = y
+        end
+
+        if 0 == maxX or x > maxX then
+            maxX = x
+        end
+
+        if 0 == maxY or y > maxY then
+            maxY = y
+        end
+
+        local teamid = teamInfo.id
+        if teamReplace[teamid] then
+            team.replaceId = teamid
+            teamid = teamReplace[teamid]
+        end
+        teamInfo.teamid = teamid
+        BC.initTeamAttr_Common(team, self._heros[camp], teamInfo, x, y, teamInfo.scale)
+        team.teamData = teamInfo.data
+        team.helpAddedTick = floor(self.battleTime)
+        team.dynamicCD = self.dynamicCD
+        team.dynamicPreCD = self.battleTime + random(self.dynamicCD)
+        --区分援助队列(应策划需求复活兵团应该和初始创建的兵团有一样的计算逻辑)
+        team.assistance = true
+        team.original = true
+        self:_raceCountAdd(camp, team.race1, team.race2)
+        self:addTeam(team)
+        self:addToUpdateList(team)
+        if not BATTLE_PROC then
+            self._control:addHeadUIIcon(team, camp)
+        end
+        local soldier
+        for i = 1, #team.soldier do
+            soldier = team.soldier[i]
+            -- if not BC.jump and not BATTLE_PROC and soldier and team.isOneBirth then
+            --     --针对有出生动画的的兵团(这个时候丢弃出生动画)
+            --     objLayer:setVisible(soldier.ID, true)
+            -- end
+            if not team.walk then
+                soldier:changeMotion(EMotion.BORN)
+            else
+                soldier:changeMotion(EMotion.INIT)
+            end
+        end
+        team.isOneBirth = false
+        team:setState(ETeamState.NONE)
+        team.canDestroy = false
+        -- team.borning = true
+        delayCall(1.28, self, function()
+            if team.state ~= ETeamStateDIE then
+                team:setState(ETeamState.MOVE)
+            end
+            team.canDestroy = true
+            -- team.borning = false
+        end)
+        if BC.jump and not BATTLE_PROC then
+            local nIndex = #self._teams[team.camp]
+            self._control:addBattleJumpIcon(team, camp, nIndex)
+        end
+        team:invokeSkill7()
+    end
+
+    self:initBattleHeroSpecialSkill(camp, hformationData)
+
+    hteams.added = true
+
+    if not BATTLE_PROC then
+        midX = (minX + maxX) / 2
+        midY = (minY + maxY) / 2
+
+        if hformationData["humen_frontstk_v"] then
+            objLayer:playEffect_skill1(hformationData["humen_frontstk_v"], midX, midY, true, true, nil, 1.5)
+        end
+
+        if hformationData["humen_backstk_h"] then
+            objLayer:playEffect_skill1(hformationData["humen_backstk_h"], midX, midY, false, true, nil, 1.5)
+        end
+
+        if hformationData["ground_frontstk_v"] then
+            objLayer:playEffect_skill1(hformationData["ground_frontstk_v"], midX, midY, true, true, nil, 1.5)
+        end
+
+        if hformationData["ground_backstk_h"] then
+            objLayer:playEffect_skill1(hformationData["ground_backstk_h"], midX, midY, false, true, nil, 1.5)
+        end
+
+        if hteams and hteams.havehteams then
+            if hteams.diedCount >= 1 then
+                self._control:updateBackupInfoNode(camp, 1, hteams.tcount - self.teamCount[camp], hteams.tcount - hteams.diedCount)
+            else
+                local curHP = self._HP[camp]
+                local maxHP = self._MaxHP[camp]
+                self._control:updateBackupInfoNode(camp, 2, maxHP - curHP, maxHP - hteams.diedCount * maxHP)
+            end
+        end
+
+        objLayer:helpTeamsArrived(camp, hformationData)
+    end
+end
+
 -- 寻找目标
 -- 没找到的回调, 找到攻击目标的回调, 找到警戒目标的回调用
 function BattleLogic:findTarget(team, noneCallBack, attackCallBack, alertCallCack)
@@ -2824,22 +3372,56 @@ function BattleLogic:addDamageShareValue(camp, value)
     self._damageShareValue[camp] = self._damageShareValue[camp] + value 
 end
 
+--伤害，转移的容器
+function BattleLogic:getDamageTransfer(camp)
+    return self._damageTransfer[camp]
+end
+
+--function BattleLogic:addDemageTeansferBuffId(id, buffID)
+--    self._damageTransfer[id] = buffID
+--end
+
+--记录伤害转移的
+function BattleLogic:addDamageTransferValue(id, value, isHero)
+    if self._damageTransferValue [id] == nil then
+        self._damageTransferValue [id] = {}
+    end
+    if isHero then
+        self._damageTransferValue[id][3] = (self._damageTransferValue[id][3] or 0) + value
+    else
+        self._damageTransferValue[id][2] = (self._damageTransferValue[id][2] or 0) + value
+    end
+    self._damageTransferValue[id][1] = (self._damageTransferValue [id][1] or 0) + value
+end
+
 function BattleLogic:onTeamDie(team)
     local camp = team.camp
     if team.original then
         self.teamCount[camp] = self.teamCount[camp] - 1
         self:_raceCountDec(camp, team.race1, team.race2)
         local class = team.classLabel
-        self.classCount[camp][class] = self.classCount[camp][class] - 1
+        self.classCount[camp][class] = (self.classCount[camp][class] or 0) - 1
         if not BATTLE_PROC and not team.boss then
             local width, height = team.soldier[1]:getSize()
+            ---线上战斗onTeamDie 函数报错，但是不知道在哪里，只能加容错
+            width = width or 0
             self._control:onTeamDieOrRevive(team.ID, camp, true, width * 0.5 + 30, self.teamCount[camp] == 0)
         end
         if camp == 1 then
             self.originalDieCount = self.originalDieCount + 1
         end
+        if not BATTLE_PROC then
+            local hteams = self._hteams[camp] 
+            if hteams and hteams.havehteams and hteams.diedCount >= 1 and hteams.tcount then
+                self._control:updateBackupInfoNode(camp, 1, hteams.tcount - self.teamCount[camp], hteams.tcount - hteams.diedCount)
+                -- objLayer:helpTeamsArriving(camp, math.abs(hteams.diedCount - self._teamDieCount[camp]))
+            end
+        end
+    elseif team.summon then
+        self:_raceCountDecSum(camp, team.race1, team.race2)
     end
     self._teamDieCount[camp] = self._teamDieCount[camp] + 1
+    
     self:onTeamDieEx(team)
 
     if not team.building then
@@ -2939,6 +3521,12 @@ function BattleLogic:siegeHalf()
     self._control:siegeHalf()
 end
 
+function BattleLogic:setBattleSpeed(speed)
+    if self._control and self._control.setBattleSpeed then
+        self._control:setBattleSpeed(speed)
+    end
+end
+
 -- 玩家伤害统计
 function BattleLogic:playerSkillCount(index, value, value1, skillid, camp, sindex, dpsshow)
     local skillidStr = tostring(skillid)
@@ -2971,6 +3559,8 @@ function BattleLogic:playerSkillCount(index, value, value1, skillid, camp, sinde
         self._playerDamage1[camp][skillidStr] = _v
         -- print(2, value)
     end
+    -- 加统计释放次数
+    self._playerReleaseSkillCount[index] = {camp = camp,skillid = skillid}
     if BATTLE_PROC then return end
     if not dpsshow then return end
     -- value负值是伤害, 正值是治疗 
@@ -2989,7 +3579,7 @@ function BattleLogic:playerSkillCount(index, value, value1, skillid, camp, sinde
         self._control:playerSkillCount(camp, index, sindex, self._playerSkillCountData[index].icon, self._playerSkillCountData[index].skillD, oldValue, newValue)
     else
         local icon = tab.playerSkillEffect[skillid].art
-        self._playerSkillCountData[index] = {value = value, icon = icon, skillD = tab.playerSkillEffect[skillid]}
+        self._playerSkillCountData[index] = {value = value, icon = icon, skillD = tab.playerSkillEffect[skillid],camp = camp}
         self._control:playerSkillCount(camp, index, sindex, icon, tab.playerSkillEffect[skillid], 0, value)
     end
 end
@@ -3578,6 +4168,35 @@ function BattleLogic:checkTime()
     end
 end
 
+function BattleLogic:getHelpTeamData(  )
+    return self._hteams, self._hformationData, self._backups
+end
+
+function BattleLogic:getTeamCountInfo( camp )
+    local maxTeamCount = 0
+    local remainTeamCount = 0
+    local count = #self._teams[camp]
+    for i = 1, count do
+        local team = self._teams[camp][i]
+        if team.original then
+            local dataD = team.D
+            if team.replaceId then
+                dataD = tab.team[team.replaceId]
+            end
+            remainTeamCount = remainTeamCount + #team.aliveSoldier
+            local volume = 0
+            if dataD.volume then
+                volume = dataD.volume
+            elseif dataD.match then
+                local sysD = tab.team[dataD.match]
+                volume = sysD.volume
+            end
+            maxTeamCount = maxTeamCount + (6 - volume) * (6 - volume)
+        end
+    end
+    return remainTeamCount, maxTeamCount
+end
+
 function BattleLogic.dtor()
     abs = nil
     ActionValue = nil
@@ -3630,6 +4249,7 @@ function BattleLogic.dtor()
     tonumber = nil
     tostring = nil
     BattleTeam_update = nil
+    delayCall = nil
 end
 
 function BattleLogic.dtor1()

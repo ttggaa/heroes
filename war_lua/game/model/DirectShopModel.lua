@@ -1,7 +1,7 @@
 
 
 local DirectShopModel = class("DirectShopModel", BaseModel)
-local tabMaxCount = 5
+local tabMaxCount = 6
 
 function DirectShopModel:ctor()
     DirectShopModel.super.ctor(self)
@@ -367,7 +367,7 @@ function DirectShopModel:updateShop( inData )
     --商品分类
     for tabId,shopData in pairs (inData.zhigou) do 
         -- dump(shopData)
-        printf("tabId == %d",tabId)
+        -- printf("tabId == %d",tabId)
         local configData
         if GameStatic.appleExamine == true then
             configData = tab:Specialshopauditing(tonumber(tabId))

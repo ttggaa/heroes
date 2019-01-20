@@ -1636,7 +1636,7 @@ end
                 end
 
                 if iconBg then
-                    local param = {avatar = gpData.avatar, level = gpData.lvl, tp = 4, avatarFrame = gpData["avatarFrame"]}
+                    local param = {avatar = gpData.avatar, level = gpData.lvl, tp = 4, avatarFrame = gpData["avatarFrame"], plvl = gpData.plvl}
                     local icon = iconBg:getChildByName("icon")
                     if not icon then
                         icon = IconUtils:createHeadIconById(param)
@@ -2241,7 +2241,7 @@ end
 function GodWarView:updateWeek(weekday, tTime)
     local curServerTime = self._userModel:getCurServerTime()
     local cTime = curServerTime - tTime
-    print("time .. ",cTime)
+--    print("time .. ",cTime)
     if weekday == 2 then -- 小组赛
         if cTime > 1081 then
             local bg1 = self:getUI("btnbg")
@@ -2785,7 +2785,7 @@ function GodWarView:setNavigation()
         end
         self._serverMgr:sendMsg("GodWarServer","exitRoom",{},true,{},function(result )
             local viewMgr = ViewManager:getInstance()
-            viewMgr:returnMain()
+            -- viewMgr:returnMain()
         end)
     end
     self._viewMgr:showNavigation("global.UserInfoView",{hideHead=true,hideInfo=true, callback = callback})
@@ -3734,6 +3734,12 @@ function GodWarView:getformationParameter()
     end
     if tfortime ~= 0 then
         formationTime = tfortime
+        formationType = 1
+    end
+    if weekday == 1 then
+        allowBattle[1] = true
+        allowBattle[2] = true
+        allowBattle[3] = true
         formationType = 1
     end
     print("formationTime=========",canForamtion, formationTime, formationType)

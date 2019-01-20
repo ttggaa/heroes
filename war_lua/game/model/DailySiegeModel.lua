@@ -165,7 +165,7 @@ function DailySiegeModel:updateData(data)
 		end
 
 		-- 只在第一次的时候用playerTodayMode数据同步
-		if self._serverData._day68 == nil and self._serverData._day69 == nil then
+		if self._serverData._day69 == nil and self._serverData._day70 == nil then
 			local dayInfo = self._playerTodayMode:getData()
     		self._serverData:setDailyInfo(dayInfo)
 		end 

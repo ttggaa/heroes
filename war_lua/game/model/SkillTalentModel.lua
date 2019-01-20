@@ -258,9 +258,11 @@ function SkillTalentModel:getTalentAdd(id, otherSp)
 	local realData = otherSp
 	if otherSp then
 		local tabData = clone(tab.skillBookTalent)
-		for _,_data in pairs (tabData) do 
-			_data.level = 0
-			_data.score = 0
+		if tabData then
+			for _,_data in pairs (tabData) do 
+				_data.level = 0
+				_data.score = 0
+			end
 		end
 		for id,_data in pairs (otherSp) do 
 			local num_id = tonumber(id)
@@ -274,17 +276,19 @@ function SkillTalentModel:getTalentAdd(id, otherSp)
 	local findData
 	local placeSkill = self._heroModel:getPlaceSkillIds() or {}
 	print("getTalentAdd:",id)
-	for _, data in pairs (realData) do
-		if data.level > 0 then
-			local effectSkills = data.skillbookex
-			if effectSkills then
-				for _,id in pairs (effectSkills) do 
-					if skillid == id or placeSkill[skillid] == id then
-						findData = data
+	if realData then
+		for _, data in pairs (realData) do
+			if data.level > 0 then
+				local effectSkills = data.skillbookex
+				if effectSkills then
+					for _,id in pairs (effectSkills) do 
+						if skillid == id or placeSkill[skillid] == id then
+							findData = data
+						end
 					end
 				end
-			end
-		end 
+			end 
+		end
 	end
 	if not findData then return result end
 	local talentLevel = findData.level

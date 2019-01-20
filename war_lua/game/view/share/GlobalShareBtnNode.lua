@@ -21,6 +21,8 @@ local showType = { --1开 0不开
     ShareTeamRaceModule = 1,            --巢穴
     ShareTrainingModule = 1,            --训练场
     ShareHeroSkinModule = 1,            --英雄皮肤
+    ShareTeamSkinModule = 1,            --兵团皮肤
+    ShareGrowthWayModule = 1,            --成长之路
 }
 
 local showType1 = {  --直接弹出分享界面
@@ -62,6 +64,14 @@ function GlobalShareBtnNode:onInit()
     end
 
     -- 分享关闭4
+    if GameStatic.closeShares then
+        showType["ShareTreasureModule"] = 0
+        showType["ShareTeamModule"] = 0
+        showType["ShareHeroModule"] = 0
+        showType["ShareMainModule"] = 0
+        showType["ShareTeamRaceModule"] = 0
+    end
+    
     if showType[self._type] and showType[self._type] ~= 1 then
         return
     end
@@ -108,7 +118,8 @@ function GlobalShareBtnNode:onInit()
     --兵团/英雄/英雄皮肤
     elseif (self._type == "ShareTeamModule" and self._curType == 1) or 
             (self._type == "ShareHeroModule" and self._curType == 1) or 
-            (self._type == "ShareHeroSkinModule" and self._curType == 1) then      
+            (self._type == "ShareHeroSkinModule" and self._curType == 1) or  
+            (self._type == "ShareTeamSkinModule" and self._curType == 1) then    
         local btnRes = "globalImageUI_shareBtn3.png"
         self._shareBtn = ccui.Button:create()
         self._shareBtn:loadTextures(btnRes, btnRes, btnRes, 1)
@@ -211,7 +222,8 @@ function GlobalShareBtnNode:createPopBg(rwdInfo)
 
     elseif (self._type == "ShareTeamModule" and self._curType == 1) or 
             (self._type == "ShareHeroModule" and self._curType == 1) or 
-            self._type == "ShareHeroSkinModule" then 
+            self._type == "ShareHeroSkinModule" or
+            self._type == "ShareTeamSkinModule" then 
         posX, posY = posX - 4, posY + 5
         self._des1:setPosition(15, 4)
         self._rwdIcon:setPositionY(4)

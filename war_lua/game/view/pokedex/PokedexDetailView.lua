@@ -6,7 +6,7 @@
 --]]
 
 local PokedexDetailView = class("PokedexDetailView", BaseView)
-
+local ItemCount = 6
 function PokedexDetailView:ctor(params)
     PokedexDetailView.super.ctor(self)
     self._selectPokedex = params.pokedexType or 1
@@ -29,6 +29,29 @@ function PokedexDetailView:onInit()
     self:registerClickEvent(closeBtn, function()
         self:close()
     end)
+
+    self._scrollView = self:getUI("bg.itemScrollView")
+    self._scrollView:setBounceEnabled(true)
+
+    -- self._scrollView:setDelegate()
+    -- self._scrollView:registerScriptHandler(function() return self:scrollViewDidScroll() end ,cc.SCROLLVIEW_SCRIPT_SCROLL)
+
+    
+
+    self._scrollView:addEventListener(function(sender, eventType)
+        if eventType == 7 or eventType == 2 then
+            self._right:setVisible(true)
+            self._left:setVisible(false)
+        elseif eventType == 8 or eventType == 3 then
+            self._right:setVisible(false)
+            self._left:setVisible(true)
+        elseif eventType == 4 then
+            -- local contentOffsetX  = self._scrollView:getInnerContainer():getPositionX()
+            self._right:setVisible(true)
+            self._left:setVisible(true)
+        end
+    end)
+
     local guize = self:getUI("zongfenBg.guize")
     guize:setAnchorPoint(0.5, 0.5)
     guize:setScaleAnim(true)
@@ -100,9 +123,34 @@ function PokedexDetailView:onInit()
         self:quickAdd()
     end)
 
+    --一键下阵
+    local quickDown = self:getUI("bg.quickDown")    
+    quickDown:getTitleRenderer():enableOutline(UIUtils.colorTable.ccUICommonBtnColor4, 1)
+    quickDown:setTitleFontSize(20)
+    quickDown:setTitleColor(cc.c4b(255, 255, 255, 255)) 
+    quickDown:setTitleFontName(UIUtils.ttfName)
+    -- quickadd:setTitleFontSize(20)
+    self:registerClickEvent(quickDown, function()
+        self:quickDown()
+    end)
+
+    self._right = self:getUI("bg.right")
+    self._right:setLocalZOrder(2)
+    local mc1 = mcMgr:createViewMC("tujianyoujiantou_teamnatureanim", true, false)
+    mc1:setPosition(cc.p(self._right:getContentSize().width*0.5, self._right:getContentSize().height*0.5))
+    self._right:addChild(mc1) 
+    self._right:setVisible(true)
+    self._left = self:getUI("bg.left")
+    self._left:setLocalZOrder(2)
+    local mc2 = mcMgr:createViewMC("tujianzuojiantou_teamnatureanim", true, false)
+    mc2:setPosition(cc.p(self._left:getContentSize().width*0.5, self._left:getContentSize().height*0.5))
+    self._left:addChild(mc2)  
+    self._left:setVisible(false)
+
+
     self._showTeam = {}    
-    for i=1,5 do
-        self._showTeam[i] = self:getUI("bg.showTeam" .. i)
+    for i=1,ItemCount do
+        self._showTeam[i] = self:getUI("bg.itemScrollView.showTeam" .. i)
         -- self._showTeam[i]:setAnchorPoint(cc.p(0.5,0.5))
         self._showTeam[i].pokedex = self._showTeam[i]:getChildByFullName("pokedex")
         self._showTeam[i].suo = self._showTeam[i]:getChildByFullName("suo")
@@ -134,6 +182,7 @@ function PokedexDetailView:onInit()
     self:listenReflash("PokedexModel", self.onModelReflash)
     self:listenReflash("UserModel", self.onModelReflash)
 end
+
 
 -- function PokedexDetailView:addSaoguang()
 --     local mc1 = mcMgr:createViewMC("hengbanliudong_itemeffectcollection", true, false)
@@ -239,7 +288,7 @@ function PokedexDetailView:setShowTeam()
     local viplevel = self._modelMgr:getModel("VipModel"):getData().level
 
 
-    for i=1,5 do
+    for i=1,ItemCount do
         local openCondition = tjData.openCondition[i]
         if userlevel >= openCondition[1] or viplevel >= openCondition[2] then
             if pokedexPos.posList[tostring(i)] then  -- 解锁
@@ -662,7 +711,7 @@ function PokedexDetailView:quickAdd()
     --     end
     -- end
 
-    for i=1,5 do
+    for i=1,ItemCount do
         if pokedexPos.posList[tostring(i)] == 0 then
             table.insert(addPokedexData, i)
         end
@@ -695,6 +744,44 @@ function PokedexDetailView:quickAdd()
     -- dump(addPokedexData, "addTeamData=========")
     self:putAllTeam(addTeamData, addPokedexData)
 end
+
+--一键卸下
+function PokedexDetailView:quickDown()
+    local pokedexModel = self._modelMgr:getModel("PokedexModel")
+    local pokedexPos = pokedexModel:getDataById(self._selectPokedex)
+    -- dump(pokedexPos.posList)
+    -- 卸下位置
+    local putOffPokedexData = {}
+    local putOffList = {}
+    for k,v in pairs(pokedexPos.posList) do
+        if pokedexPos.posList[tostring(k)] ~= 0 then
+            table.insert(putOffPokedexData, k)
+            -- local tempTeam = {tonumber(k)}
+            table.insert(putOffList, tonumber(k))
+        end
+    end
+
+    if table.nums(putOffPokedexData) == 0 then
+        self._viewMgr:showTip("暂无可卸下的兵团")
+        return
+    end
+    dump(putOffList,"========putOffList========")
+    local param = {pokedexId = self._selectPokedex, posIds = putOffList}
+    -- ViewManager:getInstance():lock(-1)
+    self._oldFight = TeamUtils:updateFightNum()
+    self._serverMgr:sendMsg("PokedexServer", "putOffTeamOnPokedexPos", param, true, {}, function (result)
+        for k,v in pairs(putOffList) do
+            self:putCardAnim(v)
+        end
+        local fightBg = self:getUI("bg")
+        TeamUtils:setFightAnim(fightBg, {oldFight = self._oldFight, newFight = TeamUtils:updateFightNum(), x = fightBg:getContentSize().width*0.5-100, y = fightBg:getContentSize().height - 200})
+        audioMgr:playSound("PlaceDex")
+        self._viewMgr:unlock()
+    end)
+
+
+end
+
 
 function PokedexDetailView:putAllTeam(addTeamData, addPokedexData)
     if self._pokedexAddNum == 0 then

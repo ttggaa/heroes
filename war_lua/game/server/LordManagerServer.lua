@@ -14,6 +14,8 @@ function LordManagerServer:ctor()
     self._dailySiegeModel = self._modelMgr:getModel("DailySiegeModel")
     self._formationModel = self._modelMgr:getModel("FormationModel")
     self._playerTodayModel = self._modelMgr:getModel("PlayerTodayModel")
+    self._alchemyModel = self._modelMgr:getModel("AlchemyModel")
+    self._arenaModel = self._modelMgr:getModel("ArenaModel")
 
 end
 
@@ -40,6 +42,24 @@ function LordManagerServer:onGetLordManagerData(result, errorCode)
 
     if result["3"] then
     	self._guildModel:setGuildMercenary(result["3"]["userMercenaryList"])
+    end
+
+    if result and result["4"] and result["4"].d and result["4"].d.alchemyH then
+        self._alchemyModel:setData(result["4"].d.alchemyH)
+    end
+
+    if result["5"]  then
+       self._arenaModel:setData(result["5"])
+    end
+
+    if result and result["6"] and result["6"]["d"] then
+       local crossModel = self._modelMgr:getModel("CrossModel")
+       crossModel:setData(result["6"]["d"]["crossPK"])
+    end
+
+    if result and result["7"] then
+       local gloryArenaModel = self._modelMgr:getModel("GloryArenaModel")
+       gloryArenaModel:setData(result["7"])
     end
 
     if result["dayInfo"] then

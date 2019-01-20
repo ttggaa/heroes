@@ -116,7 +116,7 @@ BC.GUIDE_INTANCE_CLOSE_AUTO_BATTLE = 7100101
 BC.HERODEBUG = {"atk", "def", "int", "ack", "shiQi", "manaRec"}
 
 -- 兵团条件技能强制一帧释放
-BC.CONDITIONFORCEKIND = {["40"] = true, ["7"] = true, ["30"] = true}
+BC.CONDITIONFORCEKIND = {["40"] = true, ["7"] = true, ["30"] = true, ["22"] = true, ["23"] = true}
 
 
 -- 不同体型的受击点
@@ -206,11 +206,21 @@ BC.VolumeNumber = {25, 16, 9, 4, 1, 1}
 -- 兵种数量
 BC.MoveTypeCount = {{0, 0}, {0, 0}}
 BC.ClassCount = {{0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}}
-BC.Race1Count = {{0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}}
+BC.TotalRace1Count = 12
+BC.Race1Count = {{}, {}}
+for key = 1, BC.TotalRace1Count do
+    BC.Race1Count[1][key] = 0
+    BC.Race1Count[2][key] = 0
+end
+
 BC.XCount = {{0, 0, 0}, {0, 0, 0}}
 -- 方阵IDmap
 BC.TeamMap = {{}, {}}
 BC.NpcMap = {{}, {}}
+-- 记录子物体上面的父类技能Id
+BC.ObjectParentSkillId = {}
+-- 记录技能释放的mgtriger1（主要是萨丽尔）[1 ,2 技能， 3,4 释放的子物体]
+BC.RecordReleaseSkill = {{}, {}, {}, {}}
 
 -- 格子像素大小
 BC.BATTLE_CELL_SIZE = 40
@@ -952,11 +962,15 @@ end
 
 -- 由于战斗公式计算 牵扯到英雄属性, 所以需要注入英雄
 local formula_hero_atkdef = {0, 0}
-local formula_hero_intack = {0, 0}
+
+BC.formula_hero_intack = {0, 0}
+local formula_hero_intack = BC.formula_hero_intack
+
 -- 全局护盾加成, 百分比
 local ShieldProAdd = {0, 0} -- 分阵营
 -- 固定法伤
 local H_APAdd = {0, 0}
+
 -- 法伤
 local H_AP_1 = {0, 0}
 local H_AP_2 = {0, 0} -- 治疗
@@ -1503,6 +1517,15 @@ function BC.countDamage_attack(logic, caster, target, pro, add, maxpro, damageKi
             if _damage < 1 and _damage ~= 0 then
                 _damage = 1
             end
+            if target then
+                local immuneHeroPro = target._immuneHeroPro
+                if immuneHeroPro and immuneHeroPro > 0 and pro > 0 and _damage ~= 0 then
+                    --这个时候说明是百分比伤害
+                    _damage = (100 - immuneHeroPro) * _damage * 0.01
+                    if XBW_SKILL_DEBUG then print(os.clock(), "免疫英雄器械百分比伤害", immuneHeroPro) end
+                end
+            end
+
             _damage = ceil(_damage)
             return _damage, false, false, _damage
         end
@@ -1512,7 +1535,7 @@ function BC.countDamage_attack(logic, caster, target, pro, add, maxpro, damageKi
         if summonApPro > 0 then
             summonApPro = summonApPro * logic.summonCount[camp]
         end
-      local doubleEffect
+        local doubleEffect
         if dk < 5 and dk > 0 then
             doubleEffect = (ran(100) <= H_DE_1[camp][dk])
         else
@@ -1530,12 +1553,43 @@ function BC.countDamage_attack(logic, caster, target, pro, add, maxpro, damageKi
         end
         local _damage       -- 减伤后
         local _damagePre    -- 减伤前
+        
+
         if dk < 5 and dk > 0 then
+            local extraAps = target.team.extraAp
+            local fExtraAp = 0
+            if #extraAps > 0 then
+                local ex
+                local attrValue = 0
+                local value, min
+                for i = 1, #extraAps do
+                    ex = extraAps[i]
+                    if BC["countExtraDef"..ex[1]] then
+                        value = BC["countExtraDef"..ex[1]](logic, target, ex[6], target.camp)
+                        if value then
+                            min = ex[2]
+                            if value < min then
+                                value = min
+                            elseif value > ex[4] then
+                                value = ex[4]
+                            end
+
+                            attrValue = attrValue + ex[3] + (value - min) * ex[5] 
+                            attrValue = tonumber(format("%.6f", attrValue))
+
+                            --发免
+                            fExtraAp = fExtraAp + attrValue
+
+                            if XBW_SKILL_DEBUG then print(os.clock(), "生写法免百分比", fExtraAp) end
+                        end
+                    end
+                end
+            end
             -- H_AP_1[camp][5]  全系法伤
             -- H_AP_1[camp][dk] 单系法伤
             -- H_APAdd[camp] 固定法伤
             -- tattr[ATTR_DecAll] + tattr[_ap_beginIdx + dk]  法术免伤
-            _damage = (add * ((1 + H_AP_1[camp][5] + H_AP_1[camp][dk] + summonApPro) / ((100 + 0.3 * (tattr[ATTR_DecAll] + tattr[_ap_beginIdx + dk])) * 0.01))
+            _damage = (add * ((1 + H_AP_1[camp][5] + H_AP_1[camp][dk] + summonApPro) / ((100 + 0.3 * max(-200, tattr[ATTR_DecAll] + tattr[_ap_beginIdx + dk] + fExtraAp)) * 0.01))
                                 * max(0.2, 1 + H_AP_3[camp][5] + H_AP_3[camp][dk] - (tattr[ATTR_DecAll1] + tattr[_ap_beginIdx1 + dk])* 0.01) 
                                 + H_APAdd[camp] - tattr[ATTR_DecAllEx])
                                 * damagePro * 0.01
@@ -1602,6 +1656,15 @@ function BC.countDamage_attack(logic, caster, target, pro, add, maxpro, damageKi
             damage = maxDamage
             damagePre = maxDamage
         end
+        local immuneHeroPro = target._immuneHeroPro
+        if immuneHeroPro and immuneHeroPro > 0 and maxpro > 0 and damage ~= 0 then
+            --这个时候说明是百分比伤害
+            damage = (100 - immuneHeroPro) * damage * 0.01
+            damagePre = (100 - immuneHeroPro) * damagePre * 0.01
+            if XBW_SKILL_DEBUG then print(os.clock(), "免疫英雄百分比伤害", immuneHeroPro) end
+            
+        end
+
         damage = ceil(damage)
         -- damagePre  减伤前
         -- damage 减伤后
@@ -1609,6 +1672,7 @@ function BC.countDamage_attack(logic, caster, target, pro, add, maxpro, damageKi
     else
         -- 生写表 受击
         local _proDamage = target.maxHP * maxpro * 0.01
+        
         -- 特殊BOSS限定的最大百分比伤害，是个系数
         if maxProDamage then
             _proDamage = _proDamage * maxProDamage
@@ -1616,6 +1680,7 @@ function BC.countDamage_attack(logic, caster, target, pro, add, maxpro, damageKi
         local crit, dodge = BC.formula_crit_dodge(caster, target)
         local charactersDef, double, kk
         local extraDefs
+        local nDamageInc = 0 --生写兵团伤害百分比
         if not dodge then
             for k, _ in pairs(targetAttr) do
                 targetAttr[k] = 0
@@ -1668,6 +1733,16 @@ function BC.countDamage_attack(logic, caster, target, pro, add, maxpro, damageKi
                             end 
                         end
 
+                        -- 目标或者自身每有一个debuff(同类型的debuff算一个)，攻击者攻击力增加
+                        if char[2] == 29 then
+                            local count1, bufft1 = attacker:getDebuffLabelCount()
+                            local count2, bufft2 = target:getDebuffLabelCount()
+                            local count = count1 + count2
+                            if count > 0 then
+                                kk = math.min(count, 8)
+                            end 
+                        end
+
                         local __id
                         for k = 1, #attr do
                             __id = attr[k][1]
@@ -1680,6 +1755,7 @@ function BC.countDamage_attack(logic, caster, target, pro, add, maxpro, damageKi
                 end
             end
 
+            --为了减少判断，所有生写兵团伤害百分比也在这个table，这个字段不光是防御力的控制了
             extraDefs = target.team.extraDef
             if #extraDefs > 0 then
                 local ex
@@ -1687,7 +1763,7 @@ function BC.countDamage_attack(logic, caster, target, pro, add, maxpro, damageKi
                 local value, min
                 for i = 1, #extraDefs do
                     ex = extraDefs[i]
-                    value = BC["countExtraDef"..ex[1]](logic, target, ex[6], target.camp)
+                    value = BC["countExtraDef"..ex[1]](logic, target, ex[6], target.camp, attacker)
                     if value then
                         min = ex[2]
                         if value < min then
@@ -1695,13 +1771,15 @@ function BC.countDamage_attack(logic, caster, target, pro, add, maxpro, damageKi
                         elseif value > ex[4] then
                             value = ex[4]
                         end
-
                         attrValue = attrValue + ex[3] + (value - min) * ex[5] 
                         attrValue = tonumber(format("%.6f", attrValue))
-
-                        targetAttr[ATTR_DefPro] = targetAttr[ATTR_DefPro] + attrValue
-
-                        if XBW_SKILL_DEBUG then print(os.clock(), "生写防御百分比", target.attr[ATTR_DefPro]) end
+                        if ex[1] == 20 or ex[1] == 18 then
+                            targetAttr[ATTR_DefPro] = targetAttr[ATTR_DefPro] + attrValue
+                            if XBW_SKILL_DEBUG then print(os.clock(), "生写防御百分比", target.attr[ATTR_DefPro]) end
+                        elseif ex[1] == 22 or ex[1] == 23 then
+                            nDamageInc = nDamageInc + attrValue
+                            if XBW_SKILL_DEBUG then print(os.clock(), "生写兵团伤害百分比", nDamageInc) end
+                        end
                     end
                 end
             end
@@ -1723,7 +1801,7 @@ function BC.countDamage_attack(logic, caster, target, pro, add, maxpro, damageKi
             damage = atkDamage
                         * formula_hero_atkdef[camp]
                         * formula_armor_modifier(caster, target)
-                        * max(0.2, 1 + (caster.dmgInc - tattr[ATTR_DamageDec]) * 0.01)
+                        * max(0.2, 1 + (caster.dmgInc - tattr[ATTR_DamageDec] + nDamageInc) * 0.01)
                         * target.resist[damageKind]
                         * ((1 + 0.0025 * attacker.attr[ATTR_RuneAtk]) / (1 + 0.0025 * tattr[ATTR_RuneDef]))
         end
@@ -1735,6 +1813,35 @@ function BC.countDamage_attack(logic, caster, target, pro, add, maxpro, damageKi
         if maxDamage and damage > maxDamage then
             damage = maxDamage
         end
+
+        local immuneTeamPro = target._immuneTeamPro
+        if immuneTeamPro and immuneTeamPro > 0 and maxpro > 0 and damage ~= 0  then
+            --这个时候说明是百分比伤害
+            damage = (100 - immuneTeamPro) * damage * 0.01
+            if XBW_SKILL_DEBUG then print(os.clock(), "免疫兵团百分比伤害", immuneTeamPro) end
+        end
+
+        --特性表中概率免疫兵团伤害
+        local proImmuneTeamDamage = target.team.proImmuneTeamDamage
+        if proImmuneTeamDamage and damage ~= 0 and attacker.team then
+            local attackType = attacker.team.moveType or -1
+            local conAttackType = proImmuneTeamDamage[1] or -1
+            local proTeamDamage = proImmuneTeamDamage[2] or 0
+            local bIsImmune = false
+            if ran(100) <= proTeamDamage then
+                --0是所有兵团伤害，1是地面兵团，2是飞行兵团, 
+                if conAttackType == 0 then
+                    bIsImmune = true
+                elseif conAttackType == attackType and conAttackType > 0 then
+                    bIsImmune = true
+                end
+            end
+            if bIsImmune then
+                damage = 0
+                if XBW_SKILL_DEBUG then print(os.clock(), "免疫兵团伤害", conAttackType, proTeamDamage) end
+            end
+        end
+
         -- 减属性，前面加了一遍属性这里需要减一遍，保持属性不变
         if (charactersDef and #charactersDef > 0) or 
             (extraDefs and #extraDefs > 0) then
@@ -1984,6 +2091,7 @@ function BC.countBuffAdd(soldier)
     local canSkill = true
     local windFly = false
     local minHP = 0
+    local bandie = false
     local immune = {false, false, false, false, false}
     local still = false
     local dmghealrvt = false
@@ -1991,6 +2099,7 @@ function BC.countBuffAdd(soldier)
     local dmgrvt2 = false 
     local healrvt1 = false
     local healrvt2 = false  
+    local banfuhuo = 0
     for i = ATTR_Atk, ATTR_COUNT do
         buffAdd[i][1] = false
         buffAdd[i][2] = 0
@@ -2010,6 +2119,16 @@ function BC.countBuffAdd(soldier)
     local buffOpen
     local saturation = 0
     local _immnue
+    local immuneTeamPro = 0
+    local immuneHeroPro = 0
+    local immuneTeamAttackPro = 0
+    --应策划需求加了一个隐藏模型的效果（只有显示，不参与计算逻辑）
+    local isVisible = false
+    -- 控制吸血/反弹 效果
+    local isAntiInjury = false
+    -- buff 控制debuff的时间
+    local reduceBuffTime = {}
+    soldier.buffimmuneBuff = {}
     if next(buffs) ~= nil then
         for k, buff in pairs(buffs) do
             buffD = buff.buffD
@@ -2073,9 +2192,13 @@ function BC.countBuffAdd(soldier)
                 end
                 if buffD["bandie"] == 1 then
                     minHP = 1
+                    bandie = true
                 end
                 if buffD["still"] == 1 then
                     still = true
+                end
+                if buffD["isVisible"] and buffD["isVisible"] == 1 and not isVisible then
+                    isVisible = true
                 end
                 _immnue = buffD["immune"]
                 if _immnue then
@@ -2104,6 +2227,31 @@ function BC.countBuffAdd(soldier)
                 if buffD["saturation"] then
                     saturation = saturation + buffD["saturation"]
                 end
+                if buffD["banfuhuo"] then
+                    banfuhuo = buffD["banfuhuo"]
+                end
+                if buffD["immunebuff"] then
+                    for key, var in ipairs(buffD["immunebuff"]) do
+                        if var then
+                            soldier.buffimmuneBuff[var] = true
+                        end
+                    end
+                end
+                if buffD["immunePercentDamage"] then
+                    if buffD["immunePercentDamage"][1] == 2 then
+                        immuneTeamPro = immuneTeamPro + buffD["immunePercentDamage"][2]
+                    elseif buffD["immunePercentDamage"][1] == 1 then
+                        immuneHeroPro = immuneHeroPro + buffD["immunePercentDamage"][2]
+                    elseif buffD["immunePercentDamage"][1] == 3 then
+                        immuneTeamAttackPro = immuneTeamAttackPro + buffD["immunePercentDamage"][2]
+                    end
+                end
+                if buffD["isAntiInjury"] and buffD["isAntiInjury"] == 1 then
+                    isAntiInjury = true
+                end
+                if buffD["reduceBuffTime"] then
+                    reduceBuffTime[buffD["reduceBuffTime"][1]] = (reduceBuffTime[buffD["reduceBuffTime"][1]] or 0) + buffD["reduceBuffTime"][2]
+                end
             end
         end
     end
@@ -2129,6 +2277,7 @@ function BC.countBuffAdd(soldier)
         soldier.canSkill = canSkill
     end
     soldier.minHP = minHP
+    soldier.bandie = bandie
     soldier.still = still
     soldier.immune = immune[1]
     soldier.immune_skill[2] = immune[2]
@@ -2136,6 +2285,24 @@ function BC.countBuffAdd(soldier)
     soldier.immune_skill[4] = immune[4]
     soldier.immune_skill[5] = immune[5]
     soldier.immune_skill[8] = immune[8]
+
+    
+    
+    if soldier._worldBoss then
+--        print("-------------------", buffAdd[ATTR_DefPro][2])
+        --针对世界娜迦减低护甲%（ATTR_DefPro）是的伤害爆炸，这里对世界boss减低防御做了控制
+        if buffAdd[ATTR_DefPro] and buffAdd[ATTR_DefPro][1] then
+            buffAdd[ATTR_DefPro][2] = 0
+        end
+        local _baseAttr = soldier.baseAttr
+        --针对世界boss减法抗，做了一个限制
+         for i = ATTR_DecFire, ATTR_DecAll do
+             if buffAdd[i] and buffAdd[i][1] and _baseAttr[i] and (_baseAttr[i] + buffAdd[i][2]) <= -250 then
+                 buffAdd[i][2] = _baseAttr[i] - 250
+             end
+         end
+    end
+
     local _attr = soldier.attr
     if not BATTLE_PROC and GameStatic.checkZuoBi_1 then
         local attrSum = 0
@@ -2203,11 +2370,19 @@ function BC.countBuffAdd(soldier)
     soldier.dmgrvt2 = dmgrvt2 
     soldier.healrvt1 = healrvt1
     soldier.healrvt2 = healrvt2  
+    soldier.banfuhuo = banfuhuo  
 
     if soldier.saturation ~= saturation then
         soldier.saturation = saturation
         soldier.saturationDirty = true
     end
+    
+    soldier._isVisible = isVisible
+    soldier._immuneTeamPro = immuneTeamPro
+    soldier._immuneHeroPro = immuneHeroPro
+    soldier._immuneTeamAttackPro = immuneTeamAttackPro
+    soldier._isAntiInjury = isAntiInjury
+    soldier._reduceBuffTime = reduceBuffTime
 end
 
 -- 计算护盾免伤后的伤害
@@ -2270,30 +2445,50 @@ function BC.initSoldierBuff(id, skilllevel, caster, target, fromSkillId)
     local skilladd = skilllevel - 1
     -- 持续时间
     local duration = buffD["last1"][1] + skilladd * buffD["last1"][2]
+    local baseduration = duration
     local value = {0}
     local valueEx
     local shield = 0
     local hurt = 0
+    local maxhurt = 0
     local buffOpen
     local _kind = buffD["kind"]
     if _kind == 0 or _kind == 1 then
         -- buff/debuff
         if 0 == _kind then
-            if caster.attacker and caster.attacker.runeBuffEffect then
-                local condition = caster.attacker.runeBuffEffect.condition
-                local value = caster.attacker.runeBuffEffect.value
+            if caster.attacker and caster.attacker.team.runeBuffEffect then
+                local condition = caster.attacker.team.runeBuffEffect.condition
+                local value = caster.attacker.team.runeBuffEffect.value
                 if 18 == condition then
                     duration = duration * (100 + value) * 0.01
                 end
             end
         end
 
+        --目标的被动技能减少buff的持续时间
+        local _nBuffLabel = buffD["label"]
+        if target and target.team and target.team.skillPassiveBuff and target.team.skillPassiveBuff[_nBuffLabel] then
+            duration = duration * (100 + target.team.skillPassiveBuff[_nBuffLabel]) * 0.01
+            if duration < 0 then
+                duration = 0
+            end
+        end 
+
+        --buff 控制debuff的持续时间
+        if target and target._reduceBuffTime and target._reduceBuffTime[_nBuffLabel] then
+            local curDuration = baseduration * target._reduceBuffTime[_nBuffLabel] * 0.01
+            duration = duration + curDuration
+            if duration < 0 then
+                duration = 0
+            end
+        end
+
         local addattr = buffD["addattr"]
         if addattr and #addattr > 0 then
             local valueRuneEffect = 0
-            if caster.attacker and caster.attacker.runeBuffEffect then
-                local condition = caster.attacker.runeBuffEffect.condition
-                local value = caster.attacker.runeBuffEffect.value
+            if caster.attacker and caster.attacker.team.runeBuffEffect then
+                local condition = caster.attacker.team.runeBuffEffect.condition
+                local value = caster.attacker.team.runeBuffEffect.value
                 if 19 == condition or 20 == condition then
                     valueRuneEffect = value
                 end
@@ -2347,6 +2542,10 @@ function BC.initSoldierBuff(id, skilllevel, caster, target, fromSkillId)
                 -- target最大血量
                 value[1] = buffD["hurt"][1] + skilladd * buffD["hurt"][2]
                 value[1] = target.maxHP * value[1] * 0.01
+                if buffD["maxhurt"] and buffD["maxhurt"][1] and buffD["maxhurt"][2] then
+                    local maxhurt = buffD["maxhurt"][1] + skilladd * buffD["maxhurt"][2]
+                    value[1] = math.min(value[1], maxhurt)
+                end
             elseif _type == 3 or _type == 6 then
                 -- 固定值
                 value[1] = buffD["hurt"][1] + skilladd * buffD["hurt"][2]
@@ -2374,6 +2573,7 @@ end
 -- 初始化来自玩家的BUFF
 -- dot/hot的取值有可能和目标生命有关
 -- pro为法强修正
+
 function BC.initPlayerBuff(camp, id, level, target, pro, dk, doubleEffect, fromSkillId)
     local buffD
     -- buff替换
@@ -2382,16 +2582,35 @@ function BC.initPlayerBuff(camp, id, level, target, pro, dk, doubleEffect, fromS
     else
         buffD = tab.skillBuff[id]
     end
-    local buffid = buffD["id"]
     if buffD == nil then
         print("buff ID 不存在 " .. id)
     end
+    local buffid = buffD["id"]
     if buffD["bufftype"] ~= 2 then
         -- print("buffid: "..id.." 为怪兽buff")
     end
 
     local leveladd = level - 1
     local duration = buffD["last1"][1] + leveladd * buffD["last1"][2]
+    local baseduration = duration
+    --目标的被动技能减少buff的持续时间
+    local _nBuffLabel = buffD["label"]
+    if target and target.team and target.team.skillPassiveBuff and target.team.skillPassiveBuff[_nBuffLabel] then
+        duration = duration * (100 + target.team.skillPassiveBuff[_nBuffLabel]) * 0.01
+        if duration < 0 then
+            duration = 0
+        end
+    end 
+
+    --buff 控制debuff的持续时间
+    if target and target._reduceBuffTime and target._reduceBuffTime[_nBuffLabel] then
+        local curDuration = baseduration * target._reduceBuffTime[_nBuffLabel] * 0.01
+        duration = duration + curDuration
+        if duration < 0 then
+            duration = 0
+        end
+    end
+
     local value = {0}
     local valuePro = 1 + H_AP_2[camp][5] 
     if dk < 5 and dk > 0 then
@@ -2403,6 +2622,7 @@ function BC.initPlayerBuff(camp, id, level, target, pro, dk, doubleEffect, fromS
     local valueEx
     local shield = 0
     local hurt = 0
+    local maxhurt = 0
     local buffOpen
     local _kind = buffD["kind"]
     if _kind == 0 or _kind == 1 then
@@ -2459,6 +2679,10 @@ function BC.initPlayerBuff(camp, id, level, target, pro, dk, doubleEffect, fromS
                 -- target最大血量
                 value[1] = buffD["hurt"][1] + leveladd * buffD["hurt"][2]
                 value[1] = target.maxHP * value[1] * 0.01
+                if buffD["maxhurt"] and buffD["maxhurt"][1] and buffD["maxhurt"][2] then
+                    local maxhurt = buffD["maxhurt"][1] + leveladd * buffD["maxhurt"][2]
+                    value[1] = math.min(value[1], maxhurt)
+                end
             elseif _type == 3 or _type == 6 then
                 -- 固定值
                 value[1] = buffD["hurt"][1] + leveladd * buffD["hurt"][2]
@@ -2468,10 +2692,13 @@ function BC.initPlayerBuff(camp, id, level, target, pro, dk, doubleEffect, fromS
                 value[1] = target.HP * value[1] * 0.01      
             end
             -- 计算伤害
+            --- dongcheng 这里是英雄造成的BUFF 暂不支持减免免疫 2018.05.25
             if _kind == 2 then
-                value[1], hurt = countDamage_dot(nil, target, value[1], buffD["dottype"])
-            else
-                value[1] = -countDamage_hot(nil, target, value[1], buffD["dottype"])
+--                value[1], hurt = countDamage_dot(nil, target, value[1], buffD["dottype"])
+                value[1], hurt = value[1], hurt
+--            else
+----                value[1] = -countDamage_hot(nil, target, value[1], buffD["dottype"])
+--                value[1] = -countDamage_hot(target.caster, target, value[1], buffD["dottype"])
             end
             value[1] = ceil(value[1] * pro * 0.01)
         end
@@ -2482,6 +2709,58 @@ function BC.initPlayerBuff(camp, id, level, target, pro, dk, doubleEffect, fromS
     return result
 end
 
+function BC.genRanBuff(ranbuff, ranbuffnum)
+    if not (ranbuff and ranbuffnum) then return {} end
+    local buffids = {}
+    local count = #ranbuff
+    if count == ranbuffnum then
+        for i = 1, count do
+            table.insert(buffids, ranbuff[i][1])
+        end
+        -- dump(buffids, "buffids")
+        return buffids
+    end
+
+    local cachebuffids = {}
+
+    local pick = function(total)
+        local rd = ran(total)
+        local sum, id, wi, found = 0, 0, 0, false
+        for i = 1, #ranbuff do
+            repeat
+                id = ranbuff[i][1]
+                wi = ranbuff[i][2]
+                if cachebuffids[id] then break end
+                sum = sum + wi
+                if sum >= rd then
+                    table.insert(buffids, id)
+                    cachebuffids[id] = true
+                    found = true
+                end
+            until true
+            if found then
+                break
+            end
+        end
+    end
+
+    count = math.min(#ranbuff, ranbuffnum)
+
+    for i = 1, count do
+        local total, id, wi = 0, 0, 0
+        for i = 1, #ranbuff do
+            repeat
+                id = ranbuff[i][1]
+                wi = ranbuff[i][2]
+                if cachebuffids[id] then break end
+                total = total + wi
+            until true
+        end
+        pick(total)
+    end
+    -- dump(buffids, "buffids")
+    return buffids
+end
 
 --  持续时间, 单位为ms
 -- value为具体数值 本身是个数组
@@ -2602,6 +2881,7 @@ function BC.initPlayerSkill(camp, index, skill)
                     damageBasePro = skill[8],                                       -- 伤害固定值的成长
                     healExAction = skill[9],                                        -- 治疗附带action
                     damageExAction = skill[10],                                     -- 伤害附带action
+                    mgtrigerproduct = skillD["mgtrigerproduct"],                    -- 额外触发的法术
                 }
     skill.oriMana = skill.mana
     if skill.castCon == 1 then
@@ -2861,7 +3141,7 @@ function BC.updateCaster(attacker, logic)
     local charactersAtk = team.charactersAtk
     local target = attacker.targetS
     if #charactersAtk > 0 then
-        local char, key, attr, kk, double
+        local char, key, attr1, kk, double
         for i = 1, #charactersAtk do
             char = charactersAtk[i]
             -- 0就是无条件
@@ -2884,18 +3164,36 @@ function BC.updateCaster(attacker, logic)
 
                 -- 目标每有一个debuff(同类型的debuff算一个)，攻击者攻击力增加
                 if char[2] == 22 then
-                    local count, bufft = target:getDebuffLabelCount()
-                    if count > 0 then
-                        kk = math.min(count, 5)
-                    end 
+                    if target then
+                        local count, bufft = target:getDebuffLabelCount()
+                        if count > 0 then
+                            kk = math.min(count, 5)
+                        end 
+                    end
                 end 
+
+                -- 目标或者自身每有一个debuff(同类型的debuff算一个)，攻击者攻击力增加
+                if char[2] == 28 then
+                    local count1, bufft1 = 0, 0
+                    if target then
+                        count1, bufft1 = target:getDebuffLabelCount()
+                    end
+                    local count2, bufft2 = 0, 0
+                    if attacker then
+                        count2, bufft2 = attacker:getDebuffLabelCount()
+                    end
+                    local count = count1 + count2
+                    if count > 0 then
+                        kk = math.min(count, 8)
+                    end 
+                end
                 
                 for k = 1, #char[4] do
-                    attr = char[4][k][1]
-                    if attr <= 3 then
-                        ex_atk[attr] = ex_atk[attr] + char[4][k][2] * kk
+                    attr1 = char[4][k][1]
+                    if attr1 <= 3 then
+                        ex_atk[attr1] = ex_atk[attr1] + char[4][k][2] * kk
                     else
-                        key = casterAttrTab[attr]
+                        key = casterAttrTab[attr1]
                         if key then
                             caster[key] = caster[key] + char[4][k][2] * kk
                         end
@@ -3035,6 +3333,39 @@ function BC.countExtraDef18(logic, target, _)
     return target.HP / target.maxHP * 100
 end
 
+
+--[[-----------------------生写表 额外防御力------------------------]]--
+--20. 方阵人数影响
+function BC.countExtraDef20(logic, target, _)
+    return target.team._soldierAliveCount / target.team.number * 100
+end
+
+--[[-----------------------生写表 法术发免------------------------]]--
+--21. 方阵人数影响
+function BC.countExtraDef21(logic, target, _)
+    return BC.countExtraDef20(logic, target, _)
+end
+
+--[[-----------------------生写表 额外兵团伤害------------------------]]--
+--22. 攻击者血量百分比
+function BC.countExtraDef22(logic, target, nlinear, camp, attacker)
+    if attacker == nil then
+        return 0
+    end
+    return attacker.HP / attacker.maxHP * 100
+end
+
+
+--[[-----------------------生写表 额外兵团伤害------------------------]]--
+--23. 攻击者方阵人数影响
+function BC.countExtraDef23(logic, target, nlinear, camp, attacker)
+    if attacker == nil then
+        return 0
+    end
+    return countExtraDef20(logic, attacker)
+end
+
+
 --[[-----------------------生写表 条件触发------------------------]]--
 -- 1:如果目标体型大于 等于1:微型 2:小型 3:中型 4：大型 5：巨型 6：自己
 function BC.countCharacters1(logic, _self, target, value)
@@ -3094,7 +3425,7 @@ function BC.countCharacters6(logic, _self, target, value)
         return false
     end
 end
--- 7如果受到的攻击是 1：近战 2：远程
+-- 7如果受到的攻击是 1：近战 2：远程(下次攻击)
 function BC.countCharacters7(logic, _self, target, value)
     if _self.beDamageType == value then
         _self.beDamageType = 0
@@ -3244,6 +3575,14 @@ function BC.countCharacters23(logic, _self, target, value)
     end
 end
 
+-- 24如果目标是召唤物
+function BC.countCharacters24(logic, _self, target, value)
+    if target then
+        return target.team.summon
+    end
+    return false
+end
+
 -- 25如果目标生命百分比高于 
 function BC.countCharacters25(logic, _self, target, value)
     if target then
@@ -3252,6 +3591,178 @@ function BC.countCharacters25(logic, _self, target, value)
         return false
     end
 end
+
+-- 26如果敌方兵团少于
+function BC.countCharacters26(logic, _self, target, value)
+    local camp = 3 - _self.camp
+    local teamCount = logic.teamCount[camp] - logic._teamDieCount[camp]
+    return teamCount < value
+end
+
+-- 27如果敌方兵团多于
+function BC.countCharacters27(logic, _self, target, value)
+    local camp = 3 - _self.camp
+    local teamCount = logic.teamCount[camp] - logic._teamDieCount[camp]
+    return teamCount > value
+end
+
+-- 28如果目标身上有debuff
+function BC.countCharacters28(logic, _self, target, value)
+    if target then
+        local buffs = target.buff
+        for _, buff in pairs(buffs) do
+            local buffKind = buff.buffD["kind"]
+            local label = buff.buffD["label"]
+            if (buffKind == 1 or buffKind == 2) and label ~= 0 then
+                return true
+            end 
+        end
+    end
+
+    if _self then
+        local buffs = _self.buff
+        for _, buff in pairs(buffs) do
+            local buffKind = buff.buffD["kind"]
+            local label = buff.buffD["label"]
+            if (buffKind == 1 or buffKind == 2) and label ~= 0 then
+                return true
+            end 
+        end
+    end
+
+    return false
+end
+
+-- 29如果自身身上有debuff
+function BC.countCharacters29(logic, _self, target, value)
+    if _self then
+        local buffs = _self.buff
+        for _, buff in pairs(buffs) do
+            local buffKind = buff.buffD["kind"]
+            local label = buff.buffD["label"]
+            if (buffKind == 1 or buffKind == 2) and label ~= 0 then
+                return true
+            end 
+        end
+    end
+
+    if target then
+        local buffs = target.buff
+        for _, buff in pairs(buffs) do
+            local buffKind = buff.buffD["kind"]
+            local label = buff.buffD["label"]
+            if (buffKind == 1 or buffKind == 2) and label ~= 0 then
+                return true
+            end 
+        end
+    end
+
+    return false
+end
+
+-- 30如果自身身上有x类型buff
+function BC.countCharacters30(logic, _self, target, value)
+    if _self then
+        local buffs = _self.buff
+        for _, buff in pairs(buffs) do
+            local label = buff.buffD["label"]
+            if label == value then
+                return true
+            end 
+        end
+    end
+    return false
+end
+
+-- 31如果目标种族标签1不为X
+function BC.countCharacters31(logic, _self, target, value)
+    if target then
+        return target.team.race1 ~= value
+    end
+    return false
+end
+
+-- 32如果目标种族标签2不为X
+function BC.countCharacters32(logic, _self, target, value)
+    if target then
+        return target.team.race2 ~= value
+    end
+    return false
+end
+
+-- 33如果目标当前有x类型的buff并且层数是在范围之类
+function BC.countCharacters33(logic, _self, target, value)
+    if target then
+        local buffs = target.buff
+        for _, buff in pairs(buffs) do
+            if buff and buff.buffD["label"] == value[1] then
+                if buff.count and buff.count >= value[2] and buff.count < value[3] then
+                    return true
+                end
+                return false
+            end
+        end
+        return false
+    else
+        return false
+    end
+end
+
+-- 34如果目标当前有x类型的buff并且层数是在范围之类
+function BC.countCharacters34(logic, _self, target, value)
+    if target then
+        local buffs = target.buff
+        local tabCount = {}
+        local nCount = 0
+        for _, buff in pairs(buffs) do
+            if buff and buff.buffD["label"] then
+                tabCount[buff.buffD["label"]] = true
+            end
+        end
+
+        for key, var in ipairs(value) do
+            if not tabCount[var] then
+                return false
+            end
+        end
+        return true
+    else
+        return false
+    end
+end
+
+
+
+-- 35 更具己方墓园兵团数量动态的检测敌方血量的临界值
+function BC.countCharacters35(logic, _self, target, value)
+    if target and logic and target.team then
+        local team = target.team
+        local camp = 3 - target.camp
+        local sumTeamCount = logic.race1CountSum[camp][value[1]] or 0
+        local teamCount = logic.race1Count[camp][value[1]] or 0
+        local hpCriVal = (value[2] + value[3] * teamCount + value[4] * sumTeamCount)
+        if (hpCriVal + 0.00000001) > value[5] then
+            hpCriVal = value[5]
+        end
+        hpCriVal = hpCriVal / 100
+        if (hpCriVal + 0.00000001) > (team.curHP / team.maxHP) then
+            return true
+        end
+        return false
+    else
+        return false
+    end
+end
+
+-- 36如果受到的攻击是 1：近战 2：远程
+function BC.countCharacters36(logic, _self, target, value)
+    if _self and _self.team and _self.team.atkType == value then
+        return true
+    else
+        return false
+    end
+end
+
 
 
 -- 针对方阵
@@ -3457,7 +3968,13 @@ function BC.reset(level1, level2, reverse, siegeReverse)
     if BC.siegeR_show == nil then BC.siegeR_show = false end
     BC.MoveTypeCount = {{0, 0}, {0, 0}}
     BC.ClassCount = {{0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}}
-    BC.Race1Count = {{0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}}
+    BC.Race1Count = {{}, {}}
+    for key = 1, BC.TotalRace1Count do
+        BC.Race1Count[1][key] = 0
+        BC.Race1Count[2][key] = 0
+    end
+    BC.ObjectParentSkillId = {}
+    BC.RecordReleaseSkill = {{}, {}, {}, {}}
     BC.XCount = {{0, 0, 0}, {0, 0, 0}}
     BC.TeamMap = {{}, {}}
     BC.NpcMap = {{}, {}}

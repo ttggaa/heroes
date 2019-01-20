@@ -262,6 +262,7 @@ function LeagueBattleReport:createItem( data,x,y )
     end
 
 	local lv = data[prefix .. "Lvl"]
+    local plvl = data[prefix .. "Plvl"]
 	local name = data[prefix .. "Name"]
 	local avatar = data[prefix .. "Avatar"]
 	local time = data.time
@@ -274,7 +275,7 @@ function LeagueBattleReport:createItem( data,x,y )
 	end--safecode toberemove
 	-- local avatarName = tab:RoleAvatar(avatar).icon
 	-- local icon = ccui.ImageView:create()
-    local icon = IconUtils:createHeadIconById({avatar = avatar,level = lv or "0" ,tp = 4,avatarFrame=data[prefix .. "AvatarFrame"]}) 
+    local icon = IconUtils:createHeadIconById({avatar = avatar,level = lv or "0" ,tp = 4,avatarFrame=data[prefix .. "AvatarFrame"], plvl = plvl}) 
 	-- icon:loadTexture(avatarName,1)
 	icon:setAnchorPoint(cc.p(0,0))
     icon:setPosition(cc.p(0,-6))

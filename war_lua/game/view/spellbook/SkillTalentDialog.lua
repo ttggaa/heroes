@@ -21,11 +21,6 @@ function SkillTalentDialog:ctor(param)
     self:listenReflash("SkillTalentModel",self.onDataChange)
     self:listenReflash("SpellBooksModel",self.onDataChange)
 
-    local his = SystemUtils.loadAccountLocalData("SKILL_TALENT_IN")
-    if not his then
-        SystemUtils.saveAccountLocalData("SKILL_TALENT_IN",1)
-    end
-
     local time = SystemUtils.loadAccountLocalData("SKILL_TALENT_IN_TIME")
     local curTime = self._userModel:getCurServerTime()
     if not time or TimeUtils.checkIsOtherDay(time,curTime) then

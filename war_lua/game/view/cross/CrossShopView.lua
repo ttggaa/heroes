@@ -67,7 +67,7 @@ function CrossShopView:reflashUI(data)
 	self:reflashShopGoodsData()
 end
 function CrossShopView:getGoodsData()
-	local goods = self._shopModel:getShopGoods(l_shopType)
+	local goods = self._shopModel:getShopGoods(l_shopType) or {}
 	local goodsData = clone(tab.cpShop)
 	
 	local tbItem = {}
@@ -99,10 +99,8 @@ function CrossShopView:reflashShopGoodsData()
 	
 	local itemSizeX,itemSizeY = 186,192
 	local offsetX,offsetY = 17.5,13.5
-	
 	local row = math.ceil(#tbItem/4)
 	local col = 4
-
 	local containerHeight = row*itemSizeY
 	local scrollWidth = self._scroll:getContentSize().width
 	self._scroll:setBounceEnabled(row>2)
@@ -112,13 +110,17 @@ function CrossShopView:reflashShopGoodsData()
 		self._downArrow:setVisible(true)
 	end
 	for i,v in pairs(self._grids) do
-		v:removeFromParent()
-        v = nil
+		if v and not tolua.isnull(v)then
+			v:removeFromParent()
+	        v = nil
+	    end
 	end
 	local k = 1
 	local x
 	local y
-	for i,v in ipairs(clone(tab.cpShop)) do
+	local goodsCount = row * col
+	for i = 1, goodsCount do
+	-- for i,v in ipairs(clone(tab.cpShop)) do
 		local itemData = tbItem[i]
 		-- local col = i%4 == 0 and 4 or i%4
 		-- x = (col-1)*itemSizeX+offsetX + 15
@@ -126,11 +128,11 @@ function CrossShopView:reflashShopGoodsData()
 
 		x = (i-1)%col*itemSizeX+offsetX
 		y = containerHeight - (math.floor((i-1)/col) + 1)*itemSizeY+offsetY - 1
---		if itemData.open==1 then
-		self:createItem( i, itemData, x, y )
-		--[[else
+		if itemData then
+			self:createItem( i, itemData, x, y )
+		else
 			self:createGrid(x, y, i)
-		end--]]
+		end
 	end
 	self._refreshAnim = false
 	if self._offsetY then
@@ -170,7 +172,6 @@ function CrossShopView:createItem(index, itemData, posX, posY)
 		node.underShadow	= node:getChildByFullName("bottomDecorate")
 		node.lockImg		= node:getChildByFullName("lock")
 		
-        node:setPosition(posX+node:getContentSize().width/2, posY+node:getContentSize().height/2)
 		node:setVisible(true)
 		self._scroll:addChild(node)
 		self._goodsNode[index] = node
@@ -181,6 +182,7 @@ function CrossShopView:createItem(index, itemData, posX, posY)
 	else
 		node:setVisible(true)
 	end
+    node:setPosition(posX + node:getContentSize().width / 2, posY + node:getContentSize().height / 2)
 	--设置属性
 	node.winBg:setVisible(itemData.winopen==1)
 	node.itemBg:setVisible(itemData.winopen==0)
@@ -360,11 +362,13 @@ function CrossShopView:reflashShopUserData()
 	for i,v in ipairs(tbItem) do
 		if v.open==1 then
 			local node = self._goodsNode[i]
-			local haveNum = userData[v.costType] or 0
-			if haveNum < v.costNum then
-				node.priceLabel:setColor(UIUtils.colorTable.ccUIBaseColor6)
-			else
-				node.priceLabel:setColor(UIUtils.colorTable.ccUIBaseTextColor2)
+			if node then
+				local haveNum = userData[v.costType] or 0
+				if haveNum < v.costNum then
+					node.priceLabel:setColor(UIUtils.colorTable.ccUIBaseColor6)
+				else
+					node.priceLabel:setColor(UIUtils.colorTable.ccUIBaseTextColor2)
+				end
 			end
 		end
 	end

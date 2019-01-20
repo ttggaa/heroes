@@ -18,11 +18,11 @@ end
 
 -- 初始化UI后会调用, 有需要请覆盖
 function GlobalSkinGetDialog:onInit()
-	self._bg = self:getUI("bg")
-	local closePanel = self:getUI("closePanel")
-    closePanel:setTouchEnabled(false)	
+    self._bg = self:getUI("bg")
+    local closePanel = self:getUI("closePanel")
+    closePanel:setTouchEnabled(false)   
 
-	self._bgImg = self:getUI("bg.bgImg")
+    self._bgImg = self:getUI("bg.bgImg")
     self._name = self:getUI("bg.nameBg.nameTxt")
     self._name:setFontName(UIUtils.ttfName)
     self._name:setFontSize(20)
@@ -56,17 +56,17 @@ end
 
 -- 接收自定义消息
 function GlobalSkinGetDialog:reflashUI(data)
-	if not self._skinId then return end
-	-- 皮肤信息
-	local skinData = tab:HeroSkin(tonumber(self._skinId)) or {}
-	local imgName = skinData.heroport or "b_Catherine"
+    if not self._skinId then return end
+    -- 皮肤信息
+    local skinData = tab:HeroSkin(tonumber(self._skinId)) or {}
+    local imgName = skinData.heroport or "b_Catherine"
     if imgName then
-    	local filename = "asset/uiother/hero/" .. imgName .. ".jpg"
-		if cc.FileUtils:getInstance():isFileExist(filename) then
-			self._bgImg:loadTexture(filename)
-		else
-			print("===========have no image==============")
-		end
+        local filename = "asset/uiother/hero/" .. imgName .. ".jpg"
+        if cc.FileUtils:getInstance():isFileExist(filename) then
+            self._bgImg:loadTexture(filename)
+        else
+            print("===========have no image==============")
+        end
     end
 
     if ADOPT_IPHONEX then

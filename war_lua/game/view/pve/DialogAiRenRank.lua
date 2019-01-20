@@ -187,7 +187,8 @@ function DialogAiRenRank:reflashNo1( data )
 	if not data then return	end
 	guildDes:setVisible(true)
 	name:setString(data.name)
-	level:setString("Lv." .. (data.level or ""))
+	local inParam = {lvlStr = "Lv." .. (data.level or data.lvl or 0), lvl = (data.level or data.lvl or 0), plvl = data.plvl}
+    UIUtils:adjustLevelShow(level, inParam, 1)
 	local guildName = data.guildName
 	if  not guildName then
 		guildName = "暂无联盟"

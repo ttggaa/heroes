@@ -63,7 +63,8 @@ function RankUserWeaponsDialog:updateUserHead(userHead)
 	end 
     if not self._avatar then
         local tencetTp = self._userData["qqVip"]
-        self._avatar = IconUtils:createHeadIconById({avatar = avtar,level = tonumber(self._userData.level) or tonumber(self._userData.lvl) or "0" ,tp = 4 ,avatarFrame = self._userData["avatarFrame"], tencetTp = tencetTp})
+        local headP = {avatar = avtar,level = tonumber(self._userData.level or self._userData.lvl or 0),tp = 4 ,plvl = self._userData["plvl"], avatarFrame = self._userData["avatarFrame"], tencetTp = tencetTp}
+        self._avatar = IconUtils:createHeadIconById(headP)
         self._avatar:setPosition(cc.p(-1,-1))
         self._userHead:addChild(self._avatar)
     end

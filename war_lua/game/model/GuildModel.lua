@@ -1054,16 +1054,48 @@ end
 --刷新联盟佣兵列表数据中 派遣的佣兵数据
 function GuildModel:refreshAllListMercenaryInfo()
     local userid = self._modelMgr:getModel("UserModel"):getData()._id 
-    if next(self._guildMercenaryAllList) then
-        for k , v in pairs(self._guildMercenaryAllList["mercenaryList"]) do
-            if v["userId"] == userid then
-                if next(self._guildMercenary) then
-                    for k1,v1 in pairs(self._guildMercenary["mercenaryDetails"]) do
-                        if v["teamId"] == v1["teamId"] then
-                            v["team"] = v1["team"]
-                        end
+    local userName = self._modelMgr:getModel("UserModel"):getData().name
+    -- if next(self._guildMercenaryAllList) then
+    --     for k , v in pairs(self._guildMercenaryAllList["mercenaryList"]) do
+    --         if v["userId"] == userid then
+    --             if next(self._guildMercenary) then
+    --                 for k1,v1 in pairs(self._guildMercenary["mercenaryDetails"]) do
+    --                     if v["teamId"] == v1["teamId"] then
+    --                         v["team"] = v1["team"]
+    --                     end
+    --                 end
+    --             end
+    --         end
+    --     end
+    -- end
+    local isIncludeFunc = function(teamData)
+        if next(self._guildMercenaryAllList) then
+            for k , v in pairs(self._guildMercenaryAllList["mercenaryList"]) do
+                if v["userId"] == userid then
+                    if v["teamId"] == teamData["teamId"] then
+                        v["team"] = teamData["team"]
+                        v["runes"] = teamData["runes"] or {}
+                        return true
                     end
                 end
+            end
+        end
+    end
+    if next(self._guildMercenary) then
+        for k1,v1 in pairs(self._guildMercenary["mercenaryDetails"]) do
+            if not (isIncludeFunc(v1)) then
+                local listCount = 0
+                if next(self._guildMercenaryAllList) == nil  then
+                    self._guildMercenaryAllList["mercenaryList"] = {}
+                    self._guildMercenaryAllList["mercenaryList"][1] = v1
+                else
+                    listCount = #self._guildMercenaryAllList["mercenaryList"]
+                    self._guildMercenaryAllList["mercenaryList"][listCount + 1] = v1
+                end
+                self._guildMercenaryAllList["mercenaryList"][listCount + 1]["runes"] = v1["runes"] or {}
+                self._guildMercenaryAllList["mercenaryList"][listCount + 1]["userId"] = userid
+                self._guildMercenaryAllList["mercenaryList"][listCount + 1]["userInfo"] = {}
+                self._guildMercenaryAllList["mercenaryList"][listCount + 1]["userInfo"]["name"] = userName
             end
         end
     end
@@ -1166,7 +1198,8 @@ function GuildModel:getEnemyDataById(teamId, userId)
                 local tempString = userId .."#"..teamId
                 -- print("=====userId and teamId======="..tempString)
                 -- print("===========times============="..useTimes)
-                return tempData["team"]
+                local runes = tempData.runes or nil
+                return tempData["team"] , runes
             end
         end
     end
@@ -1343,6 +1376,28 @@ function GuildModel:isMaxLevel(scienceId)
         end
     end
     return isMax,needExp
+end
+
+--是否显示退盟评价按钮
+function GuildModel:isShowQuitEvaluate()
+	local isShow = false
+	if self:canJoin() then
+		isShow = false
+	else
+		--判断是否评价过
+		local isEvaluate = self._userModel:isEvaluateLastGuild()
+		if isEvaluate then
+			isShow = false
+		else
+			local lastGuildName = self._modelMgr:getModel("UserModel"):getLastGuildName()
+			if lastGuildName and lastGuildName~="" then
+				isShow = true
+			else
+				isShow = false
+			end
+		end
+	end
+	return isShow
 end
 
 return GuildModel

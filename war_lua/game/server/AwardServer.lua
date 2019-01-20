@@ -34,6 +34,31 @@ function AwardServer:onGetFirstRecharge(result, error)
     self:callback(0 == tonumber(error), result["d"])
 
 end
+function AwardServer:onGetSecondRecharge(result, error)
+    -- dump(result)
+    if not result then return end
+    if 0 ~= error then return end
+    -- 物品数据处理要优先于怪兽
+    local itemModel = self._modelMgr:getModel("ItemModel")
+    itemModel:updateItems(result["d"]["items"], true)
+    result["d"]["items"] = nil
+
+    if result["unset"] ~= nil then 
+        local removeItems = itemModel:handelUnsetItems(result["unset"])
+        itemModel:delItems(removeItems, true)
+    end
+    if result["d"]["teams"] then
+        local teamModel = self._modelMgr:getModel("TeamModel")
+        teamModel:updateTeamData(result["d"]["teams"])
+        result["d"]["teams"] = nil
+    end
+
+    local userModel = self._modelMgr:getModel("UserModel")
+    userModel:updateUserData(result["d"])
+    self:callback(0 == tonumber(error), result["d"])
+
+end
+
 
 function AwardServer:onReceiveLoginReward(result, error)
     if error ~= 0 then 

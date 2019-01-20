@@ -518,4 +518,28 @@ function ActivityServer:onGetRadioReward(result, error)
     self:callback(result)
 end
 
+-- 主播活动奖励
+function ActivityServer:onGetShowActReward(result, error)
+    if 0 ~= tonumber(error) then return end
+    -- dump(result,"onGetShowActReward==>",5)
+    self:handAboutServerData(result)
+    self:callback(0 == tonumber(error),result)
+end
+
+-- 元素馈赠
+function ActivityServer:onGetEleGfit(result, error)
+    if 0 ~= tonumber(error) then return end
+    -- dump(result,"onGetEleGfit==>",5)
+    self:handAboutServerData(result)
+    self:callback(0 == tonumber(error),result)
+end
+
+-- 神秘商人
+function ActivityServer:onGetTreasureMerchantInfo(result, error)
+    if 0 ~= tonumber(error) then return end
+    -- dump(result,"onGetEleGfit==>",5)
+    self:handAboutServerData(result)
+    self:callback(result,0 == tonumber(error))
+end
+
 return ActivityServer

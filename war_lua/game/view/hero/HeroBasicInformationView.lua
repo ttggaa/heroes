@@ -514,7 +514,6 @@ function HeroBasicInformationView:onInit()
     -- self._upgrade._unlockCondition:enableOutline(cc.c4b(81, 19, 0, 255), 2)
 
     self._upgrade._layerEffectDescription = self:getUI("bg.layer.layer_right_3.layer_unlock_effect.layer_1.layer_effect_description")
-
     self._upgrade._imageProBg = self:getUI("bg.layer.layer_right_3.layer_upgrade.image_pro_bg")
     self._upgrade._proBar = self:getUI("bg.layer.layer_right_3.layer_upgrade.image_pro_bg.upgrade_pro_bar")
     self._upgrade._upgradeValue = self:getUI("bg.layer.layer_right_3.layer_upgrade.image_pro_bg.label_upgrade_value")
@@ -554,6 +553,15 @@ function HeroBasicInformationView:onInit()
         self:onAttributeClicked()
     end)
     ]]
+
+    --专长tips
+    self.tipsBtn = self:getUI("bg.layer.layer_right_2.layer_specialty.tipsBtn")
+    local showDes = tab.hero[self._heroData.id]["showdes"]
+    self.tipsBtn:setVisible(tonumber(showDes) == 1 and true or false)
+    self:registerClickEvent(self.tipsBtn,function ()
+        local herodes1 = tab.hero[self._heroData.id]["herodes1"]
+        self._viewMgr:showDialog("global.GlobalRuleDescView",{desc = lang(herodes1),titleDes = "专长补充"},true)
+    end)
 
     self:registerScriptHandler(function(state)
         if state == "exit" then
@@ -708,19 +716,20 @@ function HeroBasicInformationView:onIconPressOn(node, iconType, iconId)
             kind = "回魔" -- lang("ARTIFACTDES_PRO_121")
             icon = 6
             attr = tonumber(string.format("%.01f", self._attributeValues.manaRec * 2.0))
+            local backupAttr = self._modelMgr:getModel("BackupModel"):getBackUpAddAtr() or {}
+            local moraleV = backupAttr[104] or 0
+            attr6 = tonumber(string.format("%.01f", moraleV * 2.0))
             attr5 = tonumber(string.format("%.01f", self._attributeValues.heroAttr_treasure[BattleUtils.HATTR_ManaRec] * 2.0))
             attr4 = tonumber(string.format("%.01f", self._attributeValues.heroAttr_special[BattleUtils.HATTR_ManaRec] * 2.0))
             attr3 = tonumber(string.format("%.01f", self._attributeValues.heroAttr_mastery[BattleUtils.HATTR_ManaRec] * 2.0))
             attr2 = tonumber(string.format("%.01f", self._attributeValues.heroAttr_talent[BattleUtils.HATTR_ManaRec] * 2.0))
-            attr1 = attr - attr2 - attr3 - attr4 - attr5
-
+            attr1 = attr - attr2 - attr3 - attr4 - attr5 - attr6
             -- 安德鲁的专长 加回魔
             base = tonumber(string.format("%.01f", tab.hero[heroId].manarec * 2.0)) 
             if (attr1 - base) > 0 then
                attr4 = attr4 + attr1 - base
                attr1 = base
             end
-
             -- [[新功能，添加法术平均消耗
             local averageMCD,slotMCD = self:caculateAverMCD(heroId)
             --法术平均消耗 end]]
@@ -740,7 +749,8 @@ function HeroBasicInformationView:onIconPressOn(node, iconType, iconId)
                 attr3 = attr3,
                 attr4 = attr4,
                 attr5 = attr5,
-                attr6 = attr,
+                attr6 = attr6,
+                attr7 = attr,
                 averageMCD = averageMCD,
                 slotMCD = slotMCD,
                 posCenter = true,
@@ -760,8 +770,11 @@ function HeroBasicInformationView:onIconPressOn(node, iconType, iconId)
             attr3 = attr3 + tonumber(string.format("%.01f",self._attributeValues.heroAttr_mastery[BattleUtils.HATTR_AP1All]))
             -- heroAttr_talent
             local attr2 =  tonumber(string.format("%.01f",self._attributeValues.heroAttr_talent[BattleUtils.HATTR_AP1All]))
-            
-            local attr = attr1+attr2+attr3+attr4
+            --星图
+            local starAttr = self._modelMgr:getModel("UserModel"):getStarHeroAttr() or {}
+            local attr6 =  tonumber(string.format("%.01f",starAttr[BattleUtils.HATTR_AP1All + 100] or 0))
+
+            local attr = attr1+attr2+attr3+attr4+attr6
             self:showHintView("global.GlobalTipView",
             {
                 tipType = 21, 
@@ -772,8 +785,8 @@ function HeroBasicInformationView:onIconPressOn(node, iconType, iconId)
                 attr2 = attr2,
                 attr3 = attr3,
                 attr4 = attr4,
-                attr5 = attr5,
-                attr6 = attr,
+                attr5 = attr,
+                attr6 = attr6,
                 des = "", 
                 posCenter = true
             })
@@ -817,8 +830,11 @@ function HeroBasicInformationView:caculateMagicHurt( )
     attr3 = attr3 + tonumber(string.format("%.01f",self._attributeValues.heroAttr_mastery[BattleUtils.HATTR_AP1All]))
     -- heroAttr_talent
     local attr2 =  tonumber(string.format("%.01f",self._attributeValues.heroAttr_talent[BattleUtils.HATTR_AP1All]))
-    
-    local attr = attr1+attr2+attr3+attr4
+    --星图
+    local starAttr = self._modelMgr:getModel("UserModel"):getStarHeroAttr() or {}
+    local attr5 =  tonumber(string.format("%.01f",starAttr[BattleUtils.HATTR_AP1All + 100] or 0))
+
+    local attr = attr1+attr2+attr3+attr4+attr5
     return attr
 end
 
@@ -827,7 +843,7 @@ function HeroBasicInformationView:caculateAverMCD( heroId )
     if not self._heroData or not self._attributeValues then return end
     local heroData = self._heroData or clone(self._modelMgr:getModel("HeroModel"):getData()[tostring(heroId)])
     local attributes = self._attributeValues or BattleUtils.getHeroAttributes(self._heroData)
-    dump(heroData,"heroData...")
+    -- dump(heroData,"heroData...")
     local caculateMcd = function( skillId )
         local isReplaced, skillReplacedId = self._heroModel:isSpellReplaced(tonumber(self._heroData.id), skillId)
         if isReplaced then
@@ -1116,18 +1132,27 @@ function HeroBasicInformationView:updateUpgrade()
         self._upgrade._effectName:setString(lang(specials[nextUnlockSpecialIndex].name))
         self._upgrade._unlockCondition:setString("（" .. lang(string.format("HEROSTAR_%02d", nextStar)) .. "解锁）")
         local labelDiscription = self._upgrade._layerEffectDescription
+        local originWidth,originHeight = labelDiscription:getContentSize().width,labelDiscription:getContentSize().height
         local desc = "[color=645252, fontsize=18]" .. lang(specials[nextUnlockSpecialIndex].des) .. "[-]"
         local richText = labelDiscription:getChildByName("descRichText")  cc.c4b(81, 19, 0, 255)
         if richText then
             richText:removeFromParentAndCleanup()
         end
-        richText = RichTextFactory:create(desc, labelDiscription:getContentSize().width-10, labelDiscription:getContentSize().height - 5)
+        richText = RichTextFactory:create(desc, originWidth-30, originHeight - 5)
         richText:formatText()
         richText:enablePrinter(true)
-        richText:setPosition(labelDiscription:getContentSize().width / 2, labelDiscription:getContentSize().height/2 )
+        local rtRealHeight = richText:getRealSize().height
+        richText:setPosition(originWidth / 2, rtRealHeight/2 )
         richText:setName("descRichText")
         labelDiscription:addChild(richText)
         UIUtils:alignRichText(richText)
+        
+        labelDiscription:setTouchEnabled(rtRealHeight > originHeight)
+        local realHeight = math.max(rtRealHeight,originHeight)
+        labelDiscription:setInnerContainerSize(cc.size(originWidth,realHeight))
+        labelDiscription:getInnerContainer():setPositionY(originHeight - rtRealHeight)
+       
+
         local ok = true
         local cost = {}
         if 0 == star then
@@ -1485,25 +1510,47 @@ function HeroBasicInformationView:updateSpecialty()
         self._heroSpecialtyInfo[i]._imageSpecialtyIcon:setScale(0.8)
         self._heroSpecialtyInfo[i]._imageSpecialtyIcon:loadTexture(specials[i].icon .. ".jpg", 1)
         local label = self._heroSpecialtyInfo[i]._labelSpecialtyDes
+        if label.scrollView then
+            label.scrollView:removeFromParentAndCleanup()
+        end
+        local scrollView = ccui.ScrollView:create()
+        scrollView:setDirection(cc.SCROLLVIEW_DIRECTION_VERTICAL)
+        scrollView:setContentSize(cc.size(265,80))
+        scrollView:setAnchorPoint(0,0)
+        scrollView:setPosition(0,0)
+        scrollView:setBounceEnabled(true)
+        label.scrollView = scrollView
+        label:addChild(scrollView)
+
         local descColor = isLocked and "[color=787878, fontsize=18]" or "[color=3c2a1e, fontsize=18]" 
         local desc = descColor .. lang(specials[i].des) .. "[-]"
-        local richText = label:getChildByName("descRichText" )
-        if richText then
-            richText:removeFromParentAndCleanup()
-        end
+        -- local richText = label:getChildByName("descRichText" )
+        -- if richText then
+        --     richText:removeFromParentAndCleanup()
+        -- end
         richText = RichTextFactory:create(desc, 252, 80)
         richText:setPixelNewline(true)
-        richText:setVerticalSpace(-3)
+        richText:setVerticalSpace(0)
         richText:formatText()
         richText:enablePrinter(true)
-        local _h = richText:getRealSize().height
-        local offsetY = 0
-        if not self._heroSpecialtyInfo[i]._imageGlobalFrame:isVisible() then
-            offsetY = -5-_h/10
-        end
-        richText:setPosition(label:getContentSize().width / 2, label:getContentSize().height / 2+offsetY)
+        -- local _h = richText:getRealSize().height
+        -- local offsetY = 0
+        -- if not self._heroSpecialtyInfo[i]._imageGlobalFrame:isVisible() then
+        --     offsetY = -5-_h/10
+        -- end
+        local rtRealHeight = richText:getRealSize().height
         richText:setName("descRichText")
-        label:addChild(richText)
+        scrollView:addChild(richText)
+        if self._heroSpecialtyInfo[i]._imageGlobalFrame:isVisible() then
+            scrollView:setContentSize(cc.size(265,66))
+            scrollView:setPosition(0,15)
+        end
+
+        richText:setPosition(label:getContentSize().width / 2, rtRealHeight/2)
+        scrollView:getInnerContainer():setContentSize(cc.size(265,rtRealHeight))
+        scrollView:getInnerContainer():setPositionY(scrollView:getContentSize().height  - rtRealHeight)
+        scrollView:setTouchEnabled(rtRealHeight > scrollView:getContentSize().height)
+        
         self._heroSpecialtyInfo[i]._imageGlobalSpecialtyBg:setVisible(self._heroSpecialtyInfo[i]._imageGlobalFrame:isVisible())
         --[[
         local color = isLocked and cc.c3b(61, 31, 0) or cc.c3b(0, 255, 30)

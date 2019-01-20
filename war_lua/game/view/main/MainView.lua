@@ -30,8 +30,12 @@ if isJieRi3 == nil then
     isJieRi3 = true
 end
 
-local JIERI_3_BEGIN = "2017-12-25 05:00:00"
-local JIERI_3_END = "2018-1-1 05:00:00"
+--周年庆烟花间隔时间
+local dtTime1 = 0
+local dtTime2 = 0
+
+local JIERI_3_BEGIN = "2018-12-24 05:00:00"
+local JIERI_3_END = "2019-1-1 05:00:00"
 function MainView:ctor(data)
     MainView.super.ctor(self)
     -- self.dontAdoptIphoneX = true
@@ -52,7 +56,7 @@ function MainView:ctor(data)
     self._userModel = self._modelMgr:getModel("UserModel")
     self._siegeModel = self._modelMgr:getModel("SiegeModel")
     self._lordManagerModel = self._modelMgr:getModel("LordManagerModel")
-
+    self._worldBossModel = self._modelMgr:getModel("WorldBossModel")
     self._lastReqGameStaticTick = socket.gettime()
 
     self._dtTime = 0
@@ -68,8 +72,11 @@ end
     V12       橙色宝物     13
     V13       橙色宝物     14
     V14       五星黑骑     15
+    V15       黑骑专属     16
+    V16       4星斩魂      17
+    V17       满星斩魂     18
 --]]
-local activityLvL = {1,3,4,7,9,11,12,13,14}
+local activityLvL = {1,3,4,7,9,11,12,13,14,15,16,17}
 local activetyBtnData = {
     {toViewData={name="activity.ActivityView",jumpType=1,specifiedAcId = 100},toIndex = 2,txtImg=lang("MAIN_YUEKA"),iconName="button_yueka_mainView.png",pos={x=0,y=0},fontSize=16},
     -- {toViewData={name="vip.VipView",type=0,index=0},toIndex = 3,txtImg=lang("MAIN_YUEKA"),iconName="button_yueka_mainView.png",pos={x=0,y=12},fontSize=16},
@@ -81,8 +88,10 @@ local activetyBtnData = {
     {toViewData={name="vip.VipView",jumpType=2,type=1,index=13},toIndex = 0,txtImg=lang("MAIN_CHENGSEBAOWU"),iconName="button_orangeTreasure_mainView.png",pos={x=-2,y=0},fontSize=16},
     {toViewData={name="vip.VipView",jumpType=2,type=1,index=14},toIndex = 0,txtImg=lang("MAIN_WUXINGSIQI"),iconName="button_siqi_mainView.png",pos={x=0,y=0},fontSize=16} ,
     {toViewData={name="vip.VipView",jumpType=2,type=1,index=15},toIndex = 0,txtImg=lang("MAIN_CHENGSEBAOWU"),iconName="button_orangeTreasure_mainView.png",pos={x=-2,y=0},fontSize=16},
-
-    -- {toViewData={name="vip.VipView",type=1,index=4},txtImg=lang("MAIN_HEROUP"),iconName="button_heroStar_mainView.png",pos={x=0,y=11},fontSize=16} ,    
+    -- {toViewData={name="vip.VipView",type=1,index=4},txtImg=lang("MAIN_HEROUP"),iconName="button_heroStar_mainView.png",pos={x=0,y=11},fontSize=16} , 
+    {toViewData={name="vip.VipView",jumpType=2,type=1,index=16},toIndex = 0,txtImg=lang("MAIN_DKWEAPON"),iconName="botton_vip15_mainView.png",pos={x=-2,y=0},fontSize=16},
+    {toViewData={name="vip.VipView",jumpType=2,type=1,index=17},toIndex = 0,txtImg=lang("MAIN_DKWEAPON4STARS"),iconName="botton_vip15_mainView.png",pos={x=0,y=0},fontSize=16} ,
+    {toViewData={name="vip.VipView",jumpType=2,type=1,index=18},toIndex = 0,txtImg=lang("MAIN_DKWEAPON6STARS"),iconName="botton_vip15_mainView.png",pos={x=-2,y=0},fontSize=16},   
 }
 
 local DirectShopOpenNeedDay = tab:Setting("G_SPECIALSHOP_ACTIV").value/24 --直购功能需要的开服时间（天）
@@ -91,7 +100,7 @@ local DirectShopOpenNeedDay = tab:Setting("G_SPECIALSHOP_ACTIV").value/24 --直�
 local function createUpBtnTitleLabel(ui, name, x, y,fontSize)
     if ui:getChildByFullName(31555) then ui:removeChildByName(31555, true) end
     -- ui:setScale(0.85)
-    -- print("=====================",fontSize)
+    -- print("=====================",fontSize)2
     -- y = 0getui
     local fntSize = 14   --fontSize or 
     local label = cc.Label:createWithTTF(name, UIUtils.ttfName, fntSize)
@@ -152,6 +161,16 @@ function MainView:destroy()
     if GameStatic.diantai_show and self._initGFMSDK then 
         sdkMgr:gfmCloseLive()
     end
+
+    if self._crossGodWarUpdate then
+        ScheduleMgr:unregSchedule(self._crossGodWarUpdate)
+        self._crossGodWarUpdate = nil
+    end
+
+    if self._crossGodWar64Ready then
+        ScheduleMgr:unregSchedule(self._crossGodWar64Ready)
+        self._crossGodWar64Ready = nil
+    end
     MainView.super.destroy(self, true)
 end
 
@@ -161,6 +180,16 @@ function MainView:onHide()
         self._updateId = nil
     end
     self.__isHide = true
+
+    if self._crossGodWarUpdate then
+        ScheduleMgr:unregSchedule(self._crossGodWarUpdate)
+        self._crossGodWarUpdate = nil
+    end
+
+    if self._crossGodWar64Ready then
+        ScheduleMgr:unregSchedule(self._crossGodWar64Ready)
+        self._crossGodWar64Ready = nil
+    end
 end
 
 function MainView:onTop()
@@ -233,7 +262,13 @@ function MainView:onTop()
     -- self:actionOpen()
     local carnivalModel = self._modelMgr:getModel("ActivityCarnivalModel")  
     carnivalModel:doUpdate()
+    local acUltimateModel = self._modelMgr:getModel("AcUltimateModel")  
+    acUltimateModel:doUpdate()
 
+    -- 回流更新
+    if self._backFlowView and self._backFlowView.updateACLayer3Data then
+        self._backFlowView:updateACLayer3Data()
+    end
     -- 右上按钮回主界面主动展开
     -- if not self._extendRightBtnIsShow then
     --     self._extendRightBtnIsShow = true
@@ -281,6 +316,9 @@ function MainView:onTop()
     if self._modelMgr:getModel("ActivityModel"):isActivityOpen(40005) then
         self:updateGadget(1)
     end
+
+    self._modelMgr:getModel("LordManagerModel"):reflashMainView()
+    self:updateMerchantBtn()
 end
 
 function MainView:onReconnect()
@@ -481,6 +519,10 @@ function MainView:update(dt)
         isJieRi3 = GameStatic.mainViewJieRi3
         self:setJieRi3()
     end
+    if isJieRi ~= TimeUtils.mainViewActIsOpen(TimeUtils.Year) then
+        isJieRi = TimeUtils.mainViewActIsOpen(TimeUtils.Year)
+        self:setJieRi()
+    end
 
     if self._dtTime >= 60 then
         self._dtTime = 0
@@ -494,6 +536,10 @@ function MainView:update(dt)
             end
         end
     end
+    --更新主城烟花特效
+    self:updateYanHuaAni(dt)
+    --更新主城boss战入口
+    self:addWorldBossBtn()
 end
 
 -- 回主界面时战斗力变化动画
@@ -1206,7 +1252,7 @@ function MainView:onInit()
         {"formationBtn",    "button_buzhen_mainView.png",       lang("MAIN_BUZHEN"),        "formation.NewFormationView", "Formation"},   
         {"bagBtn",          "button_beibao_mainView.png",       lang("MAIN_BEIBAO"),        "bag.BagView", "Item"},
         {"treasureBtn",     "button_treasure_mainView.png",     lang("MAIN_BAOWU"),         "treasure.TreasureView", "Treasure"},
-        {"holyBtn",         "button_holy_mainView.png", 	    lang("MAIN_SHENGHUI"),      "team.TeamHolyView", "Holy"},     
+        {"holyBtn",         "button_holy_mainView.png",         lang("MAIN_SHENGHUI"),      "team.TeamHolyView", "Holy"},     
         {"heroBtn",         "button_yingxiong_mainView.png",    lang("MAIN_YINGXIONG"),     "hero.HeroView", "Hero"},     
         {"monsterBtn",      "button_bingtuan_mainView.png",     lang("MAIN_BINGTUAN"),      "team.TeamListView", "Team"}, 
     }
@@ -1229,7 +1275,7 @@ function MainView:onInit()
     createViewTitleLabel(self:getUI("bg.midBg1.market2.title"), lang("MAIN_BAOWUCHOUKA"))
     createViewTitleLabel(self:getUI("bg.midBg1.market.title"), lang("MAIN_SHICHANG"))
     createViewTitleLabel(self:getUI("bg.midBg2.congress.title"), lang("MAIN_GUOHUI"))
-    createViewTitleLabel(self:getUI("bg.midBg2.bar.title"), lang("MAIN_WEAPON"))
+    createViewTitleLabel(self:getUI("bg.midBg2.bar.title"), lang("MAIN_WARBACKUP"))
     createViewTitleLabel(self:getUI("bg.midBg2.huitushi.title"), lang("MAIN_TRAINING"))
     createViewTitleLabel(self:getUI("bg.midBg4.home.title"), lang("MAIN_DABENYING"))
     createViewTitleLabel(self:getUI("bg.midBg3.pve.title"), lang("MAIN_ZHANSHENXIANG"))
@@ -1260,21 +1306,17 @@ function MainView:onInit()
     createUpBtnTitleLabel(self:getUI("leftBtnLayer.scrollView.weiSheQuBtn"), "微社区", 0, 0, 16)
     createUpBtnTitleLabel(self:getUI("leftBtnLayer.scrollView.wxPublicBtn"), "公众号", 0, 0, 16)
     createUpBtnTitleLabel(self:getUI("leftBtnLayer.scrollView.qqGiftsCenterBtn"), "礼包中心", 0, 0, 16)   
-    
-
     createUpBtnTitleLabel(self:getUI("topLayer.mailBtn"), lang("MAIN_YOUJIAN"), 0, 0,16)
     createUpBtnTitleLabel(self:getUI("topLayer.friendBtn"), lang("MAIN_HAOYOU"), 0, 0,16)
     createUpBtnTitleLabel(self:getUI("topLayer.fShopBtn"), "友情商店", 0, 0,16)
     createUpBtnTitleLabel(self:getUI("topLayer.moreBtn"), "更多", 0, 0,16)
     createUpBtnTitleLabel(self:getUI("topLayer.lordBtn"), "领主管家", 0, 3,16)
-
     createUpBtnTitleLabel(self:getUI("rightLayer.rightBtnLayer.levelFBBtn"), lang("MAIN_SHENGJIYOULI"), 0, 0,16)
     createUpBtnTitleLabel(self:getUI("rightLayer.chargeBtn"), lang("MAIN_CHONGZHI"), 0, 12,16)
     createUpBtnTitleLabel(self:getUI("rightLayer.rightBtnLayer.activityBtn"), lang("MAIN_HUODONG"), 0, 0,16)
     createUpBtnTitleLabel(self:getUI("rightLayer.signBtn"), lang("MAIN_QIANDAO"), 0, 12,16)
     createUpBtnTitleLabel(self:getUI("rightLayer.activityCommonBtn"), lang("MAIN_HUODONG"), 0,12,16)
     createUpBtnTitleLabel(self:getUI("rightLayer.directShopBtn"), "商店", 0, 12,16)
-
     createUpBtnTitleLabel(self:getUI("rightLayer.rankBtn"), lang("MAIN_PAIHANG"), 0, 11,16)
     createUpBtnTitleLabel(self:getUI("rightLayer.rightBtnLayer.fightDragonBtn"), lang("MAIN_RANKGREENDRAGON"), 0, 0,16)
     createUpBtnTitleLabel(self:getUI("rightLayer.rightBtnLayer.acAdventureBtn"), lang("MAIN_SHENMIBAOZANG"), 0, 0,16)
@@ -1289,19 +1331,19 @@ function MainView:onInit()
     createUpBtnTitleLabel(self:getUI("rightLayer.rightBtnLayer.sprRedBtn"), "红包祝福", 0, 0,16)
     createUpBtnTitleLabel(self:getUI("rightLayer.rightBtnLayer.trainAcBtn"), lang("TRAINING_ACTIVITY_ICON"), 0, 0,16)
     createUpBtnTitleLabel(self:getUI("rightLayer.rightBtnLayer.celebrationBtn"), "元素庆典", 0, 0,16)
-    createUpBtnTitleLabel(self:getUI("rightLayer.rightBtnLayer.backflowBtn"), "回流活动", 0, 0,16)
+    -- createUpBtnTitleLabel(self:getUI("rightLayer.rightBtnLayer.backflowBtn"), "回流活动", 0, 0,16)
     createUpBtnTitleLabel(self:getUI("rightLayer.rightBtnLayer.qqActivityBtn"), "邀请有礼", 0, 0,16)    
     createUpBtnTitleLabel(self:getUI("rightLayer.rightBtnLayer.tehuiActivityBtn"), "充值特惠", 0, 0,16)
     createUpBtnTitleLabel(self:getUI("rightLayer.rightBtnLayer.powerGameBtn"), "凛冬已至", 0, 0,16)
-    createUpBtnTitleLabel(self:getUI("rightLayer.rightBtnLayer.luckyLotteryBtn"), "幸运转盘", 0, 0,16)
-
-
+    createUpBtnTitleLabel(self:getUI("rightLayer.rightBtnLayer.worldCupBtn"), "竞猜有礼", 0, 0,16)
+    createUpBtnTitleLabel(self:getUI("rightLayer.rightBtnLayer.growthwayBtn"), "成长之路", 0, 0,16)
+    createUpBtnTitleLabel(self:getUI("rightLayer.rightBtnLayer.ultimateBtn"), "终极降临", 0, 0,16)
+    createUpBtnTitleLabel(self:getUI("rightLayer.rightBtnLayer.luckyLotteryBtn"), lang("MAIN_LUCKYLOTTERY"), 0, 0,16)
     createUpBtnTitleLabel(self:getUI("handbookBg.handbookBtn"), "领主手册", 0, -6, 30)
-
     createUpBtnTitleLabel(self:getUI("rightLayer.rightBtnLayer.oneChargeBtn"), "一元购", 0, 0,16)
-
-    -- createUpBtnTitleLabel(self:getUI("topLayer.chatBtn"), "聊天", 0, 0,16)
-
+    createUpBtnTitleLabel(self:getUI("rightLayer.rightBtnLayer.chargePresentBtn"), lang("ZHOUNIANHUIKUI_BUTTON_03"), 0, 0,16)
+    createUpBtnTitleLabel(self:getUI("rightLayer.rightBtnLayer.limitPrayBtn"), "限时祈愿", 0, 0,16)
+    createUpBtnTitleLabel(self:getUI("rightLayer.rightBtnLayer.wroldBossBtn"), "巨龙侵袭", 0, 0,16)
 
     self:showFriendRedPoint()
 
@@ -1380,13 +1422,13 @@ function MainView:onInit()
         {"bg.midBg1.market2",               "treasure.TreasureShopView","Treasure"},
         {"bg.midBg1.chouka",                "flashcard.FlashCardView"},
         {"bg.midBg2.congress",              "pokedex.PokedexView", "Pokedex"}, -- "guild.join.GuildInView","Guild"},
-        {"bg.midBg2.bar",                   "weapons.WeaponsView", "Weapon"},
+        {"bg.midBg2.bar",                   "weapons.WarReadinessView", "BattleArray"},
         {"bg.midBg2.huitushi",              "training.TrainingView","Training"},  --{"MF.MFView","MF"},
         {"bg.midBg4.home",                  "guild.join.GuildInView","Guild"}, -- "pokedex.PokedexView", "Pokedex"},
         {"bg.midBg4.chuanwu",               "crusade.CrusadeView", "Crusade"},
         {"bg.midBg3.pve",                   "pvp.PvpInView","Pvp"},
         {"bg.midBg4.yuanzheng",             "pve.PveView", "Pve"},
-        {"bg.midBg4_5.cloudy",              "godwar.GodWarView", "GodWar"},
+        {"bg.midBg4_5.cloudy",              "godwar.GodWarEntranceView", "GodWar"},
         {"bg.midBg5.chaoxue",               "nests.NestsView", "Nests"},
         
 
@@ -1469,6 +1511,10 @@ function MainView:onInit()
     self:registerClickEventByName("rightLayer.rightBtnLayer.firstChargeBtn", function ()
         self._viewMgr:showDialog("activity.FirstRechargeView", {}, true)
     end)
+    local chargePresentBtn = self:getUI("rightLayer.rightBtnLayer.chargePresentBtn")
+    chargePresentBtn:setOpacity(0)
+    local mc = self:addBtnEffect(chargePresentBtn,"huodonglonggui_huodonglonggui",chargePresentBtn:getContentSize().width/2,chargePresentBtn:getContentSize().height/2)
+    mc:setScale(1)
     -- charge
     self:registerClickEventByName("rightLayer.chargeBtn", function ()
         self._bg:stopScroll()
@@ -1498,6 +1544,9 @@ function MainView:onInit()
        directShopBtn:setVisible(true)
     end
 
+    -- 限时祈愿
+    -- local limitPrayBtn = self:getUI("rightLayer.rightBtnLayer.limitPrayBtn")
+    -- local mc = self:addBtnEffect(limitPrayBtn,"shenpanguanrukou_shenpanguanrukou",limitPrayBtn:getContentSize().width*.5,limitPrayBtn:getContentSize().height*.5)
 
     -- local i = 1
     local headBg = self:getUI("topLayer.headImgNode.headBg")
@@ -1643,7 +1692,6 @@ function MainView:onInit()
     self:listenReflash("ChatModel", chatListen)
     self:listenReflash("PlayerTodayModel", chatListen)
 
-    self:listenReflash("UserModel", self.reflashUserInfo)
     self:listenReflash("VipModel", self.reflashUserInfo)
     self:reflashUserInfo()
 
@@ -1652,15 +1700,15 @@ function MainView:onInit()
 
     self._mainViewModel:checkTipsQipao()
     self._mainViewModel:setNotice("TeamView")
-    self:listenReflash("UserModel", self.hadNewBtnInfo)
+    self:listenReflash("UserModel", self.listenUserModelfunc)
 
     self:listenReflash("GuildModel", self.hadNewBtnInfo)
     self:listenReflash("SiegeModel", self.updateInstanceBtnImage)
 
     self:listenReflash("MainViewModel", self.listenMainViewModelFunc)
     self:listenReflash("PrivilegesModel", self.showPrivilegesBuff)
+    self:listenReflash("ActivityModel", self.listenAcModelFunc)
     
-
     self:listenReflash("VipModel", self.hadNewBtnInfo)
     self:listenReflash("TaskModel", self.hadNewBtnInfo)
     self:listenReflash("MailBoxModel", self.reflashUserInfo)
@@ -1674,12 +1722,9 @@ function MainView:onInit()
     self:listenReflash("FriendRecallModel", self.showFRecallRedPoint)
     self:showFRecallRedPoint("fShop")
 
-    self:listenReflash("ActivityModel", self.updateAcRightUpBtn)
-    self:listenReflash("UserModel", self.updateAcRightUpBtn)
-    self:listenReflash("ActivityModel", self.updateCarnivalState)
+    self:listenReflash("WorldCupModel", self.refreshWorldCupRedPoint)   --发结算奖励刷新
 
     self:listenReflash("HandbookModel", self.reflashAdvanve)
-    self:listenReflash("UserModel", self.reflashAdvanve)
     self:listenReflash("SpringRedModel", self.showSpringRedRedPoint)
 
     -- 公测庆典 更新mc的显示
@@ -1880,6 +1925,23 @@ function MainView:onInit()
     -- end)
 
     self:updateInstanceBtnImage()
+    
+    -- 神秘商人
+    self:updateMerchantBtn()
+end
+
+-- 主界面activityMdoel 监听回调
+function MainView:listenAcModelFunc()
+    self:showPrivilegesBuff()
+    self:updateAcRightUpBtn()
+    self:updateCarnivalState()
+end
+-- 主界面UserMdoel 监听回调
+function MainView:listenUserModelfunc( )
+    self:reflashUserInfo()
+    self:hadNewBtnInfo()
+    self:updateAcRightUpBtn()
+    self:reflashAdvanve()
 end
 
 function MainView:initGadget()
@@ -1945,10 +2007,10 @@ function MainView:addGadget(tp)
     
     self:registerClickEvent(snow, function()
         self._serverMgr:sendMsg("GadgetServer", "exchange", {id = tp}, true, {}, function (result)
-            if result.reward then	
+            if result.reward then   
                 DialogUtils.showGiftGet({gifts = result.reward})
                 self:removeGadget(snow)
-    	    end	
+            end 
             dump(result)
             if result.code ~= nil then
                 local errorTip = gadgetErrorTip[result.code]
@@ -2402,10 +2464,8 @@ function MainView:updateAcRightUpBtn()
     local isAdventureOpen = false-- activityModel:isActivityOpen(907)
     local adventureData = {}
     -- 限时兵团
-    local isLimitTeamOpen = false
-    local limitTeamId = nil
-    local isLimitAwakenOpen = false
-    local limitAwakenId = nil
+    local limitIds = {}
+    local limitAIds = {}
 
     --法术特训小游戏
     local isHappyPopOpen = false
@@ -2415,6 +2475,9 @@ function MainView:updateAcRightUpBtn()
 
     --春节红包
     local isSRedOpen = false
+
+    --世界杯竞猜
+    local isWorldCupOpen = false
 
     --训练场btn
     local isTrainAcOpen = false
@@ -2427,6 +2490,9 @@ function MainView:updateAcRightUpBtn()
     local isInvitedOpen = false
     -- 权力的游戏
     local isPowerOpen = false
+
+    -- 成长之路是否开启
+    local isGrowthWayOpen = false
 
     local function checkAcCommon(inData)
         local limitLvl = inData.level_limit or 0
@@ -2470,19 +2536,16 @@ function MainView:updateAcRightUpBtn()
         local userLvl = userData.lvl or 0
 
         --限时兵团
-        if not isLimitTeamOpen then
-            if v.ac_type == 13 then
-                local level_limit = v.level_limit or 0
-                -- 等级限制
-                isLimitTeamOpen = level_limit <= userLvl
-                if v.end_time <= currTime or v.start_time > currTime then
-                    isLimitTeamOpen = false
-                end
+        if v.ui_type == 18 or v.ac_type == 13 then
+            if checkAcCommon(v) then
+                table.insert(limitIds, v)
+            end
+        end
 
-                if isLimitTeamOpen == true then
-                    limitTeamId = v.activity_id
-                    self._modelMgr:getModel("LimitTeamModel"):setCurAdId(v._id)
-                end
+        --限时魂石
+        if v.ui_type == 19 or v.ac_type == 32 then
+            if checkAcCommon(v) then
+                table.insert(limitAIds, v)
             end
         end
 
@@ -2493,30 +2556,23 @@ function MainView:updateAcRightUpBtn()
                 self._modelMgr:getModel("HappyPopModel"):setAcData(v)
             end
         end
-
-        --限时魂石
-        if not isLimitAwakenOpen then
-            if v.ac_type == 32 then
-                local level_limit = v.level_limit or 0
-                -- 等级限制
-                isLimitAwakenOpen = level_limit <= userLvl
-                if v.end_time <= currTime or v.start_time > currTime then
-                    isLimitAwakenOpen = false
-                end
-
-                if isLimitAwakenOpen == true then
-                    limitAwakenId = v.activity_id
-                    self._modelMgr:getModel("LimitAwakenModel"):setCurAdId(v._id)
-                end
-            end
-        end
-
+      
         --春节红包
         if not isSRedOpen then
             if v.ac_type == 27 then
                 isSRedOpen = checkAcCommon(v)
                 if isSRedOpen then
                     self._modelMgr:getModel("SpringRedModel"):setAcData(v)
+                end
+            end
+        end
+
+        --世界杯竞猜活动
+        if not isWorldCupOpen then
+            if v.ac_type == 38 then
+                isWorldCupOpen = checkAcCommon(v)
+                if isWorldCupOpen then
+                    self._modelMgr:getModel("WorldCupModel"):setAcData(v)
                 end
             end
         end
@@ -2563,6 +2619,10 @@ function MainView:updateAcRightUpBtn()
             end
         end           
         
+        -- 成长之路 40011
+        if 40011 == tonumber(v.activity_id) and v.ac_type == 5 then
+            isGrowthWayOpen = checkAcCommon(v)
+        end   
     end
 
     --大冒险活动 907
@@ -2680,33 +2740,64 @@ function MainView:updateAcRightUpBtn()
     local limitTeamBtn = self:getUI("rightLayer.rightBtnLayer.limitTeamBtn")
     limitTeamBtn:setVisible(false)
     limitTeamBtn:setTouchEnabled(false)
-    if isLimitTeamOpen and limitTeamId then
-        if limitTeamId == 1001 then  --大天使
-            local lmtRes = "button_limitTeam_mainView.png"
-            limitTeamBtn:loadTextures(lmtRes, lmtRes, lmtRes, 1)
+    if #limitIds > 0 then
+        limitTeamBtn:setVisible(true)
+        limitTeamBtn:setTouchEnabled(true)
+
+        if #limitIds == 1 then
+            local acId = limitIds[1]["activity_id"]
+            if acId == 1001 then  --大天使
+                local lmtRes = "button_limitTeam_mainView.png"
+                limitTeamBtn:loadTextures(lmtRes, lmtRes, lmtRes, 1)
+            else
+                local lmtRes = "mainViewBtn_limitTeam" .. acId .. ".png"
+                limitTeamBtn:loadTextures(lmtRes, lmtRes, lmtRes, 1)
+            end
         else
-            local lmtRes = "mainViewBtn_limitTeam" .. limitTeamId .. ".png"
+            local lmtRes = "mainViewBtn_multi_limitTeam.png"
             limitTeamBtn:loadTextures(lmtRes, lmtRes, lmtRes, 1)
         end
 
-        limitTeamBtn:setVisible(true)
-        limitTeamBtn:setTouchEnabled(true)
-        if not self._modelMgr:getModel("LimitTeamModel"):getIsReqed() then
-            self._serverMgr:sendMsg("LimitTeamsServer", "getLimitTeamInfo", {num = 10}, true, {}, function(result, errorCode)
-                -- 检测红点
-                local haveNotice = self._modelMgr:getModel("LimitTeamModel"):isShowTLRedPoint()
-                self:updateBtnRed(limitTeamBtn,haveNotice,cc.p(54,54))
-            end)
+        -- 检测红点
+        local limitLTModel = self._modelMgr:getModel("LimitTeamModel")
+        local function checkLTRedPoint()
+            local haveNotice = limitLTModel:isMainViewRedPoint()
+            self:updateBtnRed(limitTeamBtn,haveNotice,cc.p(54,54))
         end
-        self:registerClickEvent(limitTeamBtn, function ()
-            self._viewMgr:showDialog("activity.ACTeamLimitTimeLayer", {
-                acId = limitTeamId or 1001,
-                callback = function()
+        
+        
+        for i,v in ipairs(limitIds) do
+            if not limitLTModel:getIsReqedById(v["_id"]) then
+                self._serverMgr:sendMsg("LimitTeamsServer", "getLimitTeamInfo", {num = 10, acId = v["_id"]}, true, {}, function(result, errorCode)
+                    limitLTModel:setDataById(result, v["_id"])
+                    limitLTModel:setIsReqedById(true, v["_id"])
                     -- 检测红点
-                    local haveNotice = self._modelMgr:getModel("LimitTeamModel"):isShowTLRedPoint()
-                    self:updateBtnRed(limitTeamBtn,haveNotice,cc.p(54,54))
-                    self:adjustPosition()
-                end}, true)
+                    checkLTRedPoint()
+                end)
+            end
+        end
+        
+        self:registerClickEvent(limitTeamBtn, function ()
+            if #limitIds == 1 then
+                self._viewMgr:showDialog("activity.acLimit.ACTeamLimitTimeLayer", {
+                    id = limitIds[1]["_id"],
+                    acId = limitIds[1]["activity_id"] or 1001,
+                    callback = function()
+                        -- 检测红点
+                        checkLTRedPoint()
+                        self:adjustPosition()
+                    end}, true)
+            else
+                self._viewMgr:showDialog("activity.acLimit.AcLimitSelectView", {
+                    ids = limitIds or {},
+                    uiType = "limit",
+                    callback = function()
+                        -- 检测红点
+                        checkLTRedPoint()
+                        self:adjustPosition()
+                    end}, true)
+            end
+            
         end)
     end
 
@@ -2714,31 +2805,57 @@ function MainView:updateAcRightUpBtn()
     local limitAwakenBtn = self:getUI("rightLayer.rightBtnLayer.limitAwakenBtn")
     limitAwakenBtn:setVisible(false)
     limitAwakenBtn:setTouchEnabled(false)
-    if isLimitAwakenOpen and limitAwakenId then
-        local lmtRes = "mainViewBtn_limitAwake" .. limitAwakenId .. ".png"
-        limitAwakenBtn:loadTextures(lmtRes, lmtRes, lmtRes, 1)
+    if #limitAIds > 0 then
         limitAwakenBtn:setVisible(true)
         limitAwakenBtn:setTouchEnabled(true)
 
+        if #limitAIds == 1 then
+            local acId = limitAIds[1]["activity_id"]
+            local lmtRes = "mainViewBtn_limitAwake" .. acId .. ".png"
+            limitAwakenBtn:loadTextures(lmtRes, lmtRes, lmtRes, 1)
+        else
+            local lmtRes = "mainViewBtn_multi_limitAwake.png"
+            limitAwakenBtn:loadTextures(lmtRes, lmtRes, lmtRes, 1)
+        end
+       
+        local limitLTAModel = self._modelMgr:getModel("LimitAwakenModel")
         -- 检测红点
         local function checkLTRedPoint()
-            local haveNotice = self._modelMgr:getModel("LimitAwakenModel"):isShowTLRedPoint()
+            local haveNotice = limitLTAModel:isMainViewRedPoint()
             self:updateBtnRed(limitAwakenBtn,haveNotice,cc.p(54,54))
         end
 
-        if not self._modelMgr:getModel("LimitAwakenModel"):getIsReqed() then
-            self._serverMgr:sendMsg("LimitItemsServer", "getLimitItemsInfo", {}, true, {}, function(result, errorCode)
-                checkLTRedPoint()
-            end)
-        end
-        self:registerClickEvent(limitAwakenBtn, function ()
-            self._viewMgr:showDialog("activity.ACAwakenLimitTimeLayer", {
-                acId = limitAwakenId or 1051,
-                callback = function()
+        for i,v in ipairs(limitAIds) do
+            if not limitLTAModel:getIsReqedById(v["_id"]) then
+                self._serverMgr:sendMsg("LimitItemsServer", "getLimitItemsInfo", {acId = v["_id"]}, true, {}, function(result, errorCode)
+                    limitLTAModel:setDataById(result, v["_id"])
+                    limitLTAModel:setIsReqedById(true, v["_id"])
                     -- 检测红点
                     checkLTRedPoint()
-                    self:adjustPosition()
-                end}, true)
+                end)
+            end
+        end
+
+        self:registerClickEvent(limitAwakenBtn, function ()
+            if #limitAIds == 1 then
+                self._viewMgr:showDialog("activity.acLimit.ACAwakenLimitTimeLayer", {
+                    id = limitAIds[1]["_id"],
+                    acId = limitAIds[1]["activity_id"] or 1051,
+                    callback = function()
+                        -- 检测红点
+                        checkLTRedPoint()
+                        self:adjustPosition()
+                    end}, true)
+            else
+                self._viewMgr:showDialog("activity.acLimit.AcLimitSelectView", {
+                    ids = limitAIds or {},
+                    uiType = "awake",
+                    callback = function()
+                        -- 检测红点
+                        checkLTRedPoint()
+                        self:adjustPosition()
+                    end}, true)
+            end
         end)
     end
 
@@ -2871,7 +2988,6 @@ function MainView:updateAcRightUpBtn()
                 else
                     startGame()
                 end
-                
             end)
         end)
     end
@@ -2904,6 +3020,54 @@ function MainView:updateAcRightUpBtn()
                     self:updateBtnRed(recallAcBtn, haveNotice,cc.p(54,54))
                     self:adjustPosition()
                 end}, true)
+        end)
+    end
+
+    --世界杯竞猜
+    local worldCupBtn = self:getUI("rightLayer.rightBtnLayer.worldCupBtn")
+    worldCupBtn:setVisible(false)
+    worldCupBtn:setTouchEnabled(false)
+    if isWorldCupOpen and GameStatic.is_show_acWorldCup then
+        local lmtRes = "mainViewBtn_acWorldCup.png"
+        worldCupBtn:loadTextures(lmtRes, lmtRes, lmtRes, 1)
+        worldCupBtn:setVisible(true)
+        worldCupBtn:setTouchEnabled(true)
+        
+        local worldCupModel = self._modelMgr:getModel("WorldCupModel")
+
+        -- 检测红点
+        local function checkRedPoint()
+            worldCupBtn:stopAllActions()
+            worldCupBtn:runAction(cc.RepeatForever:create(cc.Sequence:create(
+                cc.CallFunc:create(function()
+                    local haveNotice = worldCupModel:isMainViewRedPoint()
+                    self:updateBtnRed(worldCupBtn,haveNotice,cc.p(54,54))
+                    end),
+                cc.DelayTime:create(1)
+                )))
+        end
+
+        if not worldCupModel:getIsReqed() then
+            self._serverMgr:sendMsg("GuessServer", "getInfos", {}, true, {}, function(result, errorCode)
+                worldCupModel:setIsReqed(true)
+                checkRedPoint()
+            end)
+            self._serverMgr:sendMsg("GuessServer", "getCathecticInfo", {}, true, {}, function(result, errorCode)
+            end)
+        end
+        
+        self:registerClickEvent(worldCupBtn, function ()
+            self._serverMgr:sendMsg("GuessServer", "getInfos", {}, true, {}, function(result, errorCode)
+                self._viewMgr:showDialog("activity.worldCup.AcWorldCupView", {
+                    callback = function()
+                        -- 检测红点
+                        checkRedPoint()
+                        self:adjustPosition()
+                    end}, true)
+            end)
+            self._serverMgr:sendMsg("GuessServer", "getCathecticInfo", {}, true, {}, function(result, errorCode)
+                end)
+
         end)
     end
 
@@ -3010,29 +3174,32 @@ function MainView:updateAcRightUpBtn()
     end
 
     -- 回流活动
-    local backflowBtn = self:getUI("rightLayer.rightBtnLayer.backflowBtn")
+    local backflowBtn = self:getUI("topLayer.backflowBtn")
     backflowBtn:setVisible(false)
     backflowBtn:setTouchEnabled(false)
     local isBackflowOpen = self._modelMgr:getModel("BackflowModel"):getBackflowOpen()
     if isBackflowOpen then
         backflowBtn:setVisible(true)
         backflowBtn:setTouchEnabled(true)
-        
-        local isCanGet = self._modelMgr:getModel("BackflowModel"):getBackflowTip()
-        self:updateBtnRed(backflowBtn,isCanGet,cc.p(54,54))
-
+        self:updateBackFlowBtn(backflowBtn)        
+        -- local isCanGet = self._modelMgr:getModel("BackflowModel"):getBackflowTip()
+        -- self:updateBtnRed(backflowBtn,isCanGet,cc.p(54,54))
         local startTime = celebrationData.start_time or currTime
         local endTime = celebrationData.end_time or currTime   
         -- print("=====================startTime=,=endTime=",startTime,endTime)
         local callback = function()
-            local isCanGet = self._modelMgr:getModel("BackflowModel"):getBackflowTip()
-            self:updateBtnRed(backflowBtn,isCanGet,cc.p(54,54))
+            if self._backFlowView then 
+                self._backFlowView = nil
+            end
+            -- local isCanGet = self._modelMgr:getModel("BackflowModel"):getBackflowTip()
+            -- self:updateBtnRed(backflowBtn,isCanGet,cc.p(54,54))
+            self:updateBackFlowBtn(backflowBtn)
             -- 适配btn位置
-            self:adjustPosition()
+            -- self:adjustPosition()
         end
         -- 判断是否需要展示特效
         self:registerClickEvent(backflowBtn, function ()
-            self._viewMgr:showDialog("backflow.BackflowView", {callback = callback})
+            self._backFlowView = self._viewMgr:showDialog("backflow.BackflowView", {callback = callback})
         end)
     end 
 
@@ -3091,6 +3258,128 @@ function MainView:updateAcRightUpBtn()
         
     end
 
+    -- 成长之路
+    local growthwayBtn = self:getUI("rightLayer.rightBtnLayer.growthwayBtn")
+    growthwayBtn:setVisible(false)
+    growthwayBtn:setTouchEnabled(false)
+    -- 通过静态文件GameStatic额外控制是否显示
+    if not GameStatic.showGrowthWay then
+        isGrowthWayOpen = GameStatic.showGrowthWay
+    end
+    -- 这个部分先设置成常开，等有了正式的活动ID走正式流程
+    if isGrowthWayOpen then
+        growthwayBtn:setVisible(true)
+        growthwayBtn:setTouchEnabled(true)
+        local isHaveRed = self._modelMgr:getModel("GrowthWayModel"):isHaveRedPoint()
+        self:updateBtnRed(growthwayBtn,not isHaveRed, cc.p(54,54))
+        self:registerClickEvent(growthwayBtn, function ()
+        self._serverMgr:sendMsg("RoadOfGrowthServer", "getRoadOfGrowth", {}, true, {}, function(result, success) 
+            self._viewMgr:showDialog("activity.growthway.GrowthWayView",{callback = function ( )
+                local isHaveRed = self._modelMgr:getModel("GrowthWayModel"):isHaveRedPoint()
+                self:updateBtnRed(growthwayBtn,not isHaveRed, cc.p(54,54))
+                self:adjustPosition()
+                end},true)
+            end)
+        end)
+    end
+    
+    -- 终极降临
+    local acUltimateModel = self._modelMgr:getModel("AcUltimateModel")
+    local ultimateBtn = self:getUI("rightLayer.rightBtnLayer.ultimateBtn")
+    ultimateBtn:setVisible(false)        
+    ultimateBtn:setTouchEnabled(false)
+    if acUltimateModel:isActivityOpen() then
+        ultimateBtn:setVisible(true)
+        ultimateBtn:setTouchEnabled(true)
+        local isHaveRed = acUltimateModel:isRedNotice()
+        self:updateBtnRed(ultimateBtn, isHaveRed, cc.p(54,54))
+        self:registerClickEvent(ultimateBtn, function ()
+            if not acUltimateModel:isActivityOpen() then
+                self._viewMgr:showTip("活动已结束")
+                return
+            end
+            self._serverMgr:sendMsg("ComingGuildAcServer", "getInfo", {}, true, {}, function(data)
+                -- 获取信息回调
+                self._viewMgr:showDialog("activity.acUltimate.AcUltimateDialog",
+                    {closeCallBack=function ( )
+                        -- 有推送消息更新
+                        local acUltimateModel = self._modelMgr:getModel("AcUltimateModel")
+                        acUltimateModel:doUpdate()
+                        local isHaveRed = acUltimateModel:isRedNotice()
+                        self:updateBtnRed(ultimateBtn, isHaveRed, cc.p(54,54))
+                        self:adjustPosition()
+                    end},
+                    false,nil,nil,false)
+            end)
+        end)
+    end
+
+    -- 限时祈愿
+    local limitPrayBtn = self:getUI("rightLayer.rightBtnLayer.limitPrayBtn")
+    local limitPrayModel = self._modelMgr:getModel("LimitPrayModel")
+    limitPrayBtn:setVisible(false)        
+    limitPrayBtn:setTouchEnabled(false)
+    local isOpen = limitPrayModel:isActicityOpen()
+    -- print("============isOpen=====",isOpen)
+    
+    if isOpen and GameStatic.is_show_limitPray then
+        if not self._limitBtnMc then
+            self._limitBtnMc = {
+                [978] = {                   -- 审判官
+                        mcName   = "shenpanguanrukou_shenpanguanrukou",
+                },
+                [1041] = {                  -- 傀儡龙
+                        mcName   = "kuileilongtubiao_kuileilongtubiao",                
+                },
+                [1094] = {                  -- 海后
+                        mcName   = "haihourukou_haihourukou",  
+                },
+                [1187] = {                  -- 暗黑领主
+                        mcName   = "sishenrukou_sishenrukou",  
+                },
+                [1250] = {                  -- 邪魔女
+                        mcName   = "xieshennvrukou_xiemonvrukou",  
+                },
+                [1333] = {                  -- 螳螂
+                        mcName   = "tanglangrukou_tanglangrukou",  
+                },
+            }
+        end
+    
+        limitPrayBtn:setVisible(true)        
+        limitPrayBtn:setTouchEnabled(true)
+        local openID ,acID = limitPrayModel:getCurrPrayId()
+        if limitPrayBtn.openID ~= openID then
+            if self._limitBtnMc[openID] and self._limitBtnMc[openID].mcName then
+                self:addBtnEffect(limitPrayBtn,self._limitBtnMc[openID].mcName,limitPrayBtn:getContentSize().width*.5,limitPrayBtn:getContentSize().height*.5)
+            end
+            -- if self._limitBtnMc[openID] and self._limitBtnMc[openID].opacityNum then
+            --     limitPrayBtn:setOpacity(255)
+            -- end
+            limitPrayBtn.openID = openID
+        end
+        self._serverMgr:sendMsg("LimitPrayServer", "getLimitPrayInfo", {acId = openID}, true, {}, function (result, error)
+            limitPrayModel:setDataById(result,openID)
+            local isHaveRed = limitPrayModel:isHaveRedNotice(openID)
+            -- print("================isHaveRed=======",isHaveRed)
+            self:updateBtnRed(limitPrayBtn,isHaveRed, cc.p(54,54))             
+        end)
+        
+        -- print(isOpen,"==========openID===",openID,acID)
+        self:registerClickEvent(limitPrayBtn, function ()
+            if not limitPrayModel:getDataById(openID) then
+                return
+            end
+            self._viewMgr:showView("activity.acLimitPray.AcLimitPrayView",{openId = openID,acId = acID},true)
+        end)
+    end
+    --添加boss按钮
+    local wroldBossBtn = self:getUI("rightLayer.rightBtnLayer.wroldBossBtn")
+    wroldBossBtn:setVisible(false)        
+    wroldBossBtn:setTouchEnabled(false)
+    self:addWorldBossBtn()
+
+
     -- 邀请有礼活动
     self:updateInvitedBtn(isInvitedOpen)
     -- 凛冬已至
@@ -3099,6 +3388,168 @@ function MainView:updateAcRightUpBtn()
     -- 检测红点
     self:checkRightUpBtnRed()
     self:adjustPosition()
+    self:updateMerchantBtn()
+end
+
+
+function MainView:addWorldBossBtn()
+    if not GameStatic.is_show_worldBoss then
+        return
+    end
+    --世界boss
+    local wroldBossBtn = self:getUI("rightLayer.rightBtnLayer.wroldBossBtn")
+    if wroldBossBtn:isVisible() then
+        return
+    end
+    wroldBossBtn:setVisible(false)        
+    wroldBossBtn:setTouchEnabled(false)
+    local clearTime = tab.setting["WORLDBOSS_CLEARTIME"].value
+    local isOpen = self._worldBossModel:checkLevelAndServerTime()
+    local openStatus,hasTime = 0 , 0
+    if isOpen then
+        openStatus,hasTime = self._worldBossModel:checkOpenTime(clearTime*60)
+        isOpen = openStatus == self._worldBossModel.isOpen and true or false
+    end
+    if wroldBossBtn.timer then
+        ScheduleMgr:unregSchedule(wroldBossBtn.timer)       
+        wroldBossBtn.timer = nil
+    end
+
+    if isOpen then
+        local bossTime = wroldBossBtn:getChildByFullName("time")
+        bossTime:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
+        bossTime:setString("")
+        if not wroldBossBtn._normalMc then
+            local mc = mcMgr:createViewMC("bosszhanrukou_booszhanrukou", true,false)
+            mc:setPosition(30,30)
+            wroldBossBtn:addChild(mc)
+            wroldBossBtn._normalMc = mc
+        end
+        wroldBossBtn:setVisible(true)        
+        wroldBossBtn:setTouchEnabled(true)
+        self:registerClickEvent(wroldBossBtn, function ()
+            self._viewMgr:showView("worldboss.WorldBossView",{},true)
+        end)
+        wroldBossBtn.timer = ScheduleMgr:regSchedule(1000,self,function( )
+            local realHasTime = hasTime - clearTime*60
+            if realHasTime > 0 then
+                bossTime:setString(TimeUtils.getStringTimeForInt(realHasTime))
+            else
+                bossTime:setString("")
+            end
+            
+            if hasTime == 0 then
+                wroldBossBtn:setVisible(false)        
+                wroldBossBtn:setTouchEnabled(false)
+                ScheduleMgr:unregSchedule(wroldBossBtn.timer)       
+                wroldBossBtn.timer = nil
+                self:adjustPosition()
+            else
+                hasTime = hasTime - 1
+            end
+        end)
+        self:adjustPosition()
+    end
+end
+
+-- 神秘商人
+function MainView:updateMerchantBtn()
+    if not GameStatic.is_show_treasureMerchant then 
+        return
+    end
+    if not self._merchantModel then
+        self._merchantModel = self._modelMgr:getModel("TreasureMerchantModel")
+    end
+    local isOpen = self._merchantModel:isTreasureMerchantOpen()
+    print("===========123123123====isOpen======",isOpen)
+    if self._merchantBtn then 
+        self._merchantBtn:setVisible(isOpen)
+        return
+    end
+    if not isOpen then
+        return
+    end
+    
+    local merchantBtn = ccui.Button:create("button_treasureMerchant_mainView.png", "button_treasureMerchant_mainView.png", "button_treasureMerchant_mainView.png", 1)
+    merchantBtn:setPosition(980, 190)
+    merchantBtn:setScaleAnim(false)
+    self:registerClickEvent(merchantBtn, function ()
+        
+    end)
+    self:registerTouchEvent(merchantBtn,
+        function () --downCallback
+            if merchantBtn._lightImg then         
+                merchantBtn._lightImg:stopAllActions()
+                merchantBtn._lightImg:setOpacity(100)
+                merchantBtn._lightImg:runAction(cc.RepeatForever:create(cc.Sequence:create(cc.FadeTo:create(0.5, 100), cc.FadeTo:create(0.5, 50))))
+            end
+        end,
+        function () --moveCallback
+            if merchantBtn.downSp ~= merchantBtn:getVirtualRenderer() then
+                merchantBtn:setBrightness(0)
+            end
+        end,
+        function () --upCallback
+            if merchantBtn._lightImg then
+                merchantBtn._lightImg:stopAllActions()
+                merchantBtn._lightImg:setOpacity(0)
+                merchantBtn._lightImg:setBrightness(0)
+            end
+            self._serverMgr:sendMsg("ActivityServer", "getTreasureMerchantInfo", {}, true, {}, function (result, error)
+                self._merchantModel:setQipaoStatus(true) 
+                self._viewMgr:showView("activity.mysteryTreasure.TreasureDirectShopView",{},true)   
+                if merchantBtn.__tipsImg then
+                    merchantBtn.__tipsImg:setVisible(false)
+                end
+            end)
+
+        end,
+        function()  --outCallback
+            if merchantBtn._lightImg then
+                merchantBtn._lightImg:stopAllActions()
+                merchantBtn._lightImg:setOpacity(0)
+                merchantBtn._lightImg:setBrightness(0)
+            end
+        end)
+    local midBg = self:getUI("bg.midBg1")
+    self._merchantBtn = merchantBtn
+    midBg:addChild(merchantBtn)
+
+    -- 气泡
+    local tipsImg = ccui.ImageView:create()
+    tipsImg:loadTexture("button_treasureMerchantQipao_mainView.png",1)
+    -- tipsImg:setScale9Enabled(true)
+    -- tipsImg:setCapInsets(cc.rect(10,30,1,1))
+    -- tipsImg:setContentSize(cc.size(150,64))
+    tipsImg:setAnchorPoint(0.5,0.5)
+    tipsImg:setPosition(50,105)
+    merchantBtn:addChild(tipsImg)
+    merchantBtn.__tipsImg = tipsImg    
+    local seq = cc.Sequence:create(cc.ScaleTo:create(1, 1.1), cc.ScaleTo:create(1, 1))
+    tipsImg:runAction(cc.RepeatForever:create(seq))
+
+    local qipaoStatus = self._merchantModel:getQipaoStatus()
+    -- print("============v====",qipaoStatus)
+    tipsImg:setVisible(not qipaoStatus)  
+
+    local lightImg = ccui.ImageView:create()
+    lightImg:loadTexture("button_treasureMerchantLight_mainView.png",1)
+    lightImg:setAnchorPoint(0,0)
+    lightImg:setPosition(0,0)
+    lightImg:setOpacity(0)
+    merchantBtn._lightImg = lightImg
+    merchantBtn:addChild(lightImg)
+
+    -- local titleTxt = ccui.Text:create()
+    -- titleTxt:setString("领主,选个宝物吧")
+    -- titleTxt:setFontSize(18)
+    -- titleTxt:setFontName(UIUtils.ttfName)
+    -- titleTxt:setColor(UIUtils.colorTable.ccUIBaseTextColor2)
+    -- -- titleTxt:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor,1)
+    -- titleTxt:setAnchorPoint(0.5,0.5)
+    -- titleTxt:setPosition(0,110)
+    -- merchantBtn:addChild(titleTxt)
+
 end
 
 -- 邀请有礼
@@ -3204,6 +3655,61 @@ function MainView:updateCelebrationBtn()
     self:updateBtnRed(celebrationBtn,isCanGet,cc.p(54,54))
 end
 
+function MainView:updateBackFlowBtn()
+    local backflowBtn = self:getUI("topLayer.backflowBtn")
+    backflowBtn:setOpacity(0)
+    if not backflowBtn._mc then
+        local mc = mcMgr:createViewMC("huiguifuli_huiliutubiao", true, false) 
+        mc:setPosition(backflowBtn:getContentSize().width*0.5, backflowBtn:getContentSize().height*0.5)
+        mc:setName("mc")
+        backflowBtn:addChild(mc)
+        backflowBtn._mc = mc
+    end
+    if not backflowBtn.__action then
+        local action = cc.RepeatForever:create(
+            cc.Sequence:create(cc.MoveTo:create(1, cc.p(358, 128)),
+                cc.MoveTo:create(1, cc.p(358, 138))
+            ))
+        backflowBtn:runAction(action)
+        backflowBtn.__action = action
+    end
+    local score = self._modelMgr:getModel("BackflowModel"):getTaskDataScore() or 0
+    if not self._maxCount then 
+        local taskRewardData = self._modelMgr:getModel("BackflowModel"):getTaskRewardData() or {}
+        local boxNum = #taskRewardData
+        self._maxCount = taskRewardData[boxNum] and taskRewardData[boxNum].accumulatepoints or 100
+    end
+    -- 进度条
+     if not backflowBtn.__pro then
+
+        local proBg1 = ccui.ImageView:create()
+        proBg1:setScale(0.4)
+        proBg1:loadTexture("backFlow_proBg_mainView.png",1)
+        proBg1:setPosition(backflowBtn:getContentSize().width*0.5,20)
+        backflowBtn:addChild(proBg1,2)
+
+        local proBox = ccui.ImageView:create()
+        proBox:loadTexture("backFlow_btnBox_mainView.png",1)
+        proBox:setPosition(backflowBtn:getContentSize().width*0.5,20)
+        backflowBtn:addChild(proBox,2)
+
+        local sp = cc.Sprite:createWithSpriteFrameName("backFlow_pro_mainView.png")
+        local pro = cc.ProgressTimer:create(sp)
+        -- pro:setPurityColor(255, 0, 0)
+        pro:setScale(0.4)
+        pro:setRotation(180)
+        pro:setType(cc.PROGRESS_TIMER_TYPE_RADIAL)
+        backflowBtn:addChild(pro,2)
+        pro:setPosition(backflowBtn:getContentSize().width*0.5, 21)
+        backflowBtn.__pro = pro
+        local proNum = score/self._maxCount * 90 + 5
+        pro:setPercentage(proNum)
+    else
+        local proNum = score/self._maxCount * 90 + 5
+        backflowBtn.__pro:setPercentage(proNum)
+    end 
+end
+        
 --[[
     经验兑换人物头像处红点
 ]]
@@ -3427,7 +3933,18 @@ function MainView:reflashUserInfo( viewname )
     else
         IconUtils:updateHeadIconByView(self._avatar,{avatar = userInfo.avatar,tp = 4, isSelf = true, eventStyle=1, tencetTp = tencetTp})   --,tp = 2
     end
-    local needExp = tab:UserLevel(userInfo.lvl).exp
+    local needExp = nil
+    if self._userModel:isMaxParagonLevel() then
+        self._progressBar:loadTexture("expBar_pTalent_mainView.png", 1)
+        needExp = tab:ParagonLevel(userInfo.plvl).exp
+        
+    elseif self._userModel:isHaveParagonLevel() then
+        self._progressBar:loadTexture("expBar_pTalent_mainView.png", 1)
+        needExp = tab:ParagonLevel((userInfo.plvl or 0) + 1).exp
+    else
+        self._progressBar:loadTexture("expBar_mainView.png", 1)
+        needExp = tab:UserLevel(userInfo.lvl).exp
+    end
     if needExp then
         self._progressBar:setPercent(userInfo.exp/needExp*100)
     end
@@ -3441,9 +3958,9 @@ function MainView:reflashUserInfo( viewname )
         name = self._modelMgr:getModel("UserModel"):getUID()
     end
     local lvl = userInfo.lvl or ""
-    self._userLv:setString("Lv." .. lvl)
+    local tempUserLv = UIUtils:adjustLevelShow(self._userLv, {lvlStr = "Lv." .. lvl}, 1)
     self._name:setString(name)
-    self._name:setPositionX(self._userLv:getPositionX()+self._userLv:getContentSize().width+5)
+    self._name:setPositionX(tempUserLv:getPositionX()+tempUserLv:getContentSize().width+5)
     local vip = self._modelMgr:getModel("VipModel"):getData().level or 0
     if vip > 0 then
         self._vipIcon:setVisible(true)  
@@ -3500,20 +4017,24 @@ function MainView:reflashUserInfo( viewname )
     if tonumber(payGemNum) > 0 then 
         if tonumber(userInfo.award.first_recharge) == 1 then 
             btn:setVisible(false)              
-            self._rightVipBtn:setVisible(true)           
-            if tonumber(vipLevel) > 0 and tonumber(vipLevel) <=14 then   --月卡
+            self._rightVipBtn:setVisible(true)     
+            if tonumber(vipLevel) > 0 and tonumber(vipLevel) <= activityLvL[#activityLvL] then   --月卡
                 local num = self:getLvlByVipLevel(tonumber(vipLevel))
                 self:updateActivityBtn(tonumber(num)) 
             else
                 -- self._monthBtn:setVisible(false)
                 self._rightVipBtn:setVisible(false)
             end
+            -- chargePresentBtn -- 次充领奖
+            self:updateChargePresentBtn(userInfo)
             self:adjustPosition() 
         else
             self:addNoticeDot(btn,{pos=cc.p(54,54)})
             createUpBtnTitleLabel(btn, lang("MAIN_LINGQU"), 0, 0,16)
         end        
     end
+
+
     self:handlerSevenDaysAndLevelFBAct()
     -- 达到等级开启嘉年华
     self:updateCarnivalState()
@@ -3521,6 +4042,43 @@ function MainView:reflashUserInfo( viewname )
 
     -- 右侧充值一排按钮位置自适应
     self:rightBtnAdjustPosition()
+end
+
+-- 更新次充按钮
+function MainView:updateChargePresentBtn(userInfo)
+    local chargePresentBtn = self:getUI("rightLayer.rightBtnLayer.chargePresentBtn")
+    chargePresentBtn:setVisible(false)
+    chargePresentBtn:setEnabled(false)
+    -- 已领 活动关闭
+    if userInfo.award.second_recharge and tonumber(userInfo.award.second_recharge) == 2 then
+        return
+    end
+    if userInfo.award.second_recharge and tonumber(userInfo.award.second_recharge) == 1 then
+        self:addNoticeDot(chargePresentBtn,{pos=cc.p(54,54)})
+    end
+    if not self._activityModel then
+        self._activityModel = self._modelMgr:getModel("ActivityModel")
+    end    
+    local acData = self._activityModel:getAcShowDataByType(42) or {}
+    local startTime = acData.start_time or 0
+    local endTime = acData.end_time or 0
+    local currTime = self._userModel:getCurServerTime()
+
+    print("=============startTime=currTime=endTime====",startTime,currTime,endTime)
+    if startTime <= currTime and endTime > currTime then
+        chargePresentBtn:setVisible(true)
+        chargePresentBtn:setEnabled(true)
+        self:registerClickEventByName("rightLayer.rightBtnLayer.chargePresentBtn", function ()
+            self._viewMgr:showDialog("activity.AcRechargePresentView", {closeCallBack=function ( )  
+                local currTime = self._userModel:getCurServerTime()
+                print("=======close======startTime=currTime=endTime====",startTime,currTime,endTime)       
+                if not (startTime <= currTime and endTime > currTime) then
+                    chargePresentBtn:setVisible(false)
+                    chargePresentBtn:setEnabled(false)
+                end
+            end}, true)
+        end)
+    end
 end
 
 function MainView:rightBtnAdjustPosition()
@@ -3835,43 +4393,8 @@ function MainView:addBtnFunction(data)
                         self._viewMgr:showTip(lang(systemOpenTip))
                     end
                 end
-            elseif viewname == "weapons.WeaponsView" then
-                local weaponsModel = self._modelMgr:getModel("WeaponsModel")
-                local state = weaponsModel:getWeaponState()
-                if state == 1 then
-                    self._viewMgr:showTip(lang("TIP_Weapon"))
-                elseif state == 2 then
-                    self._viewMgr:showTip(lang("TIP_Weapon2"))
-                elseif state == 3 then
-                    self._viewMgr:showTip(lang("TIP_Weapon3"))
-                elseif state == 4 then
-                    local tdata = weaponsModel:getWeaponsDataByType(1)
-                    if tdata then
-                        self._viewMgr:showView("weapons.WeaponsView", {})
-                    else
-                        self._serverMgr:sendMsg("WeaponServer", "getWeaponInfo", {}, true, {}, function(result)
-                            self._viewMgr:showView("weapons.WeaponsView", {})
-                        end)
-                    end
-                end
-                -- self._viewMgr:showView("weapons.WeaponsView", {})
-            elseif viewname == "godwar.GodWarView" then
-                local godWarModel = self._modelMgr:getModel("GodWarModel")
-                local flag = godWarModel:getClickGodwarBtn()
-                if flag == 0 then
-                    self._serverMgr:sendMsg("GodWarServer", "getJoinList", {}, true, {}, function (result)
-                        self._viewMgr:showView("godwar.GodWarView")
-                    end)
-                elseif flag == 1 then
-                    local openTimeStr = godWarModel:getOpenTime()
-                    self._viewMgr:showTip(openTimeStr)
-                elseif flag == 2 then
-                    local openTimeStr = godWarModel:getOpenTime1()
-                    self._viewMgr:showTip(openTimeStr)
-                elseif flag == 3 then
-                    self._viewMgr:showTip(lang("ZHENGBASAI_HEFU_TIPS"))
-                    -- self._viewMgr:showTip("功能正在维护中")
-                end
+            elseif viewname == "godwar.GodWarEntranceView" then
+                self._viewMgr:showView(viewname)
             elseif viewname == "guild.join.GuildInView" then
                 self._serverMgr:sendMsg("UserServer", "getUserGuildId", {}, true, {}, function(data)
                     local userData = self._userModel:getData()
@@ -4109,6 +4632,8 @@ function MainView:detectLeagueOpen( callback )
     end
 end
 
+
+
 --[[
     ontop时先删除主界面的气泡
 ]]
@@ -4158,11 +4683,11 @@ function MainView:_hadNewBtnInfo(inFirst)
             {iconName = "bottomLayer.extendBar.bg.treasureBtn",pos =cc.p(65,65),detectFuc = function( )
                 return self._modelMgr:getModel("TreasureModel"):havePromoteTreasure()
             end},
-			--圣徽
-			{
-			iconName = "bottomLayer.extendBar.bg.holyBtn", pos = cc.p(65,65), detectFuc = function()
-				return self._modelMgr:getModel("TeamModel"):isShowHolyRedPoint()
-			end},
+            --圣徽
+            {
+            iconName = "bottomLayer.extendBar.bg.holyBtn", pos = cc.p(65,65), detectFuc = function()
+                return self._modelMgr:getModel("TeamModel"):isShowHolyRedPoint()
+            end},
              -- 任务
             {iconName = "bottomLayer.extendBar.bg.taskBtn",pos =cc.p(65,65),detectFuc = function( )
                 return self._modelMgr:getModel("TaskModel"):hasTaskCanGet()
@@ -4354,6 +4879,8 @@ function MainView:newActionOpen()
     else
         if self._inFirst ~= false and (not self._isInWeekSign) and self._isCloseAd == true then
             self:showAdView() 
+        else
+            self:checkCrossGodWarInvitation()
         end
         self._inFirst = true
     end
@@ -4468,6 +4995,9 @@ function MainView:_checkRightUpBtnRed()
     end
     local carnivalModel = self._modelMgr:getModel("ActivityCarnivalModel")
     carnivalModel:doUpdate()
+
+    local acUltimateModel = self._modelMgr:getModel("AcUltimateModel")  
+    acUltimateModel:doUpdate()
 end
 
 --初始化右侧活动按钮
@@ -4495,30 +5025,37 @@ function MainView:initExtendRightBtn( )
 
     -- 展示右侧面板图标顺序
     self._orderRightBtn = {
-        [1]={uiname="rightLayer.rightBtnLayer.firstChargeBtn"},
-        [2]={uiname="rightLayer.rightBtnLayer.fightDragonBtn"},
-        [3]={uiname="rightLayer.rightBtnLayer.limitTeamBtn"},
-        [4]={uiname="rightLayer.rightBtnLayer.sevenDaysBtn"},
-        [5]={uiname="rightLayer.rightBtnLayer.activityCarnivalBtn"},
-        [6]={uiname="rightLayer.rightBtnLayer.levelFBBtn"},
-        [7]={uiname="rightLayer.rightBtnLayer.acAdventureBtn"},
-        [8]={uiname="rightLayer.rightBtnLayer.luckStarBtn"},
-        [9]={uiname="rightLayer.rightBtnLayer.vipBtn"},
-        [10]={uiname="rightLayer.rightBtnLayer.celebrationBtn"},
-        [11]={uiname="rightLayer.rightBtnLayer.backflowBtn"},
-        [12]={uiname="rightLayer.rightBtnLayer.qqActivityBtn"},
-        [13]={uiname="rightLayer.rightBtnLayer.tehuiActivityBtn"},
-        [14]={uiname="rightLayer.rightBtnLayer.activityBtn"},
-        [15]={uiname="rightLayer.rightBtnLayer.lichBuyGiftBtn"},
-        [16]={uiname="rightLayer.rightBtnLayer.oneChargeBtn"},
-        [17]={uiname="rightLayer.rightBtnLayer.trainAcBtn"},
-        [18]={uiname="rightLayer.rightBtnLayer.powerGameBtn"},
-        [19]={uiname="rightLayer.rightBtnLayer.recallAcBtn"},
-        [20]={uiname="rightLayer.rightBtnLayer.luckTulingBtn"},
-        [21]={uiname="rightLayer.rightBtnLayer.limitAwakenBtn"},
-        [22]={uiname="rightLayer.rightBtnLayer.happyPopBtn"},
-        [23]={uiname="rightLayer.rightBtnLayer.sprRedBtn"},
-        [24]={uiname="rightLayer.rightBtnLayer.luckyLotteryBtn"},
+        [1]={uiname="rightLayer.rightBtnLayer.wroldBossBtn"},
+        [2]={uiname="rightLayer.rightBtnLayer.firstChargeBtn"},
+        [3]={uiname="rightLayer.rightBtnLayer.chargePresentBtn"},
+        [4]={uiname="rightLayer.rightBtnLayer.limitTeamBtn"},
+        [5]={uiname="rightLayer.rightBtnLayer.fightDragonBtn"},
+        [6]={uiname="rightLayer.rightBtnLayer.sevenDaysBtn"},
+        [7]={uiname="rightLayer.rightBtnLayer.activityCarnivalBtn"},
+        [8]={uiname="rightLayer.rightBtnLayer.levelFBBtn"},
+        [9]={uiname="rightLayer.rightBtnLayer.acAdventureBtn"},
+        [10]={uiname="rightLayer.rightBtnLayer.luckStarBtn"},
+        [11]={uiname="rightLayer.rightBtnLayer.vipBtn"},
+        [12]={uiname="rightLayer.rightBtnLayer.celebrationBtn"},
+        -- [11]={uiname="rightLayer.rightBtnLayer.backflowBtn"},   -- 不放在list里了
+        [13]={uiname="rightLayer.rightBtnLayer.qqActivityBtn"},
+        [14]={uiname="rightLayer.rightBtnLayer.tehuiActivityBtn"},
+        [15]={uiname="rightLayer.rightBtnLayer.activityBtn"},
+        [16]={uiname="rightLayer.rightBtnLayer.lichBuyGiftBtn"},
+        [17]={uiname="rightLayer.rightBtnLayer.oneChargeBtn"},
+        [18]={uiname="rightLayer.rightBtnLayer.trainAcBtn"},
+        [19]={uiname="rightLayer.rightBtnLayer.powerGameBtn"},
+        [20]={uiname="rightLayer.rightBtnLayer.recallAcBtn"},
+        [21]={uiname="rightLayer.rightBtnLayer.luckTulingBtn"},
+        [22]={uiname="rightLayer.rightBtnLayer.limitAwakenBtn"},
+        [23]={uiname="rightLayer.rightBtnLayer.happyPopBtn"},
+        [24]={uiname="rightLayer.rightBtnLayer.sprRedBtn"},
+        [25]={uiname="rightLayer.rightBtnLayer.luckyLotteryBtn"},
+        [26]={uiname="rightLayer.rightBtnLayer.worldCupBtn"},
+        [27]={uiname="rightLayer.rightBtnLayer.ultimateBtn"},
+        [28]={uiname="rightLayer.rightBtnLayer.growthwayBtn"},
+        [29]={uiname="rightLayer.rightBtnLayer.limitPrayBtn"},
+        
     }
 
     local mainiconwhitelist = tab.mainiconwhitelist
@@ -5185,7 +5722,6 @@ function MainView:addShowBubble(btntitle, tip, strName)
         else
             tipbg:setName("tipbg")
         end
-        
         tipbg:setAnchorPoint(0.25, 0)
         tipbg:setPosition(posX, posY)
         tipbg:setScale(scale)
@@ -5196,6 +5732,30 @@ function MainView:addShowBubble(btntitle, tip, strName)
             tipbg:setRotation3D(_3dVertex1)
         end
         btn:addChild(tipbg, 10000)
+
+        if tonumber(tip.condition) == 52 then   --法术祈愿，橙色法术气泡特殊处理  add by zhangtao
+            local hotSpotData = self._modelMgr:getModel("SpellBooksModel"):getHotSpotData()
+            if hotSpotData then
+                local itemData = hotSpotData[1]
+                if itemData and itemData[1] == "tool" then
+                    local toolD = tab.tool[itemData[2]]
+                    if toolD then
+                        local filename = toolD.art .. ".png"
+                        local sfc = cc.SpriteFrameCache:getInstance()
+                        if not sfc:getSpriteFrameByName(filename) then
+                            filename = toolD.art .. ".jpg"
+                        end
+                        local boxIcon = ccui.ImageView:create()
+                        boxIcon:setAnchorPoint(0,0)
+                        boxIcon:setPosition(10,10)
+                        boxIcon:setScale(0.46)
+                        tipbg:addChild(boxIcon)
+                        -- boxIcon:ignoreContentAdaptWithSize(false)
+                        boxIcon:loadTexture(filename, 1)
+                    end
+                end
+            end
+        end 
     elseif tip.jiantou == 5 then -- 副本
         local tipbg = mcMgr:createViewMC("c1_guidecircle-HD", true)
         tipbg:setName("tipbg")
@@ -5549,6 +6109,15 @@ function MainView:setActionAdvance()
                 self._viewMgr:showView("citybattle.CityBattleView")
             elseif systemnotice == 108 then
                 self._viewMgr:showView("purgatory.PurgatoryView")
+            elseif systemnotice == 109 or systemnotice == 110 or systemnotice == 111 then
+                if not GameStatic.is_open_crossGodWar then
+                    self._viewMgr:showTip("系统维护中")
+                    return
+                end
+                self._serverMgr:sendMsg("CrossGodWarServer", "enter", {}, true, {}, function(result)
+                    UIUtils:reloadLuaFile("crossGod.CrossGodWarView")
+                    self._viewMgr:showView("crossGod.CrossGodWarView")
+                end)
             end
         end)
         self:removeActionAdvance(noticeType1, noticeType2)
@@ -6273,6 +6842,8 @@ end
 
 function MainView:showGodWarDialog()
     local callback1 = function()
+        -- 廣告結束 再開始檢測 跨服諸神邀請函和64強展示
+        self:checkCrossGodWarInvitation()
         local tempNoticeId = self._modelMgr:getModel("MainViewModel"):isOpenShowNotice(true)
         local actionFlag = self._modelMgr:getModel("MainViewModel"):getActionOpen()
         print("\nactionFlag========", actionFlag)
@@ -6288,6 +6859,7 @@ function MainView:showGodWarDialog()
         else
             local isShowGvgMc = self._modelMgr:getModel("CityBattleModel"):checkGvgOpenMc()
             local isOpen,openDes = LeagueUtils:isLeagueOpen(101,true)
+            local gloryIsOpen = self._modelMgr:getModel("GloryArenaModel"):lIsStartContion()
             if isShowGvgMc then
                 self:showGvgOpenMc(callback2)
             elseif self._modelMgr:getModel("SiegeModel"):isShowMainViewFly() then
@@ -6295,6 +6867,8 @@ function MainView:showGodWarDialog()
                 self:showSiegeOpenMc(status, callback2)
             elseif isOpen == true then
                 self:showLeagueOpenMC(callback2)
+            elseif gloryIsOpen == true then
+                self:showGloryArenaOpenMC(callback2)
             else
                 callback2()
             end
@@ -6392,8 +6966,32 @@ function MainView:showLeagueOpenMC( callback )
         local isInRest = self._modelMgr:getModel("LeagueModel"):isInMidSeasonRestTime()
         if leagueOpen and isShowCurBatchMc and not isInRest then
             self._viewMgr:showDialog("league.LeagueOpenFlyView", {target = self:getUI("bg.midBg3.pve"),callback = callback}, true) 
+        else
+            --这个时候如果冠军对局赛季不能弹出就判断是否可以弹出荣耀竞技场
+            self:showGloryArenaOpenMC(callback)
         end
     end)
+end
+
+-- 荣耀竞技场赛季开启条件请求
+function MainView:showGloryArenaOpenMC(callback)
+    local gloryArenaMode = self._modelMgr:getModel("GloryArenaModel")
+    local open = gloryArenaMode:lIsStartContion()
+    function checkOpenGloryArena()
+        local _open = gloryArenaMode:lIsOpen()
+        if _open and gloryArenaMode:lCheckSeason() then
+            self._viewMgr:showDialog("gloryArena.GloryArenaOpenFlyView", {target = self:getUI("bg.midBg3.pve"),callback = callback}, true) 
+        end
+    end
+    if open then
+        --判断是否开启新的赛季，是的花弹出提示
+        if gloryArenaMode:lGetSeason() == 0 then
+            --这个时候需要获取数据
+            gloryArenaMode:reflashEnterCrossArena(checkOpenGloryArena())
+        else
+            checkOpenGloryArena()
+        end
+    end
 end
 
 --[[
@@ -6470,9 +7068,15 @@ function MainView:showSpringRedRedPoint()
     self:updateBtnRed(sRedBtn, haveNotice,cc.p(54,54))
 end
 
+function MainView:refreshWorldCupRedPoint()
+    local haveNotice = self._modelMgr:getModel("WorldCupModel"):isMainViewRedPoint()
+    local worldCupBtn = self:getUI("rightLayer.rightBtnLayer.worldCupBtn")
+    self:updateBtnRed(worldCupBtn,haveNotice,cc.p(54,54))
+end
+
 -- 打开领主手册界面
 function MainView:showHandbookView()
-	if not SystemUtils:enableHandbook() then
+    if not SystemUtils:enableHandbook() then
         self._viewMgr:showTip(lang("TIP_TASK_TIP_LOCK"))
         return 
     end
@@ -6580,52 +7184,98 @@ function MainView:showPrivilegesBuff()
     local buffSum = {}
     local indexId = 1
     local tbuffNum = tab:Setting("G_PRIVILEGES_SHOP_BUFF_NUM").value
+    local flag = false
     for i=1,tbuffNum do
-        local flag, buffId = self._privilegeModel:getKingBuff(i)
-        print("flag, buffId===============", flag, buffId)
-        local buffNum = tonumber(buffId)
-        local buffTab = tab:PeerShop(buffNum)
-        local buffIcon = topLayer:getChildByName("buffIcon" .. i)
+        flag, _ = self._privilegeModel:getKingBuff(i)
         if flag == true then
-            table.insert(buffSum, i)
-            local param = {image = buffTab.icon .. ".png", quality = 5, scale = 0.90, bigpeer = true}
-            if buffIcon then
-                IconUtils:updatePeerageIconByView(buffIcon, param)
-                buffIcon:setPosition(70+indexId*30,76)
-            else
-                buffIcon = IconUtils:createPeerageIconById(param)
-                buffIcon:setPosition(70+indexId*30,76)
-                buffIcon:setScale(0.3)
-                buffIcon:setName("buffIcon" .. i)
-                topLayer:addChild(buffIcon, 29)
-            end
-            indexId = indexId + 1
-            buffIcon:setVisible(true)
+            break
+        end
+    end
+    if flag then
+        if not topLayer.__buffIcon1 then
+            local buffIcon = ccui.ImageView:create()
+            buffIcon:loadTexture("privileges_buffBtn_mainView.png",1)
+            buffIcon:setScale(0.35)
+            buffIcon:setPosition(250,86)
+            topLayer.__buffIcon1 = buffIcon
+            topLayer:addChild(buffIcon,29)
+            local buffFrame = ccui.ImageView:create()
+            buffFrame:loadTexture("globalImageUI4_squality5.png",1)
+            buffFrame:setPosition(45,45)
+            buffIcon:addChild(buffFrame)
             self:registerClickEvent(buffIcon, function()
                 local privilegesTip = self:getUI("topLayer.privilegesTip")
-                privilegesTip:setCapInsets(cc.rect(30, 30, 30, 30))
+                privilegesTip:setCapInsets(cc.rect(30, 30, 1, 1))
                 self:showPrivilegesBuffTip(privilegesTip)
             end)
         else
-            if buffIcon then
-                buffIcon:setVisible(false)
-            end
+            topLayer.__buffIcon1:setVisible(true)
+        end
+    else
+        if topLayer.__buffIcon1 then
+            topLayer.__buffIcon1:setVisible(false)
         end
     end
+
+    if not self._backflowModel then 
+        self._backflowModel = self._modelMgr:getModel("BackflowModel")
+    end
+    if self._backflowModel:isPrivilegeOpen() then
+        if not topLayer.__buffIcon2 then
+            local buffIcon = ccui.ImageView:create()
+            buffIcon:loadTexture("backFlow_buffBtn_mainView.png",1)
+            buffIcon:setScale(0.35)
+            buffIcon:setPosition(215,86)
+            topLayer.__buffIcon2 = buffIcon
+            topLayer:addChild(buffIcon,29)
+            local buffFrame = ccui.ImageView:create()
+            buffFrame:loadTexture("globalImageUI4_squality5.png",1)
+            buffFrame:setPosition(45,45)
+            buffIcon:addChild(buffFrame)
+            self:registerClickEvent(buffIcon, function()
+                local privilegesTip = self:getUI("topLayer.privilegesTip")
+                privilegesTip:setCapInsets(cc.rect(30, 30, 1, 1))
+                self:showBackFlowBuffTip(privilegesTip)
+            end)
+        else
+            topLayer.__buffIcon2:setVisible(true)
+        end
+    else
+        if topLayer.__buffIcon2 then
+            topLayer.__buffIcon2:setVisible(false)
+        end
+    end
+    
 end
 
 -- 特权buff tips
 function MainView:showPrivilegesBuffTip(inView)
     inView:setVisible(true)
+    local layer1 = inView.__layer1
+    local layer2 = inView.__layer2
+    if layer1 then
+        layer1:setVisible(true)
+    else
+        layer1 = ccui.Layout:create()
+        -- layer1:setBackGroundColorOpacity(40)
+        -- layer1:setBackGroundColorType(1)
+        -- layer1:setBackGroundColor(cc.c3b(0,0,0))
+        -- layer1:setContentSize(100,100)
+        inView:addChild(layer1)
+        inView.__layer1 = layer1
+    end
+    if layer2 then
+        layer2:setVisible(false)
+    end
     self._privilegeModel = self._modelMgr:getModel("PrivilegesModel")
     local buffSum = {}
     local tbuffNum = tab:Setting("G_PRIVILEGES_SHOP_BUFF_NUM").value
     for i=1,tbuffNum do
-        local buffIcon = inView:getChildByName("buffIcon" .. i)
+        local buffIcon = layer1:getChildByName("buffIcon" .. i)
         if buffIcon then
             buffIcon:setVisible(false)
         end
-        local richText = inView:getChildByName("richText" .. i)
+        local richText = layer1:getChildByName("richText" .. i)
         if richText then
             richText:removeFromParent()
         end
@@ -6647,6 +7297,7 @@ function MainView:showPrivilegesBuffTip(inView)
 
     local posY = table.nums(buffSum)*40 + 20
     inView:setContentSize(cc.size(220, posY))
+    layer1:setContentSize(cc.size(220, posY))
     posY = posY - 10
     for i=1,table.nums(buffSum) do
         local indexId = buffSum[i]
@@ -6654,7 +7305,7 @@ function MainView:showPrivilegesBuffTip(inView)
         local buffNum = tonumber(buffId)
         local buffTab = tab:PeerShop(buffNum)
         local param = {image = buffTab.icon .. ".png", quality = 5, scale = 0.90, bigpeer = true}
-        local buffIcon = inView:getChildByName("buffIcon" .. i)
+        local buffIcon = layer1:getChildByName("buffIcon" .. i)
         if buffIcon then
             IconUtils:updatePeerageIconByView(buffIcon, param)
         else
@@ -6662,7 +7313,7 @@ function MainView:showPrivilegesBuffTip(inView)
             buffIcon:setAnchorPoint(0.5, 0.5)
             buffIcon:setScale(0.3)
             buffIcon:setName("buffIcon" .. i)
-            inView:addChild(buffIcon)
+            layer1:addChild(buffIcon)
         end
         buffIcon:setPosition(35,posY - i*38 + 19)
         buffIcon:setVisible(true)
@@ -6674,7 +7325,7 @@ function MainView:showPrivilegesBuffTip(inView)
         if count > 0 then 
             str = result
         end
-        local richText = inView:getChildByName("richText" .. i)
+        local richText = layer1:getChildByName("richText" .. i)
         if richText then
             richText:removeFromParent()
         end
@@ -6682,10 +7333,153 @@ function MainView:showPrivilegesBuffTip(inView)
         richText:formatText()
         richText:setPosition(140, posY - i*38 + 19)
         richText:setName("richText" .. i)
-        inView:addChild(richText)
+        layer1:addChild(richText)
     end
 end
 
+-- 回归任务buff tips
+function MainView:showBackFlowBuffTip(inView)
+    inView:setVisible(true)
+    local layer1 = inView.__layer1
+    local layer2 = inView.__layer2
+    if layer2 then
+        layer2:setVisible(true)
+    else
+        layer2 = ccui.Layout:create()
+        -- layer2:setBackGroundColorOpacity(40)
+        -- layer2:setBackGroundColorType(1)
+        -- layer2:setBackGroundColor(cc.c3b(0,0,0))
+        -- layer2:setContentSize(100,100)
+        inView:addChild(layer2)
+        inView.__layer2 = layer2
+    end
+    if layer1 then
+        layer1:setVisible(false)
+    end
+    if not self._backflowModel then 
+        self._backflowModel = self._modelMgr:getModel("BackflowModel")--:getBackflowOpen()
+    end
+    local privilegeData = self._backflowModel:getReturnPrivilege()
+    local buffIndex = {
+        [1] = {key="dragonCountry", titleTxt="龙之国",    des="技能符石收益翻倍"},
+        [2] = {key="battle",        titleTxt="战役",      des="帝国勋章收益翻倍"},
+        [3] = {key="cloudCity",     titleTxt="云中城",    des="天赋药剂收益翻倍"},
+        [4] = {key="element",       titleTxt="元素位面",  des="位面碎片收益翻倍"},
+    }
+    local num = 0
+    for i=1,4 do
+        local buffData = privilegeData[buffIndex[i].key]
+        if buffData ~= nil then
+            num = num + 1
+        end
+    end
+
+    local posY = num*30 + 20 + 40 -- +40 剩余时间高度
+    inView:setContentSize(cc.size(300, posY))
+    layer2:setContentSize(cc.size(300, posY))
+    posY = posY - 25
+    for i=1,4 do
+        local data = buffIndex[i]
+        local buffData = privilegeData[data.key]
+        if buffData ~= nil then
+            if layer2["__titleTxt" .. i] then
+                layer2["__titleTxt" .. i]:setVisible(true)
+                layer2["__titleTxt" .. i]:setString(data.titleTxt)
+            else                
+                local titleTxt = ccui.Text:create()
+                titleTxt:setString(data.titleTxt)
+                titleTxt:setFontSize(20)
+                titleTxt:setFontName(UIUtils.ttfName)
+                titleTxt:setColor(cc.c3b(255, 255, 255))
+                titleTxt:setAnchorPoint(0,0.5)
+                titleTxt:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor,1)
+                titleTxt:setPosition(20,posY)
+                layer2:addChild(titleTxt)
+                layer2["__titleTxt" .. i] = titleTxt
+            end
+            if layer2["__des"..i] then
+                layer2["__des"..i]:setVisible(true)
+                layer2["__des"..i]:setString(data.des)
+            else
+                local des = ccui.Text:create()
+                des:setString(data.des)
+                des:setFontSize(20)
+                des:setFontName(UIUtils.ttfName)
+                des:setColor(cc.c3b(255, 255, 255))
+                des:setAnchorPoint(0,0.5)
+                des:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor,1)
+                des:setPosition(120,posY)
+                layer2["__des"..i] = des
+                layer2:addChild(des)
+            end            
+
+            posY = posY - 30
+        else
+            if layer2["__titleTxt" .. i] then
+                layer2["__titleTxt" .. i]:setVisible(false)
+            end 
+            if layer2["__des"..i] then
+                layer2["__des"..i]:setVisible(false)
+            end
+        end
+    end
+    -- 添加倒计时
+    if not layer2.__timeTxt then
+        local currTime = self._userModel:getCurServerTime() 
+        local endTime = privilegeData.endTime or 0
+
+        local timeDes = ccui.Text:create()
+        timeDes:setString("剩余时间：")
+        timeDes:setFontSize(20)
+        timeDes:setFontName(UIUtils.ttfName)
+        timeDes:setColor(cc.c3b(255, 255, 255))
+        timeDes:setAnchorPoint(0,0.5)
+        timeDes:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor,1)
+        timeDes:setPosition(20,20)
+        layer2:addChild(timeDes)
+        layer2.__timeDes = timeDes
+
+        local timeTxt = ccui.Text:create()
+        timeTxt:setFontSize(20)
+        timeTxt:setFontName(UIUtils.ttfName)
+        timeTxt:setColor(cc.c3b(255, 255, 255))
+        timeTxt:setAnchorPoint(0,0.5)
+        timeTxt:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor,1)
+        timeTxt:setPosition(120,20)
+        layer2:addChild(timeTxt)
+        layer2.__timeTxt = timeTxt
+
+
+        local day, hour, min, sec, tempValue
+        tempTime = endTime - currTime
+        layer2.__timeTxt:runAction(cc.RepeatForever:create(cc.Sequence:create(
+            cc.CallFunc:create(function()
+                tempValue = tempTime
+                day = math.floor(tempValue/86400) 
+                tempValue = tempValue - day*86400
+
+                hour = math.floor(tempValue/3600)
+                tempValue = tempValue - hour*3600
+
+                min = math.floor(tempValue/60)
+                tempValue = tempValue - min*60
+
+                sec = math.fmod(tempValue, 60)
+                local showTime
+                if tempTime <= 0 then
+                    showTime = "00天00:00:00"
+                    layer2.__timeTxt:stopAllActions()
+                else
+                    showTime = string.format("%.2d天%.2d:%.2d:%.2d", day, hour, min, sec)
+                end                
+                tempTime = tempTime - 1
+                layer2.__timeTxt:setString(showTime)
+            end),cc.DelayTime:create(1))
+        ))
+
+    end
+
+end
 
 function MainView:applicationWillEnterForeground()
     if self._battery then
@@ -6777,10 +7571,98 @@ function MainView:changeBGMC()
         self._backBg2:addChild(mc)
         self._BGMC[#self._BGMC + 1] = mc
     end
+    print("========changeBGMC=========")
+    if TimeUtils.mainViewActIsOpen(TimeUtils.Year) then
+        local hour = tonumber(os.date("%H"))
+        local isShow = false
+        if hour >= 5 and hour < 20 then
+        else
+            isShow = true
+        end
+        if isShow then
+            self._yanHuaNode1 = self:createYanHuaAni(1)
+            -- self._yanHuaNode1:stop()
+            self._yanHuaNode2 = self:createYanHuaAni(2)
+            -- self._yanHuaNode2:stop()
+        end
+    end
+end
+
+function MainView:createYanHuaAni(sceneNum)
+    local mc = mcMgr:createViewMC("zhuchengyanhua_yanhua", false, false)
+
+    local mcColorTab = {
+        ["yellow"] = {["B"] = 0 , ["S"] = 0 ,["H"] = 0},        --黄
+        ["spice"] = {["B"] = 0 , ["S"] = 0 ,["H"] = 0},        --橙
+        ["green"] = {["B"] = 0 , ["S"] = 0 ,["H"] = 77},      --绿
+        ["purple"] = {["B"] = 0 , ["S"] = -1 ,["H"] = -68},    --紫
+        ["blue"] = {["B"] = 11 , ["S"] = 0 ,["H"] = 158},    --蓝
+    }
+    for k , v in pairs(mc:getChildren()) do
+        local name = v:getName()
+        v:setHue(tonumber(mcColorTab[name]["H"]))
+        v:setBrightness(tonumber(mcColorTab[name]["B"]))
+        v:setSaturation(tonumber(mcColorTab[name]["S"]))
+    end
+    local bgContainerSiseWidth = self._bg:getInnerContainerSize().width
+    local posTable = {
+                        [1] = {posX = bgContainerSiseWidth*0.25},
+                        [2] = {posX = bgContainerSiseWidth*0.75}
+                    }
+    mc:setPosition(posTable[sceneNum].posX, MAX_SCREEN_HEIGHT/2)
+    self._bg:addChild(mc,10)
+    self._BGMC[#self._BGMC + 1] = mc
+    return mc
+end
+
+function MainView:updateYanHuaAni(dt)
+    local dt = dt or 0
+    -- print("=====updateYanHuaAni======")
+    if TimeUtils.mainViewActIsOpen(TimeUtils.Year) then
+        local hour = tonumber(os.date("%H"))
+        local isShow = false
+        if hour >= 5 and hour < 20 then
+        else
+            isShow = true
+        end
+        dtTime1 = dtTime1 + dt
+        -- print("=====hour======"..hour)
+        if isShow then
+            -- print("=====dtTime1======"..dtTime1)
+            if dtTime1 >= 20 then
+                dtTime1 = 0
+                if self._yanHuaNode1 then
+                    self._yanHuaNode1:addEndCallback(function()
+                        if self._yanHuaNode1 then
+                            self._yanHuaNode1:stop()
+                            self._yanHuaNode1:setVisible(false)
+                        end
+                    end)
+                    self._yanHuaNode1:setVisible(true)
+                    self._yanHuaNode1:gotoAndPlay(0)
+                end
+                if self._yanHuaNode2 then
+                    ScheduleMgr:delayCall(4000, self, function( )
+                        self._yanHuaNode2:addEndCallback(function()
+                            if self._yanHuaNode2 then
+                                self._yanHuaNode2:stop()
+                                self._yanHuaNode2:setVisible(false)
+                            end
+                        end)
+                        self._yanHuaNode2:setVisible(true)
+                        self._yanHuaNode2:gotoAndPlay(0)
+                    end)
+                end                
+            end
+        end
+    end
 end
 
 function MainView:setJieRi()
     -- 节日
+    if TimeUtils.mainViewActIsOpen(TimeUtils.Year) then
+        isJieRi = true
+    end
     local jieriIcon
     jieriIcon = self:getUI("bg.midBg2.jieri1")
     if jieriIcon then jieriIcon:setVisible(isJieRi) end
@@ -6959,6 +7841,141 @@ function MainView:updateLordBtn( ... )
     self:getUI("topLayer.lordBtn.redPoint"):setVisible(isNeed)
     self._mainViewModel:checkTipsQipao()
     self:setQipao()
+end
+
+function MainView:checkCrossGodWarInvitation()
+
+    --第一周 跨服诸神不开启  临时关掉打脸图
+    if not GameStatic.is_open_crossGodWar then
+        return 
+    end
+
+    local cGodWarModel = self._modelMgr:getModel("CrossGodWarModel")
+    local isOpen = cGodWarModel:matchIsOpen()
+    if self._crossGodWarUpdate then
+        ScheduleMgr:unregSchedule(self._crossGodWarUpdate)
+        self._crossGodWarUpdate = nil
+    end
+    if self._crossGodWar64Ready then
+        ScheduleMgr:unregSchedule(self._crossGodWar64Ready)
+        self._crossGodWar64Ready = nil
+    end
+
+    local curTime = self._modelMgr:getModel("UserModel"):getCurServerTime()
+    local weekday = tonumber(TimeUtils.date("%w", curTime))
+    local endBattle = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(curTime,"%Y-%m-%d 20:30:00"))
+    if curTime > endBattle then
+        return
+    end
+
+    local showType 
+    if weekday == 1 then
+        showType = 1
+    elseif weekday == 2 then
+        showType = 2
+    elseif weekday == 3 then
+        showType = 3
+    elseif weekday == 4 then
+        local ctime = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(curTime,"%Y-%m-%d 19:29:00"))
+        if curTime <= ctime then
+            showType = 4
+        else
+            showType = 5
+        end
+    end
+    local isShow = cGodWarModel:getShowType(showType)
+    local lv = self._userModel:getData().lvl
+    if isOpen and isOpen == 0 and isShow and lv >= 50 then
+        self._crossGodWarUpdate = ScheduleMgr:regSchedule(1000, self, function(self, dt)
+            self:updateCrossGodWarTime(dt)
+        end)
+    end
+
+    local endTimes = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(curTime,"%Y-%m-%d 20:05:01"))
+    if isOpen and isOpen == 0 and weekday == 3 and curTime <= endTimes  and lv >= 50 then
+        self._crossGodWar64Ready = ScheduleMgr:regSchedule(1000, self, function(self, dt)
+            self:update64ReadyTime(dt)
+        end)
+    end
+end
+
+function MainView:update64ReadyTime( dt )
+    local curTime = self._modelMgr:getModel("UserModel"):getCurServerTime()
+    local endTimes = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(curTime,"%Y-%m-%d 20:05:01"))
+    if curTime == endTimes then
+        if not GuideUtils.isGuideRunning then
+            self._serverMgr:sendMsg("CrossGodWarServer", "enter", {}, true, {}, function(result)
+                self._viewMgr:showDialog("crossGod.CrossGodWarAudienceDialog",{})
+            end)
+
+            if self._crossGodWar64Ready then
+                ScheduleMgr:unregSchedule(self._crossGodWar64Ready)
+                self._crossGodWar64Ready = nil
+            end
+        end
+    end
+end
+
+function MainView:updateCrossGodWarTime( dt )
+    local curTime = self._modelMgr:getModel("UserModel"):getCurServerTime()
+    local weekday = tonumber(TimeUtils.date("%w", curTime))
+    local isShow = false
+    -- print(string.format("%s week %s time",weekday,curTime))
+    if weekday == 1 then
+        local lastLoginTime = self._modelMgr:getModel("UserModel"):getData()._lt
+        local beginBattle = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(curTime,"%Y-%m-%d 06:00:00"))
+        if lastLoginTime <= beginBattle and curTime >= beginBattle then
+            --周一第一次登陆then
+            isShow = true
+        end
+    elseif weekday == 2 then
+        local beginBattle = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(curTime,"%Y-%m-%d 19:29:00"))
+        local endBattle = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(curTime,"%Y-%m-%d 20:05:00"))
+        if curTime >= beginBattle and curTime <= endBattle then
+            isShow = true
+        end
+    elseif weekday == 3 then
+        local beginBattle = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(curTime,"%Y-%m-%d 19:29:00"))
+        local endBattle = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(curTime,"%Y-%m-%d 20:05:00"))
+        if curTime >= beginBattle and curTime <= endBattle then
+            isShow = true
+        end
+    elseif weekday == 4 then
+        local beginBattle = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(curTime,"%Y-%m-%d 19:29:00"))
+        local endBattle = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(curTime,"%Y-%m-%d 19:29:00"))
+        if curTime > endBattle then
+            beginBattle = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(curTime,"%Y-%m-%d 19:59:00"))
+            endBattle = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(curTime,"%Y-%m-%d 20:30:00"))
+        end
+        if curTime >= beginBattle and curTime <= endBattle then
+            isShow = true
+        end
+    end
+    if isShow then
+        local beginBattle = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(curTime,"%Y-%m-%d 19:29:00"))
+        local type = weekday
+        if weekday == 4 and curTime ~= beginBattle then
+            type = 5
+        end
+        if not GuideUtils.isGuideRunning then
+            local cGodWarModel = self._modelMgr:getModel("CrossGodWarModel")
+            cGodWarModel:setShowType(type)
+            self._viewMgr:showDialog("crossGod.CrossGodWarInvitationDialog",{type = type})
+            local endBattle = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(curTime,"%Y-%m-%d 19:59:00"))
+            local isShowType = true
+            if weekday ~= 4 then
+                isShowType = cGodWarModel:getShowType(type)
+            elseif weekday == 4 and curTime >= endBattle then
+                isShowType = cGodWarModel:getShowType(type)
+            end
+            if not isShowType then
+                if self._crossGodWarUpdate then
+                    ScheduleMgr:unregSchedule(self._crossGodWarUpdate)
+                    self._crossGodWarUpdate = nil
+                end
+            end
+        end
+    end
 end
 
 function MainView.dtor()

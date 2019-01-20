@@ -63,7 +63,13 @@ IconUtils.iconIdMap =
     cpCoin = 40010,
     runeCoin = 40011,
     soulRime = 40012,
-    soulStar = 40014
+    soulStar = 40014,
+    crossGodWarCoin = 40015,
+    signCoin = 40016,  
+    honorCertificate = 40021,
+	battleSoul = 40019,
+	alchemy = 40020,
+    pTalentPoint = 40022,
 }
 
 IconUtils.resImgMap = {
@@ -105,6 +111,11 @@ IconUtils.resImgMap = {
     cpCoin = "globalImageUI_kuafuCoin.png", -- 跨服竞技币
     runeCoin = "globalImageUI_holyCoin.png", -- 圣徽货币
     soulRime = "globalImageUI_soulRime_img.png",  --灵魂结晶
+    crossGodWarCoin = "globalImageUI_crossGodWarCoin.png",  --跨服诸神货币资源
+    signCoin = "globalImageUI_signCoin.png",    --签到币
+    honorCertificate = "globalImageUI_gloryArenaIcon_min.png", --荣耀竞技场
+	alchemy = "i_40020.png",		--炼金工坊货币
+    pTalentPoint = "globalImageUI_pTalentPoint.png",   --巅峰天赋点
 }
 
 IconUtils.playWay = {
@@ -244,6 +255,7 @@ end
                     2:点击显示弹出框信息,
                     3:回调点击事件
            clickCallback 点击毁掉事件
+           battleSoulType   战魂类型。特殊处理10种战魂icon
 
 --! @return bgNode node 
 --]]
@@ -422,10 +434,14 @@ function IconUtils:updateItemIconByView(inView, inTable)
     
     local playerSkillID
     local num_itemid = tonumber(inTable.itemId)
+    local battleSoulType = inTable.battleSoulType
     local toolD = tab.tool[num_itemid] 
     local color = inTable.forceColor or ( (toolD and toolD.color ~= 9) and toolD.color or ItemUtils.findResIconColor(inTable.itemId,inTable.num))
     if toolD then
-        if toolD.art then
+        local typeId = toolD["typeId"]
+        if battleSoulType and typeId == 106 then
+            itemIcon:loadTexture("battleSoul_" .. battleSoulType .. ".png", 1)
+        elseif toolD.art then
             local filename = IconUtils.iconPath .. toolD.art .. ".png"
             local sfc = cc.SpriteFrameCache:getInstance()
             if not sfc:getSpriteFrameByName(filename) then
@@ -433,10 +449,10 @@ function IconUtils:updateItemIconByView(inView, inTable)
             end
             itemIcon:loadTexture(filename, 1)
         end
-        local typeId = toolD["typeId"]
         -- print("typeId",inTable.itemId,typeId,ItemUtils.ITEM_BUT_SPLICE)
         if typeId == ItemUtils.ITEM_TYPE_SPLICE or typeId == ItemUtils.ITEM_TYPE_HEROSPLICE
-        or typeId == ItemUtils.ITEM_TYPE_AWAKESPLICE or typeId == ItemUtils.ITEM_TYPE_SKILL then
+        or typeId == ItemUtils.ITEM_TYPE_AWAKESPLICE or typeId == ItemUtils.ITEM_TYPE_SKILL 
+        or typeId == ItemUtils.ITEM_TYPE_EXCLUSIVE_SPLICE then
             isSplice = true
             -- 添加碎片标记
             local mark = iconColor.iconMark
@@ -453,6 +469,7 @@ function IconUtils:updateItemIconByView(inView, inTable)
             end
             mark:setContentSize(35, 35)
             mark:setVisible(true)
+            inView._isSplice = isSplice
         else
             if typeId == 5 then -- 宝物图标缩放
                 itemIcon:setScale(0.85)
@@ -497,7 +514,7 @@ function IconUtils:updateItemIconByView(inView, inTable)
         end
 
         local skinTag = iconColor:getChildByName("skinTag")
-        if not skinTag and typeId == 102 then -- 皮肤
+        if not skinTag and (typeId == 102 or typeId == 105) then -- 皮肤
             skinTag = ccui.ImageView:create()
             skinTag:loadTexture("globalImageUI6_connerTag_b.png",1)
             skinTag:setName("skinTag")
@@ -520,7 +537,7 @@ function IconUtils:updateItemIconByView(inView, inTable)
             skinTag:setScale(-0.6,0.6)
             iconColor:addChild(skinTag)
         elseif skinTag then
-            skinTag:setVisible(typeId == 102)
+            skinTag:setVisible(typeId == 102 or typeId == 105)
         end
 
         ---法术书类型
@@ -919,7 +936,7 @@ function IconUtils:updateItemIconByView(inView, inTable)
                 -- if inTable.showSpecailSkillBookTip and playerSkillID then
                 --     viewMgr:showHintView("global.GlobalTipView",{tipType = 2, node = boxIcon, id = playerSkillID, notAutoClose=true})
                 -- else
-                    viewMgr:showHintView("global.GlobalTipView",{tipType = 1, node = boxIcon, id = tonumber(inTable.itemId),hideTipNum = inTable.hideTipNum,forceColor = color,notAutoClose=true})
+                    viewMgr:showHintView("global.GlobalTipView",{tipType = 1, node = boxIcon, id = tonumber(inTable.itemId),hideTipNum = inTable.hideTipNum,forceColor = color,notAutoClose=true, battleSoulType = inTable.battleSoulType})
                 -- end
             end
 
@@ -1058,7 +1075,17 @@ local frameEffect = {
     [1] = {name="touxiangkuangtexiao_touxiangkuang"},                                -- 普通特效
     [2] = {name="qqhuiyuan_touxiangkuang",clipImg="avatarFrame_16_zhezhao.png"},     -- qq会员
     [3] = {name="shijiuzhixin_touxiangkuang",clipImg="avatarFrame_6_zhezhao.png"},   -- 狮鹫之心
-    [4] = {name="wujinlianyu_wujinlianyutouxiangkuang",}
+    [4] = {name="wujinlianyu_wujinlianyutouxiangkuang"},
+    [5] = {name="zhushentouxiangkuang_zhushentouxiangkuangtexiao"},
+    [6] = {name="zhubotouxiangtexiao_zhubotouxiang"},
+    [7] = {name="tebiefangtantouxiang_tebiefangtantouxiang"},
+    [8] = {name="shenpanguantouxiangkuang_shenpanguantouxiangkuang"},
+    [9] = {name="kuileilongtouxiangkuang_kuileilongtouxiangkuang"},
+    [10] = {name="yonghengzunxiang_yonghengzunxiang"},
+    [11] = {name="haihoutouxiangkuang_haihoutouxiangkuang"},
+    [12] = {name="sishentouxiangkuang_sishentouxiangkuang"},
+    [13] = {name="xiemonvtouxiangkuang_xiemonvtouxiangkuangtexiao"},
+    [14] = {name="tanglangtouxiangkuan_tanglangtouxiangkuang"}
 }
 
 -- 头像特效
@@ -1259,14 +1286,14 @@ function IconUtils:updateHeadIconByView(inView, inTable)
 
     local levelTxt = iconColor:getChildByFullName("levelTxt")
     if inTable.level then
-        levelTxt:setString(tonumber(inTable.level))
-        levelTxt:setVisible(inTable.level > 0)
+        local param = {lvlStr = inTable.level, lvl = inTable.level, plvl = inTable.plvl, disScale = 0.8}
+        UIUtils:adjustLevelShow(levelTxt, param, 2)
     end
 
     local headVipIcon = iconColor:getChildByFullName("headVipIcon")
     if inTable.vipLvl then
         headVipIcon:setString(tonumber(inTable.vipLvl))
-        headVipIcon:setVisible(inTable.vipLvl > 0)
+        headVipIcon:setVisible(tonumber(inTable.vipLvl) > 0)
     end
     
 
@@ -1811,6 +1838,14 @@ function IconUtils:createTeamIconById(inTable)
     iconColor.teamType = teamType
     iconColor:addChild(teamType,4) 
 
+     -- 觉醒后的眼睛标识
+    local iconJxEyes = ccuiImageView:create()
+    iconJxEyes:setName("iconJxEyes")
+    iconJxEyes:loadTexture("globalImageUI_juexingEyes.png", 1)
+    iconJxEyes:setPosition(iconColor:getContentSize().width - iconJxEyes:getContentSize().width / 2 - 10 ,iconJxEyes:getContentSize().height + 6)
+    iconJxEyes:ignoreContentAdaptWithSize(true)
+    iconColor.iconJxEyes = iconJxEyes
+    iconColor:addChild(iconJxEyes,5) 
 
     -- local qualityLab = ccuiText:create()
     -- qualityLab:setString(inTable.quality)
@@ -1868,26 +1903,43 @@ function IconUtils:updateTeamIconByView(inView, inTable)
     if teamIcon == nil then 
         return
     end
+    local isHeroDuel = inTable.isHeroDuel or 0
     inView.userData = inTable
     local isAwaking, aLvl = TeamUtils:getTeamAwaking(inTable.teamData)
+    
 
-    local artName = TeamUtils.getNpcTableValueByTeam(inTable.sysTeamData, "art1")
-    if isAwaking == true then
-        local tartName = TeamUtils.getNpcTableValueByTeam(inTable.sysTeamData, "jxart1")
-        if tartName then
-            artName = tartName
+    local getArtName = function()
+        local artName = TeamUtils.getNpcTableValueByTeam(inTable.sysTeamData, "art1")
+        if inTable.teamData.sId and tonumber(inTable.teamData.sId) ~= 0 and tonumber(isHeroDuel) == 0 then
+            local isChanged = TeamUtils:checkTeamChanged(inTable.sysTeamData.id)
+            local skinType = tab.teamSkin[inTable.teamData.sId]["skinget"] or 1
+            if tonumber(skinType) == 3 or not isChanged then
+                local sysSkinData = tab.teamSkin[inTable.teamData.sId]
+                artName = sysSkinData.skinart1
+            else
+                if tonumber(skinType) == 2 then 
+                    local tartName = TeamUtils.getNpcTableValueByTeam(inTable.sysTeamData, "jxart1")
+                    if tartName then
+                        artName = tartName
+                    end
+                end
+            end
+        else
+            if isAwaking == true then
+                local tartName = TeamUtils.getNpcTableValueByTeam(inTable.sysTeamData, "jxart1")
+                if tartName then
+                    artName = tartName
+                end
+            end
         end
+        return artName
     end
+
+    local artName = getArtName()
     local filename = IconUtils.iconPath .. artName .. ".jpg"
     local sfc = cc.SpriteFrameCache:getInstance()
     if not sfc:getSpriteFrameByName(filename) then
-        local artName = TeamUtils.getNpcTableValueByTeam(inTable.sysTeamData, "art1")
-        if isAwaking == true then
-            local tartName = TeamUtils.getNpcTableValueByTeam(inTable.sysTeamData, "jxart1")
-            if tartName then
-                artName = tartName
-            end
-        end
+        local artName = getArtName()
         filename = IconUtils.iconPath .. artName .. ".png"
     end
     teamIcon:loadTexture(filename, 1)
@@ -1944,10 +1996,10 @@ function IconUtils:updateTeamIconByView(inView, inTable)
 
     local teamType = iconColor.teamType
     if teamType ~= nil then 
-        local classlabel = inTable.sysTeamData.classlabel
+        local classlabel = TeamUtils:getClassIconNameByTeamD(inTable.teamData, "classlabel", inTable.sysTeamData)
         if inTable.sysTeamData["match"] then
             local teamD2 = tab.team[inTable.sysTeamData["match"]]
-            classlabel = classlabel or teamD2.classlabel
+            classlabel = classlabel or TeamUtils:getClassIconNameByTeamD(inTable.teamData, "classlabel", teamD2)
         end
         teamType:loadTexture(classlabel .. ".png", 1)
         if inTable.classType == true then
@@ -2042,6 +2094,11 @@ function IconUtils:updateTeamIconByView(inView, inTable)
             iconStar:loadTexture("globalImageUI6_iconStar".. star ..".png",1)
         end
     end
+
+    -- 觉醒标识
+    local iconJxEyes = iconColor.iconJxEyes
+    iconJxEyes:setVisible(isAwaking)
+
     -- local starAllWidth = inTable.teamData.star * 14
     -- local beginX  = inView:getContentSize().width / 2 - starAllWidth / 2 - 3
     -- for i= 1 , 6 do
@@ -2218,7 +2275,6 @@ function IconUtils:setTeamIconAwake(inView, isAwaking)
     if inView == nil then 
         return
     end
-
     local teamIcon = inView.teamIcon
     local artName = TeamUtils.getNpcTableValueByTeam(inTable.sysTeamData, "art1")
     if isAwaking == true then
@@ -3156,11 +3212,71 @@ function IconUtils:updatePveBossSkillIconByView(inView, inTable)
                 ButtonEndAnim(boxIcon)
             end
         end
-    end)
-    
+    end) 
 end
 
+function IconUtils:createArrowBoxRewadById(inTable)
+    if inTable == nil then
+        inTable = {}
+    end
+    
+    local bgNode = ccuiWidget:create()
+    bgNode:setAnchorPoint(0,0)
+    bgNode:setContentSize(80, 61)
 
+    local icon = ccuiImageView:create()
+    icon:setPosition(bgNode:getContentSize().width/2, bgNode:getContentSize().height/2)
+    icon:ignoreContentAdaptWithSize(false)
+    bgNode._icon = icon
+    bgNode:addChild(icon)
+
+    local numLab =  ccuiText:create()
+    numLab:setString("")
+    numLab:setFontSize(22)
+    numLab:setColor(UIUtils.colorTable.ccUIBaseColor1)
+    numLab:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor,1)
+    numLab:setAnchorPoint(1, 0.5)
+    numLab:setFontName(UIUtils.ttfName)
+    bgNode._numLab = numLab
+    bgNode:addChild(numLab)
+
+    local nameLab =  ccuiText:create()
+    nameLab:setString("")
+    nameLab:setFontSize(22)
+    nameLab:setColor(UIUtils.colorTable.ccUIBaseColor1)
+    nameLab:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor,1)
+    nameLab:setFontName(UIUtils.ttfName)
+    bgNode._nameLab = nameLab
+    bgNode:addChild(nameLab)
+       
+    IconUtils:updateArrowBoxRewadById(bgNode, inTable)
+    return bgNode
+end
+
+--[[
+--! @function updateArrowBoxRewadById
+--! @desc 更新射箭宝箱奖励icon
+--! @param inTable table 相关控制
+--! @return bgNode node 
+--]]
+function IconUtils:updateArrowBoxRewadById(inView, inTable)
+    if inTable == nil or not inView._icon or not inView._numLab then
+        return 
+    end
+
+    local icon = inView._icon 
+    local imgId = inTable.typeId or 3
+    icon:loadTexture("global_arrow_box" .. imgId .. ".png", 1)
+    icon:setContentSize(cc.size(80, 61))
+
+    local numLab = inView._numLab
+    numLab:setString(inTable.num or 0)
+    numLab:setPosition(inView:getContentSize().width - 3, 3)
+
+    local nameLab = inView._nameLab
+    nameLab:setString("射箭金宝箱")
+    nameLab:setPosition(inView:getContentSize().width * 0.5, -30)
+end
 
 --[[
 --! @function createCrusadeHeroIconById
@@ -6271,6 +6387,264 @@ function IconUtils:updateGuildMapEquipment(bgNode, inTable)
     else
         numLab:setVisible(true)
     end
+end
+
+---法相Icon
+function IconUtils:createShadowIcon(inTable)
+    if inTable == nil then
+        inTable = {}
+    end
+    local bgNode = ccui.Widget:create()
+    bgNode:setContentSize(cc.size(92,92))
+    bgNode:setAnchorPoint(cc.p(0,0))
+    bgNode:setCascadeOpacityEnabled(true)
+
+    local itemIcon = ccuiImageView:create()
+    itemIcon:setName("itemIcon")
+    itemIcon:setPosition(bgNode:getContentSize().width/2, bgNode:getContentSize().height/2)
+    itemIcon:ignoreContentAdaptWithSize(false)
+    itemIcon:setContentSize(89, 89)
+    bgNode.itemIcon = itemIcon
+    bgNode:addChild(itemIcon,2)
+
+    local iconColor = ccuiImageView:create()
+    iconColor:setName("iconColor")
+    iconColor:setPosition(bgNode:getContentSize().width/2, bgNode:getContentSize().height/2)
+    iconColor:ignoreContentAdaptWithSize(false)
+    iconColor:setCascadeOpacityEnabled(true)
+    iconColor:setContentSize(92, 92)
+    bgNode.iconColor = iconColor
+    bgNode:addChild(iconColor,6)
+
+    local nameLab = ccui.Text:create()
+    nameLab:setFontSize(20)
+    nameLab:setFontName(UIUtils.ttfName)
+    nameLab:setName("nameLab")
+    nameLab:setColor(UIUtils.colorTable.ccUIBaseTextColor2)
+    nameLab:setPosition(bgNode:getContentSize().width*0.5,-15)
+    iconColor.nameLab = nameLab
+    iconColor:addChild(nameLab,11)
+
+
+    local numLab =  ccuiText:create()
+    numLab:setString("")
+    numLab:setName("numLab")
+    numLab:setFontSize(20)
+    numLab:setFontName(UIUtils.ttfName)
+    numLab:setColor(UIUtils.colorTable.ccUIBaseColor1)
+    numLab:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor,2)
+    numLab:setAnchorPoint(1, 0)
+    numLab:setPosition(bgNode:getContentSize().width - 10, 5)
+    iconColor.numLab = numLab
+    iconColor:addChild(numLab,10)
+
+    self:updateShadowIcon(bgNode, inTable)
+    return bgNode
+end
+
+function IconUtils:updateShadowIcon(bgNode, inTable)
+    if inTable == nil then
+        return
+    end
+    local sfc = cc.SpriteFrameCache:getInstance()
+    local art = inTable.itemData.icon
+    if sfc:getSpriteFrameByName(art ..".jpg") then
+        bgNode.itemIcon:loadTexture(art ..".jpg", 1)
+    elseif sfc:getSpriteFrameByName(art ..".png") then
+        bgNode.itemIcon:loadTexture(art ..".png", 1) 
+    else
+        print("头像资源是空...",art)
+    end
+
+    local quality = inTable.itemData.avaQuality and (inTable.itemData.avaQuality + 3) or 1
+    bgNode.iconColor:loadTexture("globalImageUI4_squality" .. quality .. ".png",1) 
+
+
+    bgNode.iconColor.nameLab:setVisible(false)
+    if inTable.itemData.name then
+        bgNode.iconColor.nameLab:setString(lang(inTable.itemData.name))
+        bgNode.iconColor.nameLab:setVisible(true)
+    end
+
+    if inTable.count then
+        bgNode.iconColor.numLab:setVisible(true)
+        bgNode.iconColor.numLab:setString(inTable.count)
+    else
+        bgNode.iconColor.numLab:setVisible(false)
+    end
+
+    -- 部分地方只为展示icon 无任何事件
+    if not inTable.eventStyle then inTable.eventStyle = 0 end
+    if inTable.eventStyle ~= 0 and inTable.eventStyle <= 3 then
+        bgNode:setTouchEnabled(true)
+        bgNode:setSwallowTouches(true)
+        local showView = nil
+        local viewMgr = ViewManager:getInstance()
+        local function endTouchEvent(inTempView)
+            if inTable.eventStyle == 1 and 
+                showView ~= nil then
+            end
+        end
+        if inTable.eventStyle == 1 or inTable.eventStyle == 3 then
+            bgNode:setScaleAnim(true)
+            bgNode.iconColor:setScaleAnim(true)
+            bgNode.itemIcon:setScaleAnim(true)
+        end
+
+        local downX, downY
+        
+        registerTouchEvent(bgNode, function (_, x, y)
+            -- downCallback
+            if inTable.eventStyle == 1 then
+                downX = x
+                downY = y
+              
+                showView = 1
+                -- 展示view
+            end
+            -- 因为相应缩放事件需要锚点为0.5,0.5 bgNode本身是0,0 为了不去修改游戏内大量代码，
+            --   将事件相应的缩放动画 直接应用于子节点。
+            --   父节点其他动画效果与缩放action也可以隔离 stopallaction
+            local ax, ay = bgNode:getAnchorPoint().x, bgNode:getAnchorPoint().y
+            if ax ~= 0.5 or ay ~= 0.5 then
+                ButtonBeginAnim(bgNode.iconColor)              
+                ButtonBeginAnim(bgNode.itemIcon)
+            end
+
+            if inTable.itemData and inTable.itemData.newTips then
+                viewMgr:showTip("法相：" .. lang(inTable.itemData.name))
+            end
+            --
+        end, function(_, x, y)
+            -- moveCallback            
+            if inTable.eventStyle == 1 then
+                
+            end
+        end, 
+        function ()
+            -- upCallback
+            endTouchEvent(bgNode)
+
+            local ax, ay = bgNode:getAnchorPoint().x, bgNode:getAnchorPoint().y
+            if ax ~= 0.5 or ay ~= 0.5 then
+                ButtonEndAnim(bgNode.iconColor)
+                ButtonEndAnim(bgNode.itemIcon)
+            end
+        end,
+        function ()       
+            --outCallback
+            endTouchEvent(bgNode)
+            local ax, ay = bgNode:getAnchorPoint().x, bgNode:getAnchorPoint().y
+            if ax ~= 0.5 or ay ~= 0.5 then
+                ButtonEndAnim(bgNode.iconColor)
+                ButtonEndAnim(bgNode.itemIcon)
+            end
+        end
+        ,
+        function( )
+            -- longCallback
+        end)
+    end
+
+
+end
+
+
+function IconUtils:createAlchemyIcon(inTable)
+	local bgNode = ccuiWidget:create()
+--	bgNode:setAnchorPoint(0,0)
+	bgNode:setContentSize(68, 68)
+
+	local icon = ccuiImageView:create()
+	icon:setName("icon")
+	icon:setPosition(bgNode:getContentSize().width/2, bgNode:getContentSize().height/2)
+	icon:ignoreContentAdaptWithSize(false)
+	icon:setContentSize(66, 66)
+	bgNode.icon = icon
+	bgNode:addChild(icon)
+
+	local bgIcon = ccuiImageView:create()
+	bgIcon:setName("bgIcon")
+	bgIcon:setPosition(bgNode:getContentSize().width/2, bgNode:getContentSize().height/2)
+	bgIcon:ignoreContentAdaptWithSize(false)
+	bgIcon:setContentSize(65, 65)
+	bgNode.bgIcon = bgIcon
+	bgNode:addChild(bgIcon, -1)
+
+	local frameIcon = ccuiImageView:create()
+	frameIcon:setName("frameIcon")
+	frameIcon:setPosition(bgNode:getContentSize().width/2, bgNode:getContentSize().height/2)
+	frameIcon:setContentSize(68,68)
+	frameIcon:ignoreContentAdaptWithSize(false)
+	bgNode.frameIcon = frameIcon
+	bgNode:addChild(frameIcon,1)
+	
+	local tagIcon = ccuiImageView:create()
+	tagIcon:setName("tagIcon")
+	tagIcon:setPosition(cc.p(10, bgNode:getContentSize().height-11))
+	bgNode.tagIcon = tagIcon
+	bgNode:addChild(tagIcon, 2)
+
+	--[[local levelLab = ccLabel:createWithTTF("666", UIUtils.ttfName, 20)
+	levelLab:setPosition(10, 10)
+	levelLab:setAnchorPoint(0, 0)
+	bgNode:addChild(levelLab,3)
+	levelLab:enableOutline(ccc4b(60,30,10,255), 1)
+	levelLab:setName("levelLab")
+	levelLab:setColor(ccc3b(255,255,255))
+	bgNode.levelLab = levelLab
+
+	local lvlLab = ccuiText:create()
+	lvlLab:setFontName(UIUtils.ttfName)
+	lvlLab:setFontSize(15)
+	lvlLab:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
+	lvlImg.lvlLab = lvlLab
+	lvlImg:addChild(lvlLab)--]]
+
+	self:updateAlchemyIcon(bgNode, inTable)
+	return bgNode
+end
+
+function IconUtils:updateAlchemyIcon(bgNode, inTable)
+	local qualityImg = "globalImageUI4_squality1.png"
+	local bgImg = "globalImageUI4_itemBg1.png"
+	local tagImg = "alchemy_quality1.png"
+	if inTable then
+		qualityImg = "globalImageUI4_squality" .. inTable.planQuality .. ".png"
+		bgImg = "globalImageUI6_itembg_"..inTable.planQuality..".png"
+		tagImg = "alchemy_quality"..inTable.planQuality..".png"
+	end
+	
+	local icon = bgNode:getChildByFullName("icon")
+	if icon then
+		if inTable then
+			icon:setVisible(true)
+			icon:loadTexture(inTable.icon, 1)
+		else
+			icon:setVisible(false)
+		end
+	end
+	
+	
+	local bgIcon = bgNode:getChildByFullName("bgIcon")
+	if bgIcon then
+		bgIcon:loadTexture(bgImg, 1)
+	end
+	
+	local frameIcon = bgNode:getChildByFullName("frameIcon")
+	if frameIcon then
+		frameIcon:loadTexture(qualityImg, 1)
+	end
+	
+	local tagIcon = bgNode:getChildByFullName("tagIcon")
+	if tagIcon then
+		if inTable then
+			tagIcon:setVisible(true)
+			tagIcon:loadTexture(tagImg, 1)
+		else
+			tagIcon:setVisible(false)
+		end
+	end
 end
 
 -----------------------------------------------------------------------

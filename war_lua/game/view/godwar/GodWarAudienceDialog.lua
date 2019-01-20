@@ -176,7 +176,7 @@ function GodWarAudienceDialog:updateEight()
             local atkId = _powData["atk"]
             local playData = self._godWarModel:getPlayerById(atkId)
             if playData then
-                local param = {avatar = playData.avatar, level = playData.lvl, tp = 4, avatarFrame = playData["avatarFrame"]}
+                local param = {avatar = playData.avatar, level = playData.lvl, tp = 4, avatarFrame = playData["avatarFrame"], plvl = playData.plvl}
                 local icon = headCell:getChildByName("icon1")
                 if not icon then
                     icon = IconUtils:createHeadIconById(param)
@@ -216,7 +216,7 @@ function GodWarAudienceDialog:updateEight()
             local defId = _powData["def"]
             local playData = self._godWarModel:getPlayerById(defId)
             if playData then
-                local param = {avatar = playData.avatar, level = playData.lvl, tp = 4, avatarFrame = playData["avatarFrame"]}
+                local param = {avatar = playData.avatar, level = playData.lvl, tp = 4, avatarFrame = playData["avatarFrame"], plvl = playData.plvl}
                 local icon = headCell:getChildByName("icon2")
                 if not icon then
                     icon = IconUtils:createHeadIconById(param)
@@ -277,7 +277,7 @@ function GodWarAudienceDialog:updateFour()
             local atkId = _powData["atk"]
             local playData = self._godWarModel:getPlayerById(atkId)
             if playData then
-                local param = {avatar = playData.avatar, level = playData.lvl, tp = 4, avatarFrame = playData["avatarFrame"]}
+                local param = {avatar = playData.avatar, level = playData.lvl, tp = 4, avatarFrame = playData["avatarFrame"], plvl = playData.plvl}
                 local icon = headCell:getChildByName("icon1")
                 if not icon then
                     icon = IconUtils:createHeadIconById(param)
@@ -316,7 +316,7 @@ function GodWarAudienceDialog:updateFour()
             local defId = _powData["def"]
             local playData = self._godWarModel:getPlayerById(defId)
             if playData then
-                local param = {avatar = playData.avatar, level = playData.lvl, tp = 4, avatarFrame = playData["avatarFrame"]}
+                local param = {avatar = playData.avatar, level = playData.lvl, tp = 4, avatarFrame = playData["avatarFrame"], plvl = playData.plvl}
                 local icon = headCell:getChildByName("icon2")
                 if not icon then
                     icon = IconUtils:createHeadIconById(param)
@@ -518,7 +518,7 @@ end
         -- dump(playData)
         -- print("==play==",indexId, playData.rid,"\t", playData.s)
 
-        local param = {avatar = playData.avatar, level = playData.lvl, tp = 4, avatarFrame = playData["avatarFrame"]}
+        local param = {avatar = playData.avatar, level = playData.lvl, tp = 4, avatarFrame = playData["avatarFrame"], plvl = playData.plvl}
         local icon = inView:getChildByName("icon")
         if not icon then
             icon = IconUtils:createHeadIconById(param)

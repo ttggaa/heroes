@@ -468,7 +468,7 @@ end
 function GuildMercenaryView:refreshOnList(pos,isCallBack)
     local isCallBack = false or isCallBack
     local result = self._guildModel:getGuildMercenary()
-    if result == {} or not result then return end
+    if not result or not next(result) then return end
     self._curDispatchCount = 0
     for k , v in pairs(result["mercenaryDetails"]) do 
         self._curDispatchCount = v["teamId"] == 0 and self._curDispatchCount or self._curDispatchCount + 1       

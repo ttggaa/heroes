@@ -11,7 +11,8 @@ TeamConst = {}
 TeamConst.TEAM_ZIZHI_TYPE = {
     ZIZHI_1 = 13,
     ZIZHI_2 = 14,
-    ZIZHI_3 = 15
+    ZIZHI_3 = 15,
+    ZIZHI_4 = 16
 }
 
 -- TeamConst.TEAM_RACE_TYPE = {
@@ -40,6 +41,7 @@ TeamConst.TEAM_RACE_TYPE = {
     RACE_8 = 12, -- 元素 109
     RACE_9 = 13, -- 地下城 107
     RACE_10 = 14, -- 要塞 108
+    RACE_11 = 15, -- 海盗 112
 }
 
 TeamConst.TEAM_RACE_COLOR = {

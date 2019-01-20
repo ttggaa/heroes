@@ -493,7 +493,7 @@ end
 function LeagueMatchView:findEnemy()
 	self._matchBtn._tip = ""
 	self._serverMgr:sendMsg("LeagueServer", "findEnemy", {}, true, {}, function(result)
-		dump(result,"findEnemy",10)
+		-- dump(result,"findEnemy",10)
 		-- 加实际的战斗力
 		if OS_IS_WINDOWS and result.ce then
 			local selfScore = self._blueFlag:getChildByName("scoreLab")

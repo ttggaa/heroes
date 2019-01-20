@@ -261,8 +261,13 @@ function NestsExchangeView:onExchange()
             local tData = tab:Tool(IconUtils.iconIdMap[cData[1]])
 
             if self._nModel:getIsNestsCurrency(cData[1]) then
-                local param = {indexId = 2, tihuan = lang(tData.name)}
-                self._viewMgr:showDialog("global.GlobalPromptDialog", param)
+                if cData[1] == "nests4" then
+                    local param = {indexId = 23}
+                    self._viewMgr:showDialog("global.GlobalPromptDialog", param)
+                else
+                    local param = {indexId = 2, tihuan = lang(tData.name)}
+                    self._viewMgr:showDialog("global.GlobalPromptDialog", param)
+                end
             else
                 self._viewMgr:showTip(lang(tData.name) .. "不足")
             end

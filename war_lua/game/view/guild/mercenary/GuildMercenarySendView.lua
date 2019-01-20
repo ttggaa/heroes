@@ -116,9 +116,9 @@ function GuildMercenarySendView:loadUI()
     local teamName = teamTableData.name
     local useless1 = nil
     local useless2 = nil
-    if isAwaking then
+    -- if isAwaking then
         teamName, useless1, useless2 = TeamUtils:getTeamAwakingTab(teamData)
-    end
+    -- end
     local teamName = lang(teamName)
     self._name:setString(teamName)
 

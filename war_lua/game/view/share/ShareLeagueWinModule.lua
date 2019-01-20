@@ -49,7 +49,7 @@ function ShareBaseView:updateModuleView(data)
     infoBg:setScaleX(-1)
     infoNode:addChild(infoBg)
 
-    local userAvatar = IconUtils:createHeadIconById({avatar = info.avatar,level = info.lv or 0,tp = 4, isSelf = true})   --,tp = 2
+    local userAvatar = IconUtils:createHeadIconById({avatar = info.avatar,level = info.lv or 0,tp = 4, isSelf = true, plvl = info.plvl})   --,tp = 2
     userAvatar:setAnchorPoint(0, 0.5)
     userAvatar:getChildByFullName("iconColor"):getChildByFullName("levelTxt"):setVisible(false)
     userAvatar:setPosition(10, infoNode:getContentSize().height * 0.5)
@@ -122,7 +122,7 @@ function ShareBaseView:updateModuleView(data)
     infoBg:setPosition(0, 0)
     infoNode:addChild(infoBg)
 
-    local userAvatar = IconUtils:createHeadIconById({avatar = info.avatar,level = info.lv or 0,tp = 4, isSelf = true})   --,tp = 2
+    local userAvatar = IconUtils:createHeadIconById({avatar = info.avatar,level = info.lv or 0,tp = 4, isSelf = true, plvl = info.plvl})   --,tp = 2
     userAvatar:setAnchorPoint(0, 0.5)
     userAvatar:getChildByFullName("iconColor"):getChildByFullName("levelTxt"):setVisible(false)
     userAvatar:setPosition(182, infoNode:getContentSize().height * 0.5)

@@ -22,8 +22,15 @@ function TeamView:ctor(data)
 end
 
 function TeamView:onInit()
+    self:registerScriptHandler(function(eventType)
+        if eventType == "exit" then 
+            UIUtils:reloadLuaFile("team.TeamView")
+            UIUtils:reloadLuaFile("team.TeamSkillNode")
+        end
+    end)
     self._teamModel = self._modelMgr:getModel("TeamModel")
     self._teamModel:setTeamTreasure()
+    local userData = self._modelMgr:getModel("UserModel"):getData()
     self._firstFight = true
     self._firstGuide = true
 
@@ -33,6 +40,7 @@ function TeamView:onInit()
         "   升星",
         "   技能",
         "   关联",
+        "   专属",
     }
     self._shortTitleNames = {
         "   进阶",
@@ -40,6 +48,7 @@ function TeamView:onInit()
         "   升星",
         "   技能",
         "   关联",
+        "   专属",
     }
     local nameBg = self:getUI("nameBg")
     nameBg:setZOrder(11)
@@ -53,6 +62,9 @@ function TeamView:onInit()
             self._widget:setContentSize(self._teamWidth, MAX_SCREEN_HEIGHT)
         end
     end
+
+    local tabPos6 = {366, 296, 226, 156, 17, 86}
+    local tabPos5 = {346, 269, 192, 115, 38}
 
     -- 战斗力
     -- self._assess = self:getUI("bg1.assess")
@@ -68,6 +80,7 @@ function TeamView:onInit()
     local tab4 = self:getUI("bg1.rightSubBg.tab4")
     -- 关联
     local tab5 = self:getUI("bg1.rightSubBg.tab5")
+    local tab6 = self:getUI("bg1.rightSubBg.tab6")
 
     self._up = self:getUI("downBg.right")
     local mc1 = mcMgr:createViewMC("youjiantou_teamnatureanim", true, false)
@@ -83,17 +96,12 @@ function TeamView:onInit()
     self._lookBtn = self:getUI("bg2.lookBtn")
     self._lookBtn:setVisible(false)
 
-    -- self:registerClickEvent(tab1, function(sender)self:tabButtonClick(sender, 1) end)
-    -- self:registerClickEvent(tab2, function(sender)self:tabButtonClick(sender, 2) end)
-    -- self:registerClickEvent(tab3, function(sender)self:tabButtonClick(sender, 3) end)
-    -- self:registerClickEvent(tab4, function(sender)self:tabButtonClick(sender, 4) end)
-    -- self:registerClickEvent(tab5, function(sender)self:tabButtonClick(sender, 5) end)
-
     UIUtils:setTabChangeAnimEnable(tab1,400,function(sender)self:tabButtonClick(sender, 1)end,nil,true)
     UIUtils:setTabChangeAnimEnable(tab2,400,function(sender)self:tabButtonClick(sender, 2)end,nil,true)
     UIUtils:setTabChangeAnimEnable(tab3,400,function(sender)self:tabButtonClick(sender, 3)end,nil,true)
     UIUtils:setTabChangeAnimEnable(tab4,400,function(sender)self:tabButtonClick(sender, 4)end,nil,true)
     UIUtils:setTabChangeAnimEnable(tab5,400,function(sender)self:tabButtonClick(sender, 5)end,nil,true)
+    UIUtils:setTabChangeAnimEnable(tab6,400,function(sender)self:tabButtonClick(sender, 6)end,nil,true)
 
     self._tabEventTarget = {}
     table.insert(self._tabEventTarget, tab1)
@@ -101,7 +109,22 @@ function TeamView:onInit()
     table.insert(self._tabEventTarget, tab3)
     table.insert(self._tabEventTarget, tab4)
     table.insert(self._tabEventTarget, tab5)
+    table.insert(self._tabEventTarget, tab6)
 
+    local tabData = tab:SystemOpen("Exclusive")
+    local exclusiveShowLevel = tabData[2]
+    local userLevel = userData.lvl
+    if userLevel >= exclusiveShowLevel then
+        tab6:setVisible(true)
+        for i = 1, 6 do
+            self:getUI("bg1.rightSubBg.tab" .. i):setPositionY(tabPos6[i])
+        end
+    else
+        tab6:setVisible(false)
+        for i = 1, 5 do
+            self:getUI("bg1.rightSubBg.tab" .. i):setPositionY(tabPos5[i])
+        end
+    end
 
     local attr = self:getUI("attr")
     attr:setVisible(false)
@@ -140,7 +163,6 @@ function TeamView:onInit()
     local talentBtn = self:getUI("bg1.talentBtn")
     -- UIUtils:addFuncBtnName(talentBtn,"天赋",nil,true,18)
     talentBtn:setScaleAnim(true)
-    local userData = self._modelMgr:getModel("UserModel"):getData()
     local tflag = false
     if userData.lvl < tab.systemOpen["TeamTalent"][1] then
         talentBtn:setVisible(false)
@@ -156,6 +178,15 @@ function TeamView:onInit()
     end
     self:registerClickEvent(holyBtn, function()
         self._viewMgr:showView("team.TeamHolyView",{teamId = self._curSelectTeam.teamId })
+    end)
+
+    --兵团皮肤
+    self._teamSkinBtn = self:getUI("bg1.teamSkinBtn")
+    self:registerClickEvent(self._teamSkinBtn, function()
+        self._viewMgr:showDialog("team.TeamSkinView",{isHaveTeam = self._curSelectTeam.unlock,teamData = self._curSelectTeam,closeCallBack = function ( )
+            self:updateTeamAmin()
+            self:setTeamImgAction1()
+        end},true)
     end)
 
     local pinglun = self:getUI("bg1.pinglun")
@@ -329,8 +360,40 @@ function TeamView:onInit()
     self:addShareBtn()   --by wangyan
 end
 
+function TeamView:updateExclusiveState(  )
+    local userData = self._modelMgr:getModel("UserModel"):getData()
+    local tab6 = self:getUI("bg1.rightSubBg.tab6")
+    self._exclusiveFlag = 0
+    local tabData = tab:SystemOpen("Exclusive")
+    local exclusiveOpenLevel = tabData[1]
+    local exclusiveShowLevel = tabData[2]
+    if userData.lvl < exclusiveOpenLevel then
+        if userData.lvl >= exclusiveShowLevel then
+            UIUtils:setGray(tab6, true)
+            self._exclusiveFlag = lang(tabData[3])
+        end
+    else
+        local excData = tab.exclusive[self._curSelectTeam.teamId] or {}
+        local isOpen = excData.isOpen
+        if isOpen and isOpen == 1 then
+            local openTime = tonumber(excData.openTime or 0)
+            local curTime = self._modelMgr:getModel("UserModel"):getCurServerTime()
+            if curTime >= openTime then
+                UIUtils:setGray(tab6, false)
+                self._exclusiveFlag = 0
+            else
+                UIUtils:setGray(tab6, true)
+                self._exclusiveFlag = lang("exclusive_tip_1")
+            end
+        else
+            UIUtils:setGray(tab6, true)
+            self._exclusiveFlag = lang("exclusive_tip_1")
+        end
+    end
+end
+
 function TeamView:updateUI()
-    for i=1,10 do
+    for i=1,11 do
         local raceBtn = self:getUI("btnBg.raceBtn" .. i)
         local selBtn = self:getUI("btnBg.raceBtn" .. i .. ".selBtn")
         local txt = self:getUI("btnBg.raceBtn" .. i .. ".txt")
@@ -351,6 +414,7 @@ function TeamView:updateUI()
                 local tempBtn = self:getUI("btnBg.raceBtn" .. self._teamType .. ".selBtn")
                 tempBtn:setVisible(false)
                 self._teamType = i 
+                print("self._teamType 0  ",self._teamType)
                 local btnBg = self:getUI("btnBg")
                 btnBg:setVisible(false)
             end)
@@ -373,7 +437,7 @@ function TeamView:onTop()
     self._teamModel:setTeamMap(self._teamModel:getData()) 
     self._teamModel:setTeamBaseData()
     self._teamsMapData = self._teamModel:getTeamBaseData()
-
+    self._teamType = 7
     self:updateUI()
 
     self._isReflashTeamList = true
@@ -725,20 +789,23 @@ function TeamView:updateTip()
     hint3:setVisible(false)
     local hint4 = self:getUI("bg1.rightSubBg.tab4.hint")
     hint4:setVisible(false)
-    -- if isInFormation == true then 
-        if self._curSelectTeam.onStage == true then
-            hint1:setVisible(true)
-        end
-        if self._curSelectTeam.onGrade == true then
-            hint2:setVisible(true)
-        end
-        if self._curSelectTeam.onStar == true then
-            hint3:setVisible(true)
-        end
-        if self._curSelectTeam.onSkill == true then
-            hint4:setVisible(true)
-        end
-    -- end
+    local hint6 = self:getUI("bg1.rightSubBg.tab6.hint")
+    hint6:setVisible(false)
+    if self._curSelectTeam.onStage == true then
+        hint1:setVisible(true)
+    end
+    if self._curSelectTeam.onGrade == true then
+        hint2:setVisible(true)
+    end
+    if self._curSelectTeam.onStar == true then
+        hint3:setVisible(true)
+    end
+    if self._curSelectTeam.onSkill == true then
+        hint4:setVisible(true)
+    end
+    if self._curSelectTeam.onExclusive == true then
+        hint6:setVisible(true)
+    end
 end
 
 function TeamView:updateItem()
@@ -853,6 +920,7 @@ function TeamView:updateBiaoqian()
             " 潜能",
             " 技能",
             " 关联",
+            " 专属",
         }
         self._shortTitleNames = {
             " 进阶",
@@ -860,6 +928,7 @@ function TeamView:updateBiaoqian()
             " 潜能",
             " 技能",
             " 关联",
+            " 专属",
         }
     else
         self._titleNames = {
@@ -868,6 +937,7 @@ function TeamView:updateBiaoqian()
             " 升星",
             " 技能",
             " 关联",
+            " 专属",
         }
         self._shortTitleNames = {
             " 进阶",
@@ -875,6 +945,7 @@ function TeamView:updateBiaoqian()
             " 升星",
             " 技能",
             " 关联",
+            " 专属",
         }
     end
     local tab3 = self:getUI("bg1.rightSubBg.tab3")
@@ -1066,11 +1137,19 @@ function TeamView:reflashTeamUI()
     local awakingBtn = self:getUI("bg1.awakingBtn")
     awakingBtn:setVisible(false)
 
+    self:updateExclusiveState()
+    if self._exclusiveFlag ~= 0 and self._preBtn and self._preBtn:getName() == "tab6" then
+        self:tabButtonClick(self:getUI("bg1.rightSubBg.tab4"), 4)
+    end
+
     local flag = self._teamModel:getAwakingOpen(self._curSelectTeam.teamId)
     if flag == true then
         awakingBtn:setVisible(true)
         self:updateAwakingAnim(self._curSelectTeam)
     end
+
+    self._teamSkinBtn:setVisible(self._teamModel:checkTeamSkin(self._curSelectTeam.teamId))
+
     self._firstGuide = false
     -- 觉醒666
     awakingBtn:setScaleAnim(true)
@@ -1120,7 +1199,6 @@ function TeamView:reflashTeamUI()
 
     local userInfo = self._modelMgr:getModel("UserModel"):getData()
 
-
     if self._curSelectTeam.newFlag == 1 then
         self._curSelectTeam.newFlag = 0
         local tempTeamData = {}
@@ -1153,6 +1231,10 @@ function TeamView:reflashTeamUI()
     end
     if self._heroNode ~= nil and self._heroNode:isVisible() == true then
         self._heroNode:reflashUI({teamData = self._curSelectTeam})
+    end
+
+    if self._exclusiveNode ~= nil and self._exclusiveNode:isVisible() == true and self._exclusiveFlag == 0 then
+        self._exclusiveNode:reflashUI({teamData = self._curSelectTeam})
     end
 
     self:refreshTeamBigStar(self._curSelectTeam.star)
@@ -1204,13 +1286,31 @@ function TeamView:reflashTeamUI()
     local volume = self:getUI("bg2.volume")
     volume:setString("人数: " .. self._curSelectTeam.volume)
 
+    local isAwaking, aLvl = TeamUtils:getTeamAwaking(self._curSelectTeam)
     local zizhi = self:getUI("bg2.zizhi")
-    zizhi:setString(TeamConst.TEAM_ZIZHI_TYPE["ZIZHI_" .. tab:Team(self._curSelectTeam.teamId).zizhi])
-    -- zizhi:setString("资质:" .. TeamConst.TEAM_ZIZHI_TYPE["ZIZHI_" .. tab:Team(self._curSelectTeam.teamId).zizhi])
+    local zizhi_16 = self:getUI("bg2.zizhi_16")
+    local sysTeamData = tab:Team(self._curSelectTeam.teamId)
+    if sysTeamData.zizhi == 4 then
+        zizhi_16:setVisible(true)
+        zizhi:setVisible(false)
+        local zizhiAnim = zizhi_16:getChildByFullName("anim16")
+        if not zizhiAnim then
+            zizhiAnim = mcMgr:createViewMC("shenpanguanbiaoqian_shenpanguanbiaoqian", true, false)
+            zizhiAnim:setPosition(zizhi_16:getContentSize().width / 2 + 2, zizhi_16:getContentSize().height / 2 + 15)
+            zizhiAnim:setName("anim16")
+            zizhi_16:addChild(zizhiAnim, 2)
+        end
+        zizhiAnim:setVisible(true)
+    else
+        zizhi:setString(TeamConst.TEAM_ZIZHI_TYPE["ZIZHI_" .. sysTeamData.zizhi])
+        zizhi:setVisible(true)
+        zizhi_16:setVisible(false)
+    end
 
     local classLabelIcon = self:getUI("nameBg.icon")
     --此处和其他地方不一样 配表字段 classlabel1
-    classLabelIcon:loadTexture(IconUtils.iconPath .. tab:Team(self._curSelectTeam.teamId).classlabel1 .. ".png", 1)
+    local className = TeamUtils:getClassIconNameByTeamD(self._curSelectTeam, "classlabel1")
+    classLabelIcon:loadTexture(IconUtils.iconPath .. className .. ".png", 1)
     self:registerClickEvent(classLabelIcon, function()
         self._viewMgr:showDialog("team.TeamGradeDialog", {classlabel = self._curSelectTeam.teamId})
     end)
@@ -1502,7 +1602,8 @@ end
 -- 更新军团展示怪兽
 function TeamView:updateTeamAmin()
     local backBgNode = self._aminBg:getChildByName("backBgNode")
-    local pos = tab:Team(self._curSelectTeam.teamId).xiaoren
+    local sysTeamData = tab:Team(self._curSelectTeam.teamId)
+    local pos = sysTeamData.xiaoren
     local teamBg = self:getUI("bg2.teamBg")
     if teamBg then
         teamBg:loadTexture("asset/uiother/dizuo/teamBgDizuo" .. tab:Team(self._curSelectTeam.teamId)["race"][1] .. ".png", 0)
@@ -1510,12 +1611,22 @@ function TeamView:updateTeamAmin()
 
     local isAwaking, aLvl = TeamUtils:getTeamAwaking(self._curSelectTeam)
     local zizhiBg = self:getUI("bg2.Image_40")
+    local poss = cc.p(2, 38)
     if zizhiBg then
+        local zzImg = "teamImageUI_img29.png"
         if isAwaking == true then
-            zizhiBg:loadTexture("TeamAwakenImageUI_img23.png", 1)
+            zzImg = "TeamAwakenImageUI_img23.png"
+            if sysTeamData.zizhi == 4 then
+                zzImg = "TeamAwakenImageUI_img23.png"
+            end
         else
-            zizhiBg:loadTexture("teamImageUI_img29.png", 1)
+            if sysTeamData.zizhi == 4 then
+                zzImg = "TeamzizhiBg16.png"
+                poss = cc.p(0, 48)
+            end
         end
+        zizhiBg:loadTexture(zzImg, 1)
+        zizhiBg:setPosition(poss)
     end
 
     local teamName, art1, art2, steam = TeamUtils:getTeamAwakingTab(self._curSelectTeam, self._curSelectTeam.teamId)
@@ -1601,6 +1712,12 @@ function TeamView:tabButtonClick(sender, key)
     if self._tabName == sender:getName() then 
         return 
     end
+
+    if sender:getName() == "tab6" and self._exclusiveFlag ~= 0 then
+        UIUtils:tabTouchAnimOut(sender)
+        self._viewMgr:showTip(self._exclusiveFlag)
+        return
+    end
     for k,v in pairs(self._tabEventTarget) do
         if v ~= sender then
             self:tabButtonState(v, false, k)
@@ -1661,6 +1778,9 @@ function TeamView:switchPanel( sender,key )
         if self._heroNode ~= nil then 
             self._heroNode:setVisible(false)
         end
+        if self._exclusiveNode ~= nil then
+            self._exclusiveNode:setVisible(false)
+        end
     elseif sender:getName() == "tab2" then 
         -- print("升级")
         self._index = 2
@@ -1690,6 +1810,9 @@ function TeamView:switchPanel( sender,key )
         end
         if self._heroNode ~= nil then 
             self._heroNode:setVisible(false)
+        end
+        if self._exclusiveNode ~= nil then
+            self._exclusiveNode:setVisible(false)
         end
     elseif sender:getName() == "tab3" then 
         self._index = 3
@@ -1722,14 +1845,18 @@ function TeamView:switchPanel( sender,key )
         if self._heroNode ~= nil then 
             self._heroNode:setVisible(false)
         end
+        if self._exclusiveNode ~= nil then
+            self._exclusiveNode:setVisible(false)
+        end
     elseif sender:getName() == "tab4" then 
-        -- print("技能")
+        print("技能")
         -- self._viewMgr:showTip("技能暂未开放")
         self._index = 4
         if self._skillNode == nil then 
             self._skillNode = self:createLayer("team.TeamSkillNode", {fightCallback = function(inTable) self:setFightAnim(inTable) end})
             tempBaseInfoNode:addChild(self._skillNode,5)
         end
+        print("======================1111", type(self._skillNode))
         self._skillNode:reflashUI({teamData = self._curSelectTeam, refTop = true})
         self._skillNode:setVisible(true)
         -- self._aminBg:setVisible(true)
@@ -1746,6 +1873,9 @@ function TeamView:switchPanel( sender,key )
         end
         if self._heroNode ~= nil then 
             self._heroNode:setVisible(false)
+        end
+        if self._exclusiveNode ~= nil then
+            self._exclusiveNode:setVisible(false)
         end
     elseif sender:getName() == "tab5" then
         self._index = 5
@@ -1767,6 +1897,33 @@ function TeamView:switchPanel( sender,key )
         end
         if self._infoNode ~= nil then 
             self._infoNode:setVisible(false)
+        end
+        if self._exclusiveNode ~= nil then
+            self._exclusiveNode:setVisible(false)
+        end
+    elseif sender:getName() == "tab6" then
+        self._index = 6
+        if self._exclusiveNode == nil then 
+            self._exclusiveNode = self:createLayer("team.TeamExclusiveNode")
+            tempBaseInfoNode:addChild(self._exclusiveNode,5)
+        end
+        self._exclusiveNode:reflashUI({teamData = self._curSelectTeam})
+        self._exclusiveNode:setVisible(true)
+
+        if self._upStarNode ~= nil then 
+            self._upStarNode:setVisible(false)
+        end
+        if self._gradeNode ~= nil then 
+            self._gradeNode:setVisible(false)
+        end
+        if self._skillNode ~= nil then 
+            self._skillNode:setVisible(false)
+        end
+        if self._infoNode ~= nil then 
+            self._infoNode:setVisible(false)
+        end
+        if self._heroNode ~= nil then 
+            self._heroNode:setVisible(false)
         end
     end
 end
@@ -1904,11 +2061,12 @@ function TeamView:getAsyncRes()
             {"asset/ui/team.plist", "asset/ui/team.png"},
             {"asset/ui/team1.plist", "asset/ui/team1.png"},
             {"asset/ui/team2.plist", "asset/ui/team2.png"},
+            {"asset/ui/exclusive.plist", "asset/ui/exclusive.png"},
         }
 end
 
 function TeamView:getBgName()
-    return "bg_005.jpg"
+    return "bg_005.jpg" 
 end
 
 function TeamView:setNavigation()

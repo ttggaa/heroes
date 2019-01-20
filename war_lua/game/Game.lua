@@ -54,6 +54,11 @@ function Game:ctor()
         个别界面如果有适配问题，可以判断ADOPT_IPHONEX是否为true去单独处理
     ]]
     ADOPT_IPHONEX = MAX_SCREEN_WIDTH > 1300
+    --适配小米MAX2
+    ADOPT_XIAOMIM2 = false
+    if MAX_SCREEN_WIDTH >= 1280 and MAX_SCREEN_WIDTH <= 1300 then
+        ADOPT_XIAOMIM2 = true
+    end
 
     -- 背景全局缩放比例
     BG_SCALE_WIDTH = MAX_SCREEN_WIDTH / MAX_DESIGN_WIDTH
@@ -110,6 +115,7 @@ function Game:ctor()
     NullAnim = require("base.anim.NullAnim")
 
     HeroSoloPlayer = require("game.common.HeroSoloPlayer")
+    NewHeroSoloPlayer = require "game.common.NewHeroSoloPlayer"
 
 
     SdkManager = require("game.controller.SdkManager")

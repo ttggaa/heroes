@@ -224,6 +224,10 @@ function NullAnim:getContentSize()
     return cc.size(0, 0)
 end
 
+function NullAnim:lSetOpacity()
+    
+end
+
 
 function NullAnim:setAnchorPoint(x, y)
     if self._sp then

@@ -9,7 +9,7 @@ local GlobalScrollLayer = require "game.view.global.GlobalScrollLayer"
 
 local IntanceWorldLayer = class("IntanceWorldLayer", GlobalScrollLayer)
 
-
+local getStringTimeForInt = TimeUtils.getStringTimeForInt
 function IntanceWorldLayer:ctor(switchCallback, parentView, actNewSectionId)
     IntanceWorldLayer.super.ctor(self)
 
@@ -683,7 +683,24 @@ function IntanceWorldLayer:initOtherViewBtn()
                 sysName = "Purgatory", 
                 param = {},
                 tOffset = {0, 10}
-            },          
+            },
+            wb = {  
+                id = 8,
+                normal = "worldboss_rukou_btn", 
+                unActImg = "worldboss_rukou_btn", 
+                unActAnim = nil,
+                actAnim = nil,
+                normalAnimScale = 1,
+                actDelayFrame = nil,
+                actOffset = {0, 0},
+                pos = {270, 1000}, 
+                size = {120, 101}, 
+                view = "worldboss.WorldBossView", 
+                title = "巨龙侵袭", 
+                sysName = "WorldBoss", 
+                param = {},
+                tOffset = {0, 10}
+            },         
     }--
     for k,v in pairs(self._funOpenList) do
         local tempBtn = self._bgLayer:getChildByName(v.normal)
@@ -759,6 +776,15 @@ function IntanceWorldLayer:addBtnFunction(key, data)
     if btn.funName == "Siege" then
         isOpen = self._modelMgr:getModel("SiegeModel"):getEntranceState()
         isShowOpenLv = false
+    end
+
+    if btn.funName == "WorldBoss" then
+        if not GameStatic.is_show_worldBoss then
+            btn:setVisible(false)
+        else
+            btn:setVisible(true)
+        end
+        isOpen = self._modelMgr:getModel("WorldBossModel"):checkUserLevel()
     end
 
     local minLevel = SystemUtils.loadAccountLocalData("IWFunOpenMinLevel")
@@ -974,11 +1000,38 @@ function IntanceWorldLayer:addBtnFunction(key, data)
                 end
                 return
             end
+            if key == "wb" then
+                local worldBossModel = self._modelMgr:getModel("WorldBossModel")
+                local serverTimeOpen,tipsStr = worldBossModel:checkServerOpenTime()
+                if serverTimeOpen then
+                    local openState, _, isOpenDay = worldBossModel:checkOpenTime()
+                    if openState == worldBossModel.notOpen then
+                        if not isOpenDay then
+                            self._viewMgr:showTip(lang("worldBoss_Tips6"))
+                        else
+                            self._viewMgr:showTip(lang("worldBoss_Tips2"))
+                        end
+                        return
+                    end
+                else
+                    self._viewMgr:showTip(tipsStr)
+                    return
+                end
+            end
+
             self._viewMgr:showView(data.view, data.param)
         end)   
         
         if sender.funName == "Siege" then
             self:initSiegeBtn(sender, true)
+        elseif sender.funName == "WorldBoss" then
+            if GameStatic.is_show_worldBoss then
+                local worldBossModel = self._modelMgr:getModel("WorldBossModel")
+                local limiteOpen = worldBossModel:checkLevelAndServerTime()
+                if limiteOpen then
+                    self:initWorldBossBtn(sender)
+                end
+            end
         end     
     end
 
@@ -3014,6 +3067,68 @@ end
 --     btn:setSwallowTouches(false)
 -- end
 
+
+--[[
+--! @function initWorldBossBtn
+--! @desc 特殊处理世界Boss按钮
+--! @return 
+--]]
+function IntanceWorldLayer:initWorldBossBtn(btn, isActive)
+    btn.clear = function()
+        self:_updateCountDown("WorldBoss", nil)
+    end
+    local worldBossModel = self._modelMgr:getModel("WorldBossModel")
+    local paoBg = ccui.Scale9Sprite:createWithSpriteFrameName("globalImageUI6_meiyoutu.png")
+    -- paoBg:setCapInsets(cc.rect(60, 30, 1, 1))
+    paoBg:setAnchorPoint(0, 0)
+    paoBg:setPosition(67, 0)
+    btn:addChild(paoBg, 1)
+    local oldState = 0
+    self:_updateCountDown("WorldBoss", function ()
+        local openState , timeInt ,isOpenDay = worldBossModel:checkOpenTime()
+        if openState == worldBossModel.notOpen then
+            if tonumber(oldState) ~= tonumber(openState) then
+                oldState = openState
+                paoBg:removeAllChildren()
+                local desStr = lang("worldBoss_Tips2")
+                if not isOpenDay then
+                    desStr = lang("worldBoss_Tips7")
+                end
+                local label = self:_createLabel(desStr, 20,
+                    UIUtils.colorTable.ccUIBaseColor1, nil, cc.TEXT_ALIGNMENT_LEFT
+                )
+                label:setPosition(0, -5)
+                paoBg:addChild(label,1,999)
+                paoBg:setContentSize(cc.size(146, 63))
+            end
+        elseif openState == worldBossModel.isEnd then
+            if tonumber(oldState) ~= tonumber(openState) then
+                oldState = openState
+                paoBg:removeAllChildren()
+                local label = self:_createLabel("已结束", 20,
+                    UIUtils.colorTable.ccUIBaseColor1, nil, cc.TEXT_ALIGNMENT_LEFT
+                )
+                label:setPosition(0, -5)
+                paoBg:addChild(label,1,999)
+                paoBg:setContentSize(cc.size(146, 63))
+            end
+        elseif openState == worldBossModel.isOpen then
+            local timeString = getStringTimeForInt(timeInt)
+            if tonumber(oldState) ~= tonumber(openState) then
+                oldState = openState
+                paoBg:removeAllChildren()
+                local label = self:_createLabel(timeString, 20,
+                    UIUtils.colorTable.ccUIBaseColor1, nil, cc.TEXT_ALIGNMENT_LEFT
+                )
+                label:setPosition(0, -5)
+                paoBg:addChild(label,1,999)
+                paoBg:setContentSize(cc.size(146, 63))
+            end
+            paoBg:getChildByTag(999):setString(timeString)
+        end
+
+    end)
+end
 
 function IntanceWorldLayer:getMaxScrollHeightPixel(inScale)
     return 2000

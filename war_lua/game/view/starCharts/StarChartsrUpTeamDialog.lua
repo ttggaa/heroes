@@ -323,7 +323,7 @@ function StarChartsrUpTeamDialog:getTeamAttrValue(teamData,attrId)
     -- local attr = self._modelMgr:getModel("TeamModel"):getTeamTreasure(teamData.volume)
     -- dump(attr)
     -- 基础数据
-    local backData, backSpeed, atkSpeed = BattleUtils.getTeamBaseAttr(teamData, tempEquips, self._modelMgr:getModel("PokedexModel"):getScore())
+    local backData, backSpeed, atkSpeed = BattleUtils.getTeamBaseAttr(teamData, tempEquips, self._modelMgr:getModel("PokedexModel"):getScore(), nil, nil, nil, nil, nil, self._modelMgr:getModel("BattleArrayModel"):getData(), self._modelMgr:getModel("ParagonModel"):getData())
     -- copy from team
     -- local treasureAttr = self._modelMgr:getModel("TeamModel"):getTeamTreasureAttrData(teamData.teamId)
     local heroAttr = self._modelMgr:getModel("TeamModel"):getTeamHeroAttrByTeamId(teamData.teamId)

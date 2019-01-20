@@ -89,6 +89,22 @@ function TeamItemCell:reflashUI(inTeamData)
         end
     end
 
+    local inBackup = icon:getChildByName("inBackup")
+    if inTeamData.isInBackup == true and not inTeamData.isInFormation then 
+        if inBackup == nil then 
+            inBackup = cc.Sprite:createWithSpriteFrameName("globalImageUI4_backupTag.png")
+            inBackup:setAnchorPoint(cc.p(0, 1))
+            inBackup:setName("inBackup")
+            inBackup:setPosition(-10, icon:getContentSize().height - 19)
+            icon:addChild(inBackup, 5)
+        end
+        inBackup:setVisible(true)
+    else
+        if inBackup ~= nil then 
+            inBackup:setVisible(false)
+        end
+    end
+
     -- if isInFormation == true then 
     --     if inFormationIcon == nil then 
     --         -- print("shangzhen")
@@ -122,7 +138,8 @@ function TeamItemCell:reflashUI(inTeamData)
     -- globalImageUI_inFormation_s
     local hintIcon = icon:getChildByName("hintIcon")
     local isHint = self._teamData.onTeam
-    if (inTeamData.isInFormation == true and isHint == true) or (inTeamData.onTree == 1) then 
+    local isRedShow = teamModel:checkTeamRedSKillRedPoint(self._teamData)
+    if (inTeamData.isInFormation == true and isHint == true) or (inTeamData.onTree == 1) or isRedShow or (inTeamData.onExclusive and (inTeamData.isInFormation == true or inTeamData.isInBackup == true)) then 
         if hintIcon == nil then 
             hintIcon = cc.Sprite:createWithSpriteFrameName("globalImageUI_bag_keyihecheng.png")
             hintIcon:setAnchorPoint(cc.p(1, 1))

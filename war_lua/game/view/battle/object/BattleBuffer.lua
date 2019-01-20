@@ -135,7 +135,19 @@ function BattleBuffer:addBuff(buff)
         valid = true
     end
     if buffD["delete"] then
-        local reset = self:delBuffByLabel(buffD["delete"])
+        local reset = false
+        if type(buffD["delete"]) == "table" then
+            for i,v in ipairs(buffD["delete"]) do
+                if v then
+                    local _reset = self:delBuffByLabel(v)
+                    if _reset then
+                        reset = true
+                    end
+                end
+            end
+        else
+            reset = self:delBuffByLabel(buffD["delete"])
+        end
         needReset = needReset or reset
     end
     if needReset then
@@ -235,7 +247,7 @@ function BattleBuffer:getBuffCount()
     for _, buff in pairs(buffs) do
         local buffKind = buff.buffD["kind"]
         local label = buff.buffD["label"]
-        if buffKind == 0 and label == 0 then
+        if buffKind == 0 and label ~= 0 then
             count = count + 1
             bufft[buff.buffD.id] = label 
         end 

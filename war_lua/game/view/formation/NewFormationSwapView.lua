@@ -26,8 +26,11 @@ function NewFormationSwapView:ctor(params)
     self._formationData = params.formationData
     self._formationOriginData = clone(self._formationData)
     self._callback1 = params.callback1
-    self._callback2 = params.callback2
+    self._swapType = params.swapType or 1
+    self._formationId = params.formationId
     self._allowBattle = params.allowBattle
+    self._showState = params.showState or {}
+    self._gloryArenaLimit = params.gloryArenaLimit or 0
     self._formationModel = self._modelMgr:getModel("FormationModel")
 end
 
@@ -62,48 +65,88 @@ function NewFormationSwapView:onInit()
     ]]
     self:disableTextEffect()
 
+    self._layer = self:getUI("bg.layer")
+    if self._swapType == 2 then
+        self._layer = self:getUI("bg.layer_cross")
+    elseif self._swapType == 3 then
+        self._layer = self:getUI("bg.layer_cross2")
+    end
+    self:getUI("bg.layer"):setVisible(self._swapType == 1)
+    self:getUI("bg.layer_cross"):setVisible(self._swapType == 2)
+    self:getUI("bg.layer_cross2"):setVisible(self._swapType == 3)
     -- title
-    self._title = self:getUI("bg.layer.titleBg.title")
-    self._title:setFontName(UIUtils.ttfName)
-    self._title:setColor(UIUtils.colorTable.titleColorRGB)
+    self._title = self._layer:getChildByFullName("titleBg.title")
+    -- self._title:setFontName(UIUtils.ttfName)
+    -- self._title:setColor(UIUtils.colorTable.titleColorRGB)
+    UIUtils:setTitleFormat(self._title,1)
 
-    self._labelDes = self:getUI("bg.layer.label_des")
+    self._labelDes = self._layer:getChildByFullName("label_des")
     self._labelDes:disableEffect()
 
     self._currentSelectedIndex = 0
     self._formationPreview = {}
     for i=1, 3 do
         self._formationPreview[i] = {}
-        self._formationPreview[i]._layer = self:getUI("bg.layer.layer_" .. i)
+        self._formationPreview[i]._layer = self._layer:getChildByFullName("layer_" .. i)
         self:registerClickEvent(self._formationPreview[i]._layer, function()
             self:onButtonFormationSelectClicked(i)
         end)
 
         self._formationPreview[i]._layerFormation = {}
-        self._formationPreview[i]._layerFormation._layer = self:getUI("bg.layer.layer_formation_" .. i)
-        self._formationPreview[i]._layerFormation._imageSelected = self:getUI("bg.layer.layer_formation_" .. i .. ".image_selected")
-        self._formationPreview[i]._layerFormation._labelScore = self:getUI("bg.layer.layer_formation_" .. i .. ".label_score")
-        -- self._formationPreview[i]._labelTitle = self:getUI("bg.layer.label_title")
+        self._formationPreview[i]._layerFormation._layer = self._layer:getChildByFullName("layer_formation_" .. i)
+        self._formationPreview[i]._layerFormation._imageSelected = self._layer:getChildByFullName("layer_formation_" .. i .. ".image_selected")
+        self._formationPreview[i]._layerFormation._labelScore = self._layer:getChildByFullName("layer_formation_" .. i .. ".label_score")
         self._formationPreview[i]._layerFormation._formationUI = {}
         for j=1, NewFormationSwapView.kTeamGridCount do
-            self._formationPreview[i]._layerFormation._formationUI[j] = self:getUI("bg.layer.layer_formation_" .. i .. ".formation_icon_" .. j)
+            self._formationPreview[i]._layerFormation._formationUI[j] = self._layer:getChildByFullName("layer_formation_" .. i .. ".formation_icon_" .. j)
+        end
+        if self._swapType == 3 then
+            self._formationPreview[i]._btnShow = self._layer:getChildByFullName("btn_show" .. i)
+            self._formationPreview[i]._btnHide = self._layer:getChildByFullName("btn_hide" .. i)
+            self:registerClickEvent(self._formationPreview[i]._btnShow, function()
+                self:onButtonShowClicked(i)
+            end)
+            self:registerClickEvent(self._formationPreview[i]._btnHide, function()
+                self:onButtonHideClicked(i)
+            end)
         end
     end
 
     self:updateUI()
 
-    self:registerClickEventByName("bg.layer.btn_ok", function ()
+    local btn_ok = self._layer:getChildByFullName("btn_ok")
+    self:registerClickEvent(btn_ok, function ()
         self:onButtonOkClicked()
     end)
 
-    self:registerClickEventByName("bg.layer.btn_close", function ()
+    local btn_close = self._layer:getChildByFullName("btn_close")
+    self:registerClickEvent(btn_close, function ()
         self:onButtonCloseClicked()
     end)
 end
 
+function NewFormationSwapView:reflashGloryArenaHideBtn()
+    if self._swapType == 3 then
+        local hideCount = 0
+        for key, var in pairs(self._showState) do
+            if not var then
+                hideCount = hideCount + 1
+            end
+        end
+        if hideCount >= self._gloryArenaLimit then
+            for i = 1, 3 do
+                local formationId = self._formationId - 1 + i
+                if self._showState[formationId] then
+                    self._formationPreview[i]._btnHide:setVisible(false)
+                end
+            end
+        end
+    end
+end
+
 function NewFormationSwapView:updateUI()
-    for formationId = self._formationModel.kFormationTypeGodWar1, self._formationModel.kFormationTypeGodWar3 do
-        local currentIndex = formationId - self._formationModel.kFormationTypeGodWar1 + 1
+    for formationId = self._formationId, self._formationId + 2 do
+        local currentIndex = formationId - self._formationId + 1
         for i = 1, NewFormationSwapView.kTeamGridCount do
             self._formationPreview[currentIndex]._layerFormation._formationUI[i]:removeAllChildren()
         end
@@ -116,7 +159,8 @@ function NewFormationSwapView:updateUI()
                 local teamPositionId = formationData[string.format("g%d", i)]
                 local teamTableData = tab:Team(teamId)
                 local iconGrid = self._formationPreview[currentIndex]._layerFormation._formationUI[teamPositionId]
-                local imageView = ccui.ImageView:create(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+                local className = TeamUtils:getClassIconNameByTeamId(teamId, "classlabel")
+                local imageView = ccui.ImageView:create(IconUtils.iconPath .. className .. ".png", 1)
                 imageView:setScale(0.75)
                 imageView:setPosition(cc.p(iconGrid:getContentSize().width / 2, iconGrid:getContentSize().height / 2))
                 iconGrid:addChild(imageView)
@@ -124,17 +168,43 @@ function NewFormationSwapView:updateUI()
         end
     end
 
-    for i=1, 3 do
-        local formationId = self._formationModel.kFormationTypeGodWar1 - 1 + i
+    for i = 1, 3 do
+        local formationId = self._formationId - 1 + i
         self._formationPreview[i]._layerFormation._layer:setSaturation((self._allowBattle and self._allowBattle[formationId]) and 0 or -100)
         self._formationPreview[i]._layerFormation._imageSelected:setVisible(i == self._currentSelectedIndex)
-        self._formationPreview[i]._layerFormation._labelScore:setString(self._formationModel:getCurrentFightScoreByType(formationId, self._formationData[formationId]))
+        self._formationPreview[i]._layerFormation._labelScore:setString("战斗力:" .. self._formationModel:getCurrentFightScoreByType(formationId, self._formationData[formationId]))
     end
+
+    if self._swapType == 3 then
+        self:updateButtonInfo()
+    end
+end
+
+function NewFormationSwapView:onButtonShowClicked( index )
+    local formationId = self._formationId - 1 + index
+    self._showState[formationId] = true
+    self:updateButtonInfo()
+end
+
+function NewFormationSwapView:onButtonHideClicked( index )
+    local formationId = self._formationId - 1 + index
+    self._showState[formationId] = false
+    self:updateButtonInfo()
+end
+
+function NewFormationSwapView:updateButtonInfo(  )
+    for i = 1, 3 do
+        local formationId = self._formationId - 1 + i
+        self._formationPreview[i]._btnShow:setVisible(not self._showState[formationId])
+        self._formationPreview[i]._btnHide:setVisible(self._showState[formationId])
+        self._formationPreview[i]._layerFormation._layer:setSaturation(self._showState[formationId] and 0 or -100)
+    end
+    self:reflashGloryArenaHideBtn()
 end
 
 function NewFormationSwapView:onButtonFormationSelectClicked(index)
     if index < 1 or index > 3 then return end
-    local formationId = self._formationModel.kFormationTypeGodWar1 - 1 + index
+    local formationId = self._formationId - 1 + index
     if not (self._allowBattle and self._allowBattle[formationId]) then
         self._viewMgr:showTip(lang("GODWAR_ARRAY"))
         return
@@ -146,7 +216,7 @@ function NewFormationSwapView:onButtonFormationSelectClicked(index)
         self._currentSelectedIndex = 0
         -- self._labelDes:setString("点击布阵模块以快速的互换布阵阵容")
     else
-        local formationId1 = self._formationModel.kFormationTypeGodWar1 - 1 + self._currentSelectedIndex
+        local formationId1 = self._formationId - 1 + self._currentSelectedIndex
         local formationData = clone(self._formationData[formationId1])
         self._formationData[formationId1] = self._formationData[formationId]
         self._formationData[formationId] = formationData
@@ -159,6 +229,13 @@ function NewFormationSwapView:onButtonFormationSelectClicked(index)
         local layer = self._formationPreview[self._currentSelectedIndex]._layerFormation
         self._formationPreview[self._currentSelectedIndex]._layerFormation = self._formationPreview[index]._layerFormation
         self._formationPreview[index]._layerFormation = layer
+        
+
+        self._showState[formationId1], self._showState[formationId] = self._showState[formationId], self._showState[formationId1]
+        if self._swapType == 3 then
+            self:updateButtonInfo()
+        end
+
         self._currentSelectedIndex = 0
     end
 
@@ -168,7 +245,7 @@ function NewFormationSwapView:onButtonFormationSelectClicked(index)
 end
 
 function NewFormationSwapView:isFormationChanged()
-    for formationId = self._formationModel.kFormationTypeGodWar1, self._formationModel.kFormationTypeGodWar3 do
+    for formationId = self._formationId, self._formationId +2 do
         local formationData1 = self._formationOriginData[formationId]
         local formationData2 = self._formationData[formationId]
         if formationData1 and formationData2 then
@@ -195,7 +272,7 @@ end
 
 function NewFormationSwapView:onButtonOkClicked()
     if self._callback1 and type(self._callback1) == "function" then
-        self._callback1(self._formationData)
+        self._callback1(self._formationData, self._showState)
         self:close()
     end
 end

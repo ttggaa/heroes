@@ -230,15 +230,16 @@ function ArrowSendArwView:tableCellAtIndex_send(table, idx)
 
     --avatar
     local headIcon = item:getChildByName("avatar")
+    local headP = {avatar = curData["avatar"], level = curData["lvl"] or "0", tp = 4,avatarFrame=curData["avatarFrame"], tencetTp = curData["qqVip"], plvl = curData["plvl"]}
     if headIcon == nil then
-        headIcon = IconUtils:createHeadIconById({avatar = curData["avatar"], level = curData["lvl"] or "0", tp = 4,avatarFrame=curData["avatarFrame"], tencetTp = curData["qqVip"]}) 
+        headIcon = IconUtils:createHeadIconById(headP) 
         headIcon:setAnchorPoint(0, 0.5)
         headIcon:setPosition(19, item:getContentSize().height*0.5)
         headIcon:setScale(0.7)
         headIcon:setName("avatar")
         item:addChild(headIcon, 2)
     else
-        IconUtils:updateHeadIconByView(headIcon,{avatar = curData["avatar"], level = curData["lvl"] or "0", tp = 4,avatarFrame=curData["avatarFrame"], tencetTp = curData["qqVip"]}) 
+        IconUtils:updateHeadIconByView(headIcon,headP) 
     end
 
     --name

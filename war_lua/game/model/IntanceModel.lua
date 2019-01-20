@@ -424,6 +424,7 @@ function IntanceModel:initSectionMaxStar()
             levelArr1[i][3] = levelArr1[i][1]
         end
     end
+    levelArr1[#levelArr1][3] = math.max(levelArr1[#levelArr1][3], maxLevel)
     local d
     for i = 1, #levelArr1 do
         d = levelArr1[i]
@@ -431,7 +432,6 @@ function IntanceModel:initSectionMaxStar()
             levelArr[k] = d[2] 
         end
     end
-    levelArr1[#levelArr1][3] = math.max(levelArr1[#levelArr1][3], maxLevel)
     -- dump(levelArr)
     local star = 0
     local levelArr2 = {}

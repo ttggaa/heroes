@@ -61,9 +61,15 @@ function UserModel:setData(data)
         self._data["luckyCoin"] = 0
     end
 
+    if not self._data["plvl"] then    --by wangyan
+        self._data["plvl"] = 0
+    end
+
     self._lastLvl = self._data.lvl
     self._lastExpCoin = self._data.expCoin or 0
     self._lastPhysical = self._data.physcal
+    self._lastPLvl = self._data.plvl
+    self._lastPTalentPoint = self._data.pTalentPoint or 0
 
     -- 英雄全局专长
     self:setGlobalMasterys()
@@ -146,6 +152,17 @@ function UserModel:updateUserData(inData)
         self._lastPhysical = self._data.physcal
         modelMgr:getModel("TalentModel"):setOutOfDate()
         modelMgr:getModel("FormationModel").setFormationDialogShowed(false)
+    end
+
+    if inData.plvl then
+        self._lastPLvl = self._data.plvl
+        self._lastPTalentPoint = self._data.pTalentPoint or 0
+    end
+
+    if inData["items"] ~= nil then 
+        local itemModel = self._modelMgr:getModel("ItemModel")
+        itemModel:updateItems(inData["items"])
+        inData["items"] = nil
     end
 
 
@@ -410,6 +427,12 @@ function UserModel:updateUserData(inData)
         inData["hSkin"] = nil
     end
 
+    -- 处理兵团皮肤数据
+    if inData["tSkin"] then
+        self:updateTeamSkinData(inData["tSkin"])
+        inData["tSkin"] = nil
+    end
+
     -- 公测庆典数据
     if inData["celebrity"] ~= nil then
         local celebrationModel = self._modelMgr:getModel("CelebrationModel")
@@ -453,6 +476,16 @@ function UserModel:updateUserData(inData)
         inData["runeCard"] = nil
     end
 
+    if inData and inData["eleGift"] ~= nil  then 
+        updateSubData("eleGift", inData)
+        inData["eleGift"] = nil
+    end
+
+    -- 宝物直购
+    if inData and inData["treasureMerchant"] ~= nil then 
+        updateSubData("treasureMerchant", inData)
+        inData["treasureMerchant"] = nil
+    end
     for k,v in pairs(inData) do
         self._data[k] = v
     end
@@ -495,6 +528,14 @@ end
 
 function UserModel:getLastPhysical()
     return self._lastPhysical
+end
+
+function UserModel:getLastPLvl(  )
+    return self._lastPLvl
+end
+
+function UserModel:getLastPTalentPoint(  )
+    return self._lastPTalentPoint
 end
 
 function UserModel:updateScoreF1(score)
@@ -590,9 +631,26 @@ end
     玩家当前是否到达最大等级
 ]]
 function UserModel:isMaxLevel()
+    -- local maxlevel = tab:Setting("MAX_LV").value
+    -- if maxlevel then
+    --     return self._data.lvl >= tonumber(maxlevel)
+    -- end
+
+    return false
+end
+
+function UserModel:isHaveParagonLevel(  )
     local maxlevel = tab:Setting("MAX_LV").value
     if maxlevel then
         return self._data.lvl >= tonumber(maxlevel)
+    end
+    return false
+end
+
+function UserModel:isMaxParagonLevel(  )
+    local maxlevel = tab:Setting("PARAGON_MAX_LEVEL").value
+    if maxlevel then
+        return (self._data.plvl or 0) >= tonumber(maxlevel)
     end
 end
 
@@ -785,6 +843,11 @@ function UserModel:getActivityStatis()
     return self._data.activityStatis
 end
 
+-- 终极降临活动联盟统计值
+function UserModel:getAcGuildStatis()
+    return self._data.guildStatis
+end
+
 function UserModel:updateActivityStatis(data)
     if not (data and type(data) == "table") then return end
     if not (self._data.activityStatis and data["d"] and data["d"].activityStatis) then return end
@@ -799,6 +862,23 @@ function UserModel:updateActivityStatis(data)
     data["d"].activityStatis = nil
     ModelManager:getInstance():getModel("ActivityModel"):evaluateActivityData()
     ModelManager:getInstance():getModel("ActivityCarnivalModel"):setNeedUpdate(true)
+    ModelManager:getInstance():getModel("AcUltimateModel"):setNeedUpdate(true)
+end
+
+function UserModel:updateAcGuildStatis(data)
+    if not (data and type(data) == "table") then return end
+    if not (self._data.guildStatis and data["d"] and data["d"].guildStatis) then return end
+    for k, v in pairs(data["d"].guildStatis) do
+        if not self._data.guildStatis[tostring(k)] then
+            self._data.guildStatis[tostring(k)] = {}
+        end
+        for k0, v0 in pairs(v) do
+            self._data.guildStatis[tostring(k)][tostring(k0)] = v0
+        end
+    end
+    data["d"].guildStatis = nil
+    ModelManager:getInstance():getModel("ActivityModel"):evaluateActivityData()
+    ModelManager:getInstance():getModel("AcUltimateModel"):setNeedUpdate(true)
 end
 
 function UserModel:isAcGoodsBuy(activityId)
@@ -825,9 +905,18 @@ function UserModel:interceptData(data)
     if data["d"] and data["d"].activityStatis then 
         self:updateActivityStatis(data)
     end
+    if data["d"] and data["d"].guildStatis then 
+        self:updateAcGuildStatis(data)
+    end
 
     if data["d"] and data["d"].heros then 
         self:updateHeroWhenUserLvlUp(data)
+    end
+
+    if data["d"] and data["d"].raceDraws then 
+        local raceDrawModel = self._modelMgr:getModel("RaceDrawModel")
+        raceDrawModel:updateData(data["d"].raceDraws)
+        -- data["d"].raceDraws = nil
     end
 
 end
@@ -1182,6 +1271,45 @@ function UserModel:updateSkinData(skinData)
     end
 end
 
+-- 获取玩家所有兵团皮肤数据
+function UserModel:getTeamSkinData()
+    return self._data.tSkin or {}
+end
+
+-- 获取玩家兵团Id皮肤数据
+function UserModel:getTeamSkinDataById(teamId)
+    if not teamId then return {} end
+    local skinData = {}
+    if self._data and self._data.tSkin then
+        skinData = self._data.tSkin[tostring(teamId)] or {}
+    end    
+    return skinData
+end
+
+-- 更新兵团皮肤数据
+function UserModel:updateTeamSkinData(skinData)
+    if not skinData then return end
+    -- dump(skinData,"skinData==>",5)
+    if self._data then
+        local uSkinData = self._data.tSkin or {}
+        for k,v in pairs(skinData) do
+            if uSkinData[tostring(k)] and type(v) == "table" then
+                for kk,vv in pairs(v) do
+                    uSkinData[tostring(k)][tostring(kk)] = vv
+                end
+            else
+                if type(v) == "table" then
+                    uSkinData[tostring(k)] = {}
+                    for kk, vv in pairs(v) do
+                        uSkinData[tostring(k)][tostring(kk)] = vv
+                    end
+                end
+            end
+        end
+        self._data.tSkin = uSkinData
+    end
+end
+
 -- 根据区服id获取平台信息
 function UserModel:getPlatformInfoById(serverId)
     if not self._data and not serverId then return "","0区" end
@@ -1435,16 +1563,14 @@ function UserModel:getStarHeroAttr()
             end
             local abilitySort = starChartsStarsTab[tonumber(bodyId)]["ability_sort"]
             local abilityShowtype = starChartsStarsTab[tonumber(bodyId)]["ability_showtype"]
-            if (abilitySort and abilitySort == 2) and (abilityShowtype and abilityShowtype == 1) then
+            local abilitySystem = starChartsStarsTab[tonumber(bodyId)]["ability_system"]
+            if (abilitySort and abilitySort == 2) and (abilityShowtype and abilityShowtype == 1)
+                and (abilitySystem and abilitySystem == 0) then
                 local aid = tonumber(starChartsStarsTab[tonumber(bodyId)]["ability_hero_type"])
                 if aid then
-                    local pro = 1
-                    if tab.attClient[aid] == 1 then
-                        pro = 0.01
-                    end
                     local value = starChartsStarsTab[tonumber(bodyId)]["ability_hero"]
                     starAttr[aid] = starAttr[aid] or 0
-                    starAttr[aid] = starAttr[aid] + value*bodyNum*pro
+                    starAttr[aid] = starAttr[aid] + value*bodyNum
                 end
             end
         end
@@ -1489,6 +1615,62 @@ function UserModel:getRuneCardData()
         return self._data.runeCard or {}
     end
     return {}
+end
+
+-- 元素馈赠
+function UserModel:getElementGiftData()
+    if self._data then 
+        return self._data.eleGift or {}
+    end
+    return {}
+end
+
+function UserModel:getResNumByType( costType )
+    local player = self._data
+    local num = player[costType] or (player.roleGuild and player.roleGuild[costType]) 
+    if num == nil then
+        if tonumber(costType) then
+            if tab.tool[tonumber(costType)] then 
+                _,num = self._modelMgr:getModel("ItemModel"):getItemsById(tonumber(costType))
+            end
+        end
+    end
+    if costType == "dice" then
+        num = self._modelMgr:getModel("AdventureModel"):getHadDiceNum()
+    end
+    return num or 0
+end
+
+function UserModel:getServerId()
+    local serverId = self._data.sec
+    serverId = tostring(serverId)
+    local mergeList = self:getServerIDMap()
+    local fserverId = mergeList[serverId] or serverId
+    return serverId, fserverId
+end
+
+function UserModel:isEvaluateLastGuild()
+    local hadJudge = self._data.roleGuild and self._data.roleGuild.hadJudge
+    return hadJudge==1
+end
+
+function UserModel:getLastGuildName()
+    local lastName = self._data.roleGuild and self._data.roleGuild.lastGuildName
+    return lastName
+end
+
+-- 宝物直购
+function UserModel:getTreasureMerchant()
+    if self._data then 
+        return self._data.treasureMerchant or {}
+    end
+    return {}
+end
+
+function UserModel:updateAreaSkillData( data )
+    if not data or not data["areaSkillTeam"] then return end
+    if not self._data then return end
+    self._data["areaSkillTeam"] = data["areaSkillTeam"]
 end
 
 return UserModel

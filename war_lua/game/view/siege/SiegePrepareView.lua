@@ -477,7 +477,7 @@ function SiegePrepareView:initOrder(result)
     for k , node in pairs(self._rankValueList) do
         node:setVisible(false)
     end
-    if result == {} or result == nil then return end 
+    if result == nil or not next(result) then return end 
     if result["rankInfo"] then
         for k , v in pairs(result["rankInfo"]) do
             self._rankNameList[v["rank"]]:setString(v["name"])
@@ -601,7 +601,7 @@ function SiegePrepareView:showKillInfo(result)
         local headIcon = luckyUserHead:getChildByName("avatar")
         if headIcon == nil then
             headIcon = IconUtils:createHeadIconById({avatar = killInfo.avatar,level = killInfo.lvl or "0" ,
-                tp = 4,avatarFrame = killInfo["avatarFrame"], tencetTp = killInfo["qqVip"]})
+                tp = 4,avatarFrame = killInfo["avatarFrame"], tencetTp = killInfo["qqVip"], plvl = killInfo.plvl})
             headIcon:setAnchorPoint(0, 0.5)
             headIcon:setPosition(0, luckyUserHead:getContentSize().height*0.5)
             headIcon:setScale(1)

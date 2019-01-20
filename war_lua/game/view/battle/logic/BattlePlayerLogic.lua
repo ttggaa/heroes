@@ -132,6 +132,12 @@ function BattleSkillLogic:ctor_player()
     self._playForceAutoSkills = {{}, {}}
     self._playWeaponSkills = {{}, {}}
     self._playSkillBookPassive = {{}, {}}
+    self._playSpecialSkills = {{}, {}}
+    -- 玩家条件释放的技能
+    self._playConditionSkills = {{}, {}}
+
+    --因为兵团死亡，或者不在场删除掉的自动释放的技能
+    self._playerRemoveSkill = {{}, {}}
 
     -- 释放时间
     self._playCastTime = {}
@@ -148,6 +154,7 @@ function BattleSkillLogic:ctor_player()
     if self._battleInfo.mode == BattleUtils.BATTLE_TYPE_League 
         or self._battleInfo.mode == BattleUtils.BATTLE_TYPE_HeroDuel 
         or self._battleInfo.mode == BattleUtils.BATTLE_TYPE_GodWar
+        or self._battleInfo.mode == BattleUtils.BATTLE_TYPE_CrossGodWar 
         or self._battleInfo.mode == BattleUtils.BATTLE_TYPE_Arena
         or self._battleInfo.mode == BattleUtils.BATTLE_TYPE_ServerArena then
         self._autoSkillAttrClass = "X"
@@ -216,8 +223,46 @@ function BattleSkillLogic:ctor_player()
         for i = 1, #self._heros[k].skillBookPassive do
             self._playSkillBookPassive[k][i] = self._heros[k].skillBookPassive[i] 
         end
+
+        if self._heros[k].specialSkills then
+            for i = 1, #self._heros[k].specialSkills do
+                skill = self._heros[k].specialSkills[i]
+                self._playSpecialSkills[k][i] = BC.initPlayerSkill(k, i, skill)
+                self._playSpecialSkills[k][i].cd = self._playSpecialSkills[k][i].cd * cdPro[k]
+                self._playSpecialSkills[k][i].maxCD = self._playSpecialSkills[k][i].maxCD * cdPro[k]
+            end
+        end
+
+        --条件释放的技能
+        if self._heros[k].conditionSkills then
+            for i = 1, #self._heros[k].conditionSkills do
+                skill = self._heros[k].conditionSkills[i]
+                self._playConditionSkills[k][i] = BC.initPlayerSkill(k, i, skill)
+                self._playConditionSkills[k][i].cd = self._playConditionSkills[k][i].cd * cdPro[k]
+                self._playConditionSkills[k][i].maxCD = self._playConditionSkills[k][i].maxCD * cdPro[k]
+            end
+        end
     end
 
+    local function skillSort(_table)
+        for i,v in ipairs(_table) do
+            if v and #v > 2 then
+                table.sort(v,  function(_a, _b)
+                    if _a.id and  _b.id then
+                        return _a.id < _b.id
+                    else
+                        return true
+                    end
+                end)
+            end 
+        end
+    end
+    --提前排好顺序，否则会影响复盘结果
+    skillSort(self._playOpenSkills)
+    skillSort(self._playForceAutoSkills)
+    skillSort(self._playWeaponSkills)
+    skillSort(self._playSkillBookPassive)
+    skillSort(self._playSpecialSkills)
     -- AI增加逻辑，若地方存在这些招数，则技能不自动释放，在这些招数释放后1秒追加
     local enemyCamp
     local tmpCountersk
@@ -1162,6 +1207,7 @@ end
 local SRTab = {384, 391, 398, 405, 412, 419, 427, 435, 442, 450, 456, 462}
 local BUFF_ID_YUN = 1086
 local actionInv = BC.actionInv
+local RecordReleaseSkill = BC.RecordReleaseSkill
 function BattleSkillLogic:_castPlayerSkill(inCaster, inSkill, endPoint, isopenskill)
     -- print(inCaster.camp, self.battleTime, inSkill.id)
     local ing = self.battleState == EState.ING
@@ -1324,9 +1370,9 @@ function BattleSkillLogic:_castPlayerSkill(inCaster, inSkill, endPoint, isopensk
         -- 每日小惊喜
         if self._surpriseOpen and camp == 1 and not isopenskill then
             local _kind = sysSkill["type"] - 1
-            if _kind == 0 then
-                _kind = 3
-            end
+            -- if _kind == 0 then
+            --     _kind = 3
+            -- end
 
             if _kind > 0 then
                  self._surpriseList[self._surpriseIndex] = _kind
@@ -1401,7 +1447,7 @@ function BattleSkillLogic:_castPlayerSkill(inCaster, inSkill, endPoint, isopensk
                 local action
                 local option
                 local buffid, buff, pro 
-
+                local ranbuffids = {}
                 local points = {}
                 local ranges 
                 local range 
@@ -1668,6 +1714,9 @@ function BattleSkillLogic:_castPlayerSkill(inCaster, inSkill, endPoint, isopensk
                             inv = sysSkill["linkdelay"..k] * actionInv
                         end
                         action = sysSkill["damagekind"..k] -- action为空表示有可能用子物体实现技能
+
+
+
                         if action then
                             -- 技能附带基础的成长
                             local valueaddPro
@@ -1830,6 +1879,57 @@ function BattleSkillLogic:_castPlayerSkill(inCaster, inSkill, endPoint, isopensk
                                 end
                             end
                         end
+
+                        if sysSkill["ranbuffid"..k] and sysSkill["ranbuffnum"..k] then
+                            ranbuffids = BC.genRanBuff(sysSkill["ranbuffid"..k], sysSkill["ranbuffnum"..k])
+                            if ranbuffids then
+                                local ranbuffid
+                                for i = 1, #ranbuffids do
+                                    ranbuffid = ranbuffids[i]
+                                    local _target
+                                    for t = 1, #targets do   
+                                        delayCall(t * inv, self, function()
+                                            _target = targets[t]
+                                            if not _target.die then
+                                                local ranbuff = initPlayerBuff(camp, ranbuffid, inSkill.level, _target, 100, sysSkill["type"] - 1, doubleEffect or forceDoubleEffect, skillid)
+
+                                                -- 魔法天赋 
+                                                -- 3 增加持续时间
+                                                -- 4 增加持续时间百分比
+                                                -- 7 增加护盾效果值
+                                                -- 8 增加护盾效果百分比
+                                                if BC.H_SkillBookTalent[camp] and BC.H_SkillBookTalent[camp]["targetSkills"][skillid] then
+                                                    BattleUtils.countSkillBookTalent(skillid, ranbuff, {3, 4, 7, 8}, camp)
+                                                    ranbuff.endTick  = ranbuff.duration * 0.001 + BC.BATTLE_BUFF_TICK
+                                                end  
+                                                _target:addBuff(ranbuff)
+                                                if sysSkill["type"] ~= 8 and _sameCamp and _target.camp == camp and _target.skillTab[35] then
+                                                    _target:invokeSkill(35)
+                                                end
+
+                                            end
+                                        end, not ing)
+                                    end
+                                    if SRData then
+                                        if camp == 1 then
+                                            local sr = tab.skillBuff[ranbuffid].sr
+                                            local __count = #targets
+                                            if sr and __count > 0 then
+                                                if sr == 10 then
+                                                    if __count > SRData[452] then SRData[452] = __count end
+                                                elseif sr == 11 then
+                                                    if __count > SRData[458] then SRData[458] = __count end
+                                                elseif sr == 12 then
+                                                    if __count > SRData[464] then SRData[464] = __count end
+                                                    if __count < SRData[465] then SRData[465] = __count end
+                                                end
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+
                         -- 特效
                         local inv = 0
                         if sysSkill["linkdelay"..k] then
@@ -2071,6 +2171,24 @@ function BattleSkillLogic:_castPlayerSkill(inCaster, inSkill, endPoint, isopensk
     if _type then
         if random(100) <= BC.MGTPro[camp][_type] then
             self:enableMGTip(camp, _type)
+        end
+    end
+
+    _type = sysSkill["mgtriger1"]
+    if _type then
+        RecordReleaseSkill[camp + 2][#RecordReleaseSkill[camp + 2] + 1] = sysSkill["objectid"] or 0
+        RecordReleaseSkill[camp][#RecordReleaseSkill[camp] + 1] = _type
+        if not BATTLE_PROC and not BC.jump then
+            self._control:setVisibleEnergyIcon(camp, #RecordReleaseSkill[camp], _type)
+        end
+        if #RecordReleaseSkill[camp] >= 3 then
+            --萨丽尔元素
+            self:checkCastPlayerConditionSkill(1, camp, RecordReleaseSkill[camp])
+            RecordReleaseSkill[camp] = {}
+--            RecordReleaseSkill[camp].disappearStartTime = BC.BATTLE_TOTEM_TICK + 0.10000000001
+            if not BATTLE_PROC and not BC.jump then
+                self._control:allVisibleEnergyIcon(camp)
+            end
         end
     end
 
@@ -2787,6 +2905,147 @@ function BattleSkillLogic:handleWeaponCastSkill()
     end
 end
 
+--根据条件判断触发的技能
+function BattleSkillLogic:checkCastPlayerConditionSkill(nType, inCamp, parm)
+    if nType == 1 then
+        --暂时只支持萨丽尔元素
+        local skills = self._playConditionSkills[inCamp]
+        for key, var in ipairs(skills) do
+            if var and var.mgtrigerproduct then
+                for _key, _var in ipairs(var.mgtrigerproduct) do
+                    if _var and _var[1] == parm[1] and _var[2] == parm[2] and _var[3] == parm[3] then
+                        delayCall(2, self, function()
+                            --开始删除子物体
+                            for i = #RecordReleaseSkill[inCamp + 2] , 1, -1  do
+                                if i <= 3 then
+                                    self:setDieTotem(RecordReleaseSkill[inCamp + 2][i], nil, 1)
+                                    table.remove(RecordReleaseSkill[inCamp + 2], i)
+                                end
+
+                            end
+                            self:castPlayConditionSkills(inCamp, key)
+                        end
+                        )
+                        return true
+                    end 
+                end
+            end
+        end
+    end
+    return false
+end
+
+--条件触发的技能
+function BattleSkillLogic:castPlayConditionSkills(inCamp, inSkillIndex)
+    local skill = self._playConditionSkills[inCamp][inSkillIndex]
+    if skill then
+--        print("castPlayConditionSkills " .. skill.id)
+        local sysSkill = tab.playerSkillEffect[skill.id]
+        local _ran = nil
+        if inCamp == 1 then
+            _ran = random2
+        else
+            _ran = random
+        end
+        local caster = self:filterAutoCastSkillTarget(sysSkill, skill, inCamp, _ran)
+        if caster then
+            local option = skill.option
+            if caster.target == nil or caster.target.state == ETeamStateDIE then 
+                local targets = self["getSkillTarget".. sysSkill["iff" .. self._autoSkillAttrClass]](self, caster)
+                local tempTeam = self:getNearbySoldierWithTeams(caster, targets, nil, true)
+                caster.target = tempTeam  
+            end
+            if caster.target == nil or caster.target.state == ETeamStateDIE then 
+                self:stopPlayerSkill(caster, skill)
+                return
+            end
+            if caster.isFirst == nil then 
+                caster.isFirst = true
+            end
+            -- 首次执行时用偏移坐标
+            if not caster.isFirst then 
+                caster.x = caster.target.x
+                caster.y = caster.target.y
+            end
+            caster.isFirst = false
+            -- 只有高级ai时需要做
+            if self._autoSkillAttrClass == "X" then
+                -- 【战斗】战斗AI判定位置加振幅 若释放法术的范围＜60，则目标点选择位置+5，用以避免打到只剩两个人这样
+                local sysSkill = tab.playerSkillEffect[skill.id]
+                local rangetype1 = sysSkill["rangetype1"]
+                local range1 = sysSkill["range1"]
+                if option == 1 and rangetype1 == 1 and range1 ~= nil and range1 <= 65 then
+                    if range1 < 60 then
+                        caster.y = caster.y + 20
+                    else
+                        caster.y = caster.y + 5
+                    end
+                end
+            end
+            --条件技能和英雄技能不一样，因此不能存放在技能列表中，不然可能导致复盘和战斗数据不一致
+            self:castPlayerSkill(caster, skill, nil, nil, true) 
+        end
+    end
+end
+
+
+--援助的时候释放的技能
+function BattleSkillLogic:quickCastPlayerSpecialSkill(inCamp, inSkillIndex, beginPoint, endPoint)
+    local skill = self._playSpecialSkills[inCamp][inSkillIndex]
+    local sysSkill = tab.playerSkillEffect[skill.id]
+    local _ran = nil
+    if inCamp == 1 then
+        _ran = random2
+    else
+        _ran = random
+    end
+--    local caster = initSkillCaster(0, 0, inCamp, skill.id, skill.castCount)
+    local caster = self:filterAutoCastSkillTarget(sysSkill, skill, inCamp, _ran)
+    if caster == nil then
+        caster = initSkillCaster(0, 0, inCamp, skill.id, skill.castCount)
+        caster.x = beginPoint.x
+        caster.y = beginPoint.y
+        caster.castType = ECastType.QUICK
+        self:castPlayerSkill(caster, skill, endPoint, nil, true)  
+        return
+    end
+    local option = skill.option
+    if caster.target == nil or caster.target.state == ETeamStateDIE then 
+        local targets = self["getSkillTarget".. sysSkill["iff" .. self._autoSkillAttrClass]](self, caster)
+        local tempTeam = self:getNearbySoldierWithTeams(caster, targets, nil, true)
+        caster.target = tempTeam  
+    end
+    if caster.target == nil or caster.target.state == ETeamStateDIE then 
+        self:stopPlayerSkill(caster, skill)
+        return
+    end
+    if caster.isFirst == nil then 
+        caster.isFirst = true
+    end
+    -- 首次执行时用偏移坐标
+    if not caster.isFirst then 
+        caster.x = caster.target.x
+        caster.y = caster.target.y
+    end
+    caster.isFirst = false
+    -- 只有高级ai时需要做
+    if self._autoSkillAttrClass == "X" then
+        -- 【战斗】战斗AI判定位置加振幅 若释放法术的范围＜60，则目标点选择位置+5，用以避免打到只剩两个人这样
+        local sysSkill = tab.playerSkillEffect[skill.id]
+        local rangetype1 = sysSkill["rangetype1"]
+        local range1 = sysSkill["range1"]
+        if option == 1 and rangetype1 == 1 and range1 ~= nil and range1 <= 65 then
+            if range1 < 60 then
+                caster.y = caster.y + 20
+            else
+                caster.y = caster.y + 5
+            end
+        end
+    end
+    --援助技能和英雄技能不一样，因此不能存放在技能列表中，不然可能导致复盘和战斗数据不一致
+    self:castPlayerSkill(caster, skill, nil, nil, true) 
+end
+
 --[[
 --! @function quickCastPlayerSkill
 --! @desc 快速释放技能，忽略一切条件
@@ -2814,24 +3073,63 @@ function BattleSkillLogic:quickCastPlayerOpenSkill(inCamp, inSkillIndex, beginPo
     caster.y = beginPoint.y
     caster.castType = ECastType.QUICK
     local sysSkill = tab.playerSkillEffect[skill.id]
+    local formationFirst = sysSkill["formationFirst"]
     local posIdx = posIndex
     -- if self._battleInfo.mode == BattleUtils.BATTLE_TYPE_GodWar then
     --     posIdx = posIndexEx
     -- end
     if sysSkill["summon1"] or sysSkill["summon2"] then
         -- 有召唤物 找个有空的地方
-        local index
-        for i = 1, 16 do
-            index = posIdx[i]
-            if self._initTeamPos[inCamp][index] == nil then
-                self._initTeamPos[inCamp][index] = true
-                caster.x, caster.y = BC.getFormationScenePos(index, inCamp)
-                if self._battleInfo.mode == BattleUtils.BATTLE_TYPE_BOSS_SjLong then
-                    caster.x = caster.x + 100
-                elseif self._battleInfo.mode == BattleUtils.BATTLE_TYPE_BOSS_XnLong then
-                    caster.x = caster.x
+        local found = false
+        local index = 1
+        if formationFirst then
+            local row = 1
+            local checkIdx = {1, 2, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15}
+            for i = 1, 12 do
+                index = checkIdx[i]
+                if not self._initTeamPos[inCamp][index] then
+                    local region = {{1, 4}, {5, 8}, {9, 12}, {13, 16}}
+                    for k, v in ipairs(region) do
+                        if index >= v[1] and index < v[2] then
+                            for j = index + 1, v[2] do
+                                if self._initTeamPos[inCamp][j] then
+                                    self._initTeamPos[inCamp][index] = true
+                                    caster.x, caster.y = BC.getFormationScenePos(index, inCamp)
+                                    if self._battleInfo.mode == BattleUtils.BATTLE_TYPE_BOSS_SjLong then
+                                        caster.x = caster.x + 100
+                                    elseif self._battleInfo.mode == BattleUtils.BATTLE_TYPE_BOSS_XnLong then
+                                        caster.x = caster.x
+                                    end
+                                    found = true
+                                    break
+                                end
+                            end
+                        end
+                        if found then
+                            break
+                        end
+                    end
                 end
-                break
+
+                if found then
+                    break
+                end
+            end
+        end
+
+        if not found then
+            for i = 1, 16 do
+                index = posIdx[i]
+                if self._initTeamPos[inCamp][index] == nil then
+                    self._initTeamPos[inCamp][index] = true
+                    caster.x, caster.y = BC.getFormationScenePos(index, inCamp)
+                    if self._battleInfo.mode == BattleUtils.BATTLE_TYPE_BOSS_SjLong then
+                        caster.x = caster.x + 100
+                    elseif self._battleInfo.mode == BattleUtils.BATTLE_TYPE_BOSS_XnLong then
+                        caster.x = caster.x
+                    end
+                    break
+                end
             end
         end
     end
@@ -2945,6 +3243,15 @@ function BattleSkillLogic:useTotem(inCaster, inSysSkill, inSkill, inPoint, inTyp
             self:addTotemToPos(totemD, inSkill.level, inCaster, inPoint.x, inPoint.y, inRangePro, inForceDoubleEffect, yunBuff, inSkill.index, inSkill)
         end
     end
+
+    if inSysSkill["objectid2"] then
+        local totemD = tab.object[inSysSkill["objectid2"]]
+        if inType == 2 then
+            self:addTotemToSoldier(totemD, inSkill.level, inCaster, inPoint, inRangePro, inForceDoubleEffect, yunBuff, inSkill.index, inSkill)
+        else
+            self:addTotemToPos(totemD, inSkill.level, inCaster, inPoint.x, inPoint.y, inRangePro, inForceDoubleEffect, yunBuff, inSkill.index, inSkill)
+        end
+    end
 end
 
 
@@ -2979,10 +3286,10 @@ function BattleSkillLogic:countCharacters(inCaster, inTargets, inValid, inCondit
             -- valid = 1 该技能对单位有效
             -- print("inCondition==================", inCondition[k][1])
             if inValid == 1 and BC[operateFun..inCondition[k][1]] and 
-                BC[operateFun..inCondition[k][1]](logic, inCaster, v, inCondition[k][2]) then 
+                BC[operateFun..inCondition[k][1]](self, inCaster, v, inCondition[k][2]) then 
                 flag = 1
             elseif inValid == 0  then 
-                if BC[operateFun..inCondition[k][1]] and BC[operateFun..inCondition[k][1]](logic, inCaster, v, inCondition[k][2]) then 
+                if BC[operateFun..inCondition[k][1]] and BC[operateFun..inCondition[k][1]](self, inCaster, v, inCondition[k][2]) then 
                     flag = 2
                 elseif flag ~= 2 then 
                     flag = 1
@@ -3057,13 +3364,23 @@ end
 
 function BattleSkillLogic:getAITeamsByHp(targets, inCase)
     local tempTargets = {}
-    local pro 
-    for i,v in pairs(targets) do
-        pro = v.curHP / ((v.maxHP / v.number) * #v.aliveSoldier) * 100
-        if v.state ~= ETeamStateDIE and 
-            ((inCase == 1 and pro >= 70) or (inCase == 2 and pro <= 30)) then
-            table.insert(tempTargets, v)
+    local pro
+    local tempTarget = targets[1]
+    local berPro
+    local bIsCass = 1
+    if inCase == 2 then
+        bIsCass = -1
+    end
+    if tempTarget ~= nil then
+        berPro = tempTarget.curHP / ((tempTarget.maxHP / tempTarget.number) * #tempTarget.aliveSoldier) * 100 * bIsCass
+        for i,v in pairs(targets) do
+            pro = v.curHP / ((v.maxHP / v.number) * #v.aliveSoldier) * 100 * bIsCass
+            if v.state ~= ETeamStateDIE and pro > berPro then
+                berPro = pro
+                tempTarget = v
+            end
         end
+        table.insert(tempTargets, tempTarget)
     end
     return tempTargets
 end
@@ -3196,6 +3513,16 @@ function BattleSkillLogic:onTeamDie2()
     self:excludeSkillWithTarget(2)
 end
 
+-- 己方方阵复活
+function BattleSkillLogic:onTeamRevive1(teamId)
+    self:addRemoveSkillTarget(1, teamId)
+end
+
+-- 敌方方阵复活
+function BattleSkillLogic:onTeamRevive2(teamId)
+    self:addRemoveSkillTarget(2, teamId)
+end
+
 --[[
 --! @function excludeSkillWithTarget
 --! @desc 若设置兵团死亡或者没有上阵，则禁止使用技能
@@ -3205,6 +3532,7 @@ end
 function BattleSkillLogic:excludeSkillWithTarget(camp)
     for i= #self._playAutoSkills[camp], 1, -1 do
         local v = self._playAutoSkills[camp][i]
+        
         local skill = self._playSkills[camp][v.index]
         if skill["banlist" .. self._autoSkillAttrClass] ~= nil then
             local flag = -1
@@ -3215,10 +3543,42 @@ function BattleSkillLogic:excludeSkillWithTarget(camp)
                 end
             end
             if flag == -1 then
+                table.insert(self._playerRemoveSkill[camp], v) 
                 table.remove(self._playAutoSkills[camp], i)
             end
         end
     end
+end
+
+function BattleSkillLogic:addRemoveSkillTarget(camp, teamId)
+    for i= #self._playerRemoveSkill[camp], 1, -1 do
+        local var = self._playerRemoveSkill[camp][i]
+        if var then
+            local skill = self._playSkills[camp][var.index]
+            if skill and skill["banlist" .. self._autoSkillAttrClass] ~= nil then
+                local flag = -1
+                for k,v in pairs(skill["banlist" .. self._autoSkillAttrClass]) do
+                    if teamId == v then
+                        flag = i
+                        break
+                    end
+                end
+                if flag ~= -1 then
+                    table.insert(self._playAutoSkills[camp], var) 
+                    table.remove(self._playerRemoveSkill[camp], i)
+
+                    --添加之后必须更具权重重新排序
+                    local sortFunc = function(a, b) 
+                        if a.comboPriv > b.comboPriv then 
+                            return true
+                        end
+                    end
+                    table.sort(self._playAutoSkills[camp], sortFunc)
+                end
+            end
+        end
+    end
+    
 end
 
 function BattleSkillLogic:getSkillDesc(index)

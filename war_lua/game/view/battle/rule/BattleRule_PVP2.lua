@@ -80,8 +80,9 @@ function BattleScene:initBattleUIEx()
             self._autoBtn:loadTextureNormal("autoBtn_battleSelected.png", 1)
             self._autoBtn.lock:setVisible(true)
             self._autoBtn:setTouchEnabled(false)
+            self._skipBtn:setVisible(true)
         end
-    elseif self._battleInfo.mode == BattleUtils.BATTLE_TYPE_MF then
+    elseif self._battleInfo.mode == BattleUtils.BATTLE_TYPE_MF or self._battleInfo.mode == BattleUtils.BATTLE_TYPE_WoodPile_1 or self._battleInfo.mode == BattleUtils.BATTLE_TYPE_GuildFAM then
         self._skipBtn:setVisible(true)
     end
 

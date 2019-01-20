@@ -461,8 +461,36 @@ function TeamGradeNode:saveData(sysTeam)
         table.insert(tempEquips, tempEquip)
     end
 
-    local backData, backSpeed, atkSpeed = BattleUtils.getTeamBaseAttr(self._teamData, tempEquips, self._modelMgr:getModel("PokedexModel"):getScore())
-    
+    local backData, backSpeed, atkSpeed = BattleUtils.getTeamBaseAttr(self._teamData, tempEquips, self._modelMgr:getModel("PokedexModel"):getScore(), nil, nil, nil, nil, nil, self._modelMgr:getModel("BattleArrayModel"):getData(), self._modelMgr:getModel("ParagonModel"):getData())
+        
+    --特性技能 --常态显示部分 添加
+    local function calcCharacterSkillData(teamData)
+        local baseAttr = {}
+        for i=BattleUtils.ATTR_Atk,BattleUtils.ATTR_COUNT do
+            baseAttr[i]=0
+        end
+        local skillLevel = teamData.skill
+        if skillLevel == nil then
+            skillLevel = {teamData.sl1, teamData.sl2, teamData.sl3, teamData.sl4, teamData.sl5, teamData.sl6}
+        end
+        local teamid = teamData.teamid or teamData.teamId
+        local teamD = tab.team[teamid]
+        if teamD then 
+            for i,skill in ipairs(teamD.skill) do
+                local sl = skillLevel[i]
+                local cSkill = tab.skillCharacter[skill[2]]
+                if cSkill and sl and sl > 0 then
+                    if cSkill.type == 1 and cSkill.condition[1] == 0 and cSkill.conditionnum[1] == 100 then
+                        local attr = cSkill.attr[1][2] + cSkill.attr[1][3] * (sl-1)
+                        baseAttr[cSkill.attr[1][1]] = baseAttr[cSkill.attr[1][1]] + attr
+                    end
+                end
+            end 
+        end
+        return baseAttr
+    end
+    local characterSkillData = calcCharacterSkillData(self._teamData)
+
     -- 获取宝物属性
     local attr = self._teamModel:getTeamTreasure(self._teamData.volume)
     local treasureAttr = self._teamModel:getTeamTreasureAttrData(self._teamData.teamId)
@@ -471,9 +499,9 @@ function TeamGradeNode:saveData(sysTeam)
     local heroAttr = self._teamModel:getTeamHeroAttrByTeamId(self._teamData.teamId)
     -- dump(heroAttr)
     -- 基础数据
-    local backData1, backSpeed1, atkSpeed1 = BattleUtils.getTeamBaseAttr(self._teamData, tempEquips)
+    local backData1, backSpeed1, atkSpeed1 = BattleUtils.getTeamBaseAttr(self._teamData, tempEquips, nil, nil, nil, nil, nil, nil, self._modelMgr:getModel("BattleArrayModel"):getData(), self._modelMgr:getModel("ParagonModel"):getData())
 
-    local backData2, backSpeed2, atkSpeed2 = BattleUtils.getTeamBaseAttr(self._teamData, tempEquips)
+    local backData2, backSpeed2, atkSpeed2 = BattleUtils.getTeamBaseAttr(self._teamData, tempEquips, nil, nil, nil, nil, nil, nil, self._modelMgr:getModel("BattleArrayModel"):getData(), self._modelMgr:getModel("ParagonModel"):getData())
 
     local boostData = self:getTeamBoostData(self._teamData.tb, sysTeam)
 
@@ -483,7 +511,7 @@ function TeamGradeNode:saveData(sysTeam)
 
     local holySuitData = self:calcRuneSuitData(self._teamData.rune)
 
-
+    local skinData = self._modelMgr:getModel("TeamModel"):getTeamSkinAttr(self._teamData.teamId)
     -- boostData.atkAttr = 0
     -- boostData.hpAttr = 0
     -- boostData.lvStage = 0
@@ -497,7 +525,7 @@ function TeamGradeNode:saveData(sysTeam)
     -- dump(attr, "attr========", 10)
 
     for i=BattleUtils.ATTR_Atk, BattleUtils.ATTR_COUNT do
-        backData[i] = backData[i] + heroAttr[i] + holyData[i] + holyAddAttr[i]
+        backData[i] = backData[i] + heroAttr[i] + holyData[i] + holyAddAttr[i] + characterSkillData[i]
     end
 
     for i=BattleUtils.ATTR_Atk, BattleUtils.ATTR_COUNT do
@@ -525,6 +553,7 @@ function TeamGradeNode:saveData(sysTeam)
             self._tipattrs["atkteamboost"] = math.ceil(value2)
             self._tipattrs["atkhero"] = math.ceil(herovalue)
             self._tipattrs["atkholy"] = math.ceil(holyValue) + holyValue2
+            self._tipattrs["atkskin"] = math.ceil(skinData["atk"]) or 0
         elseif i == 2 then
             local value = BattleUtils.getTeamHpAttr(backData1, true)
             local value1 = BattleUtils.getTeamHpAttr(backData, true)
@@ -540,12 +569,12 @@ function TeamGradeNode:saveData(sysTeam)
             self._tipattrs["hpteamboost"] = math.ceil(value2)
             self._tipattrs["hphero"] = math.ceil(herovalue)
             self._tipattrs["hpholy"] = math.ceil(holyValue) + holyValue2
+            self._tipattrs["hpskin"] = math.ceil(skinData["hp"]) or 0
         end
     end
     for i=BattleUtils.ATTR_Atk, BattleUtils.ATTR_COUNT do
         backData[i] = backData[i] + treasureAttr[i]
     end
-    dump(backData,"jichushuxing2")
     -- 暂时只加2和5属性
     backData[2] = backData[2] + attr[2]
     backData[3] = backData[3] + attr[3]
@@ -584,8 +613,8 @@ function TeamGradeNode:saveData(sysTeam)
         if i == 1 then
             value = BattleUtils.getTeamAttackAttr(backData, true)
             local holyValue =  value *((holyData[64]*(100+0.3* holyData[64])/(100+holyData[64]))*0.01)
-            value = value + holyValue
-            self._tipattrs["atk"] = value
+            value = value + holyValue + math.ceil(skinData["atk"]) or 0
+            self._tipattrs["atk"] = value 
             value = TeamUtils.getNatureNums(value)
             addValue = sysTeam.atkadd[self._teamData.star]
             self._baseNature[i] = sysTeam.atkadd[self._teamData.star]
@@ -596,8 +625,8 @@ function TeamGradeNode:saveData(sysTeam)
         elseif i == 2 then
             value = BattleUtils.getTeamHpAttr(backData, true)
             local holyValue =  value *(( holyData[65]*(100+0.3* holyData[65])/(100+holyData[65]))*0.01)
-            value = value + holyValue
-            self._tipattrs["hp"] = value
+            value = value + holyValue + math.ceil(skinData["hp"]) or 0
+            self._tipattrs["hp"] = value 
             value = TeamUtils.getNatureNums(value)
             addValue = sysTeam.hpadd[self._teamData.star]
             self._baseNature[i] = sysTeam.hpadd[self._teamData.star]

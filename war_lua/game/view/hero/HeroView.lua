@@ -26,12 +26,27 @@ HeroView.kHighestZOrder = HeroView.kAboveNormalZOrder + 1
 
 HeroView.kAttributeStep = 60
 
+HeroView.HERO_RACE_TYPE = {
+    RACE_1 = 1, -- 城堡
+    RACE_2 = 2, -- 壁垒
+    RACE_3 = 4, -- 据点
+    RACE_4 = 3, -- 墓园
+    RACE_5 = 5, -- 地狱 
+    RACE_6 = 6, -- 塔楼 
+    RACE_7 = 0, -- 全部
+    RACE_8 = 9, -- 元素 
+    RACE_9 = 7, -- 地下城
+    RACE_10 = 8, -- 要塞
+    RACE_11 = 10, -- 海盗
+}
+
 function HeroView:ctor(params)
     HeroView.super.ctor(self)
     self._heroModel = self._modelMgr:getModel("HeroModel")
     self._itemModel = self._modelMgr:getModel("ItemModel")
     self._formationModel = self._modelMgr:getModel("FormationModel")
     self.fixMaxWidth = 1136
+    self._teamType = 7
 end
 
 function HeroView:getAsyncRes()
@@ -219,19 +234,20 @@ function HeroView:onInit()
     self._nextHero._image = nil
     self._nextHero._mp = nil
     self._heroSelect = HeroSelectView.new({container = self, notifyTouchEvent = handler(self, self.notifyTouchEvent),angleSpace = 15.0, heroData = {data = self._heroes._data}})
-    self._bg:addChild(self._heroSelect, 100)
+    self._layer:addChild(self._heroSelect, 9)
 
     self._size = {width = MAX_SCREEN_WIDTH, height = MAX_SCREEN_HEIGHT}
     if ADOPT_IPHONEX then
         self._size = {width = 1136, height = MAX_SCREEN_HEIGHT}
     end
 
-    self._heroSelectMask = ccui.ImageView:create("select_mask_hero.png", 1)
+    -- self._heroSelectMask = ccui.ImageView:create("select_mask_hero.png", 1)
+    self._heroSelectMask = self:getUI("heroSelectMask")
     self._heroSelectMask:setAnchorPoint(0, 0.5)
     self._heroSelectMask:setTouchEnabled(true)
     self._heroSelectMask:setSwallowTouches(true)
-    self._heroSelectMask:setPosition(ADOPT_IPHONEX and 125 or 0, self._size.height / 2)
-    self:addChild(self._heroSelectMask, 200)
+    -- self._heroSelectMask:setPosition(ADOPT_IPHONEX and 125 or 0, self._size.height / 2)
+    -- self:addChild(self._heroSelectMask, 200)
 
 
     self._image_hero_specialty_touch.tipOffset = cc.p(-265, 0)
@@ -266,8 +282,9 @@ function HeroView:onInit()
     self:registerClickEvent(self._topAttributeInfo, function(sender)
         self:onCheckAttInfoButtonClicked()
     end)
-
-
+    --英雄选中Node
+    self:initHeroSelectNode()
+    self:updateSelectNode()
 
     --[[
     self:registerClickEvent(self._btn_load, function(sender)
@@ -282,6 +299,45 @@ function HeroView:onInit()
     end)
     ]]
     self:heroStarEnter()
+end
+
+
+function HeroView:initHeroSelectNode()
+    local selectBtn = self:getUI("bg.layer.hero_description_bg.selectBtn")
+    local btnBg = self:getUI("bg.layer.hero_description_bg.btnBg")
+    btnBg:setAnchorPoint(0, 0)
+    btnBg:setVisible(false)
+    -- btnBg:setPosition(cc.p(10, 80))
+    -- btnBg:setOpacity(150)
+    -- btnBg:setScale(0.6)
+    selectBtn:setScaleAnim(true)
+    local scale = cc.ScaleTo:create(0.1, 0.6)
+    local move = cc.MoveTo:create(0.1, cc.p(10, 80))
+    local spawn = cc.Spawn:create(scale, move, cc.FadeTo:create(0.1, 0))
+    local seq = cc.Sequence:create(spawn)
+    btnBg:runAction(seq)
+
+    self:registerClickEvent(selectBtn, function()
+        local tflag = not btnBg:isVisible()
+        local seq
+        if tflag == true then
+            local scale = cc.ScaleTo:create(0.1, 1)
+            local move = cc.MoveTo:create(0.1, cc.p(10, 138))
+            local spawn = cc.Spawn:create(scale, move, cc.FadeTo:create(0.1, 255))
+            seq = cc.Sequence:create(cc.CallFunc:create(function()
+                btnBg:setVisible(tflag)
+            end), spawn)
+            btnBg:runAction(seq)
+        else
+            local scale = cc.ScaleTo:create(0.1, 0.6)
+            local move = cc.MoveTo:create(0.1, cc.p(10, 80))
+            local spawn = cc.Spawn:create(scale, move, cc.FadeTo:create(0.1, 0))
+            seq = cc.Sequence:create(spawn, cc.CallFunc:create(function()
+                btnBg:setVisible(tflag)
+            end))
+            btnBg:runAction(seq)
+        end
+    end)
 end
 
 --英雄星图入口
@@ -343,7 +399,7 @@ function HeroView:onTop()
         end
     end
     self:updateUI()
-
+    self:updateSelectNode()
     if self._heroBioView then
         --战后更新传记动画
         if self._heroBioView.bioFightAfterAnim then
@@ -412,82 +468,7 @@ end
 function HeroView:initHeroData()
     local heroesData = {}
     local heroTableData = clone(tab.hero)
-    local currentLoadedHeroId = self._formationModel:getFormationDataByType(self._formationModel.kFormationTypeCommon).heroId
-    local tn1 = {}
-    local t0 = {}
-    local t1 = {}
-    local t2 = {}
-
-    local isHeroLoaded = function(heroId)
-        return tonumber(heroId) == tonumber(currentLoadedHeroId)
-    end
-
-    for k0, v0 in pairs(heroTableData) do
-        repeat
-            local isLoaded = isHeroLoaded(tonumber(k0))
-            local isCanUnlock = self:isHeroCanUnlock(tonumber(k0))
-            local isHaveFrag = self:isHeroHaveFrag(tonumber(k0))
-            local found, data = self:findHeroData(tonumber(k0))
-            if 0 == v0.visible and not found and not isHaveFrag then break end
-            v0.unlock = false
-            v0.canUnlock = false
-            if not found and isCanUnlock then
-                v0.canUnlock = true
-                table.insert(t0, v0)
-            elseif found then
-                for k1, v1 in pairs(data) do
-                    v0[tostring(k1)] = v1
-                    v0.unlock = true
-                end
-                if isLoaded then
-                    table.insert(tn1, v0)
-                else
-                    table.insert(t1, v0)
-                end
-            else
-                table.insert(t2, v0)
-            end
-        until true
-    end
-
-    table.sort(tn1, function(a, b)
-        return a.obseq < b.obseq
-    end)
-
-    table.sort(t0, function(a, b)
-        return a.obseq < b.obseq
-    end)
-
-    table.sort(t1, function(a, b)
-        return a.obseq < b.obseq
-    end)
-
-    table.sort(t2, function(a, b)
-        return a.obseq < b.obseq
-    end)
-
-    local index = 0
-
-    for _, v in ipairs(tn1) do
-        heroesData[index] = v
-        index = index + 1
-    end
-
-    for _, v in ipairs(t0) do
-        heroesData[index] = v
-        index = index + 1
-    end
-
-    for _, v in ipairs(t1) do
-        heroesData[index] = v
-        index = index + 1
-    end
-
-    for _, v in ipairs(t2) do
-        heroesData[index] = v
-        index = index + 1
-    end
-
+    heroesData = self:orderHeroData(heroTableData) or {}
     return heroesData
 end
 
@@ -655,6 +636,179 @@ function HeroView:updateUI()
     ]]
 
 end
+
+function HeroView:getHeroRaceType(typeId)
+    -- self._heroes._data
+    -- dump(self._heroes._data)
+    local raceTable = {}
+    if tonumber(typeId) == 0 then
+        return self._heroes._data
+    end
+    for _ , v in pairs(self._heroes._data) do
+        if tonumber(typeId) == tonumber(v.masterytype) then
+            table.insert(raceTable,v)
+        end
+    end
+    return raceTable
+end
+
+function HeroView:updateSelectNode()
+    self:getHeroRaceType()
+    local btnBg = self:getUI("bg.layer.hero_description_bg.btnBg")
+    for i=1,11 do
+        local raceBtn = btnBg:getChildByFullName("raceBtn"..i)
+        local selBtn = btnBg:getChildByFullName("raceBtn"..i..".selBtn")
+        local txt = btnBg:getChildByFullName("raceBtn" .. i .. ".txt")
+
+        selBtn:setVisible(false)
+        raceBtn:setScaleAnim(true)
+        local raceTable = self:getHeroRaceType(HeroView.HERO_RACE_TYPE["RACE_" .. i])
+        if table.nums(raceTable) >= 1 then
+            raceBtn:setSaturation(0)
+            txt:setColor(cc.c3b(255,255,255))
+            self:registerClickEvent(raceBtn, function()
+                if self._teamType == i then
+                    return
+                end
+                local _type = HeroView.HERO_RACE_TYPE["RACE_" .. i]
+                -- self._firstFight = true
+                self:resetHeroSelectView(_type)
+                selBtn:setVisible(true)
+                local tempBtn = btnBg:getChildByFullName("raceBtn" .. self._teamType .. ".selBtn")
+                tempBtn:setVisible(false)
+                self._teamType = i 
+                -- local btnBg = self:getUI("btnBg")
+                btnBg:setVisible(false)
+            end)
+        else
+            txt:setColor(cc.c3b(60,60,60))
+            raceBtn:setSaturation(-100)
+            self:registerClickEvent(raceBtn, function()
+                self._viewMgr:showTip("暂无该类型英雄")
+            end)
+        end
+    end
+end
+
+function HeroView:resetHeroSelectView(typeId)
+    if tonumber(typeId) == 0 then
+        self._heroes._data = self:initHeroData()
+    else
+        self._heroes._data = self:getResetHeroData(typeId)
+    end
+    if self._heroSelect then
+        self._heroSelect:removeFromParent()
+        self._heroSelect = nil
+    end
+    self._heroSelect = HeroSelectView.new({container = self, notifyTouchEvent = handler(self, self.notifyTouchEvent),angleSpace = 15.0, heroData = {data = self._heroes._data}})
+    self._layer:addChild(self._heroSelect, 9)
+end
+
+function HeroView:orderHeroData(heroTableData)
+    local currentLoadedHeroId = self._formationModel:getFormationDataByType(self._formationModel.kFormationTypeCommon).heroId
+    local isHeroLoaded = function(heroId)
+        return tonumber(heroId) == tonumber(currentLoadedHeroId)
+    end
+    local tn1 = {}
+    local t0 = {}
+    local t1 = {}
+    local t2 = {}
+    local heroesData = {}
+    for k0, v0 in pairs(heroTableData) do
+        repeat
+            local isLoaded = isHeroLoaded(tonumber(k0))
+            local isCanUnlock = self:isHeroCanUnlock(tonumber(k0))
+            local isHaveFrag = self:isHeroHaveFrag(tonumber(k0))
+            local found, data = self:findHeroData(tonumber(k0))
+            if 0 == v0.visible and not found and not isHaveFrag then break end
+            v0.unlock = false
+            v0.canUnlock = false
+            if not found and isCanUnlock then
+                v0.canUnlock = true
+                table.insert(t0, v0)
+            elseif found then
+                for k1, v1 in pairs(data) do
+                    v0[tostring(k1)] = v1
+                    v0.unlock = true
+                end
+                if isLoaded then
+                    table.insert(tn1, v0)
+                else
+                    table.insert(t1, v0)
+                end
+            else
+                table.insert(t2, v0)
+            end
+        until true
+    end
+
+    table.sort(tn1, function(a, b)
+        return a.obseq < b.obseq
+    end)
+
+    table.sort(t0, function(a, b)
+        return a.obseq < b.obseq
+    end)
+
+    table.sort(t1, function(a, b)
+        return a.obseq < b.obseq
+    end)
+
+    table.sort(t2, function(a, b)
+        return a.obseq < b.obseq
+    end)
+
+    local index = 0
+
+    for _, v in ipairs(tn1) do
+        heroesData[index] = v
+        index = index + 1
+    end
+
+    for _, v in ipairs(t0) do
+        heroesData[index] = v
+        index = index + 1
+    end
+
+    for _, v in ipairs(t1) do
+        heroesData[index] = v
+        index = index + 1
+    end
+
+    for _, v in ipairs(t2) do
+        heroesData[index] = v
+        index = index + 1
+    end
+    return heroesData
+end
+
+function HeroView:getResetHeroData(typeId)
+    local heroesData = {}
+    local heroTableData = clone(tab.hero)
+    
+    local selectTable = {}   --选中阵营数据
+    local otherTable = {}    --其它阵营数据 
+    for k , v in pairs(heroTableData) do
+        if tonumber(typeId) == tonumber(v.masterytype) then
+            selectTable[k] = v
+        else
+            otherTable[k] = v
+        end
+    end
+    local orderSelectTable = self:orderHeroData(selectTable)
+    local orderOtherTable = self:orderHeroData(otherTable)
+    local index = 0
+    for _ , v in pairs(orderSelectTable) do
+        heroesData[index] = v
+        index = index + 1
+    end
+    for _ , v in pairs(orderOtherTable) do
+        heroesData[index] = v
+        index = index + 1
+    end
+    return heroesData
+end
+
 
 function HeroView:notifyTouchEvent(event)
     --[[
@@ -945,9 +1099,16 @@ function HeroView:updateSlot( )
             if isReplaced then
                 skillId = skillReplacedId
             end
+            local skillBBData = tab:SkillBookBase(skillId)
+            local skillBBType = skillBBData.skillType or 1
+            local tipType = nil
+            if skillBBType == 2 then
+                local heromasteryData = tab:HeroMastery(skillId)
+                tipType = 6 -- 英雄被动
+            end
             local skillData = tab:PlayerSkillEffect(skillId) or tab:HeroMastery(skillId)
             self:registerTouchEvent(iconBg, function(x, y)
-                self:startClock(iconBg, clone(self._heroes._currentSelectedHero), 2, skillData.id, skillTemp,skillData.type)
+                self:startClock(iconBg, clone(self._heroes._currentSelectedHero), 2, skillData.id, skillTemp,tipType)
             end,function(x, y) end, function(x, y) self:endClock() end, function(x, y) self:endClock() end)
             if not icon then
                 icon = ccui.ImageView:create(IconUtils.iconPath .. (skillData.art or skillData.icon) .. ".png", 1)

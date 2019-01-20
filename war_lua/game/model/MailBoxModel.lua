@@ -35,6 +35,8 @@ function MailBoxModel:ctor()
     for i=0,23 do
         self:registerTimer(i, 0, 30, specialize(self.getServerData, self))
     end
+
+    self:registerTimer(11, 31, GRandom(0, 5), specialize(self.getServerData, self))   --by wangyan
     self:registerTimer(5, 0, 1, specialize(self.updateView, self))
 end
 
@@ -270,5 +272,23 @@ function MailBoxModel:haveNewMail()
     return mailNewNum
     -- return flag
 end 
+
+function MailBoxModel:deleteReadedMail()
+    local readNum = 0
+    for i=#self._data, 1, -1 do
+        local curData = self._data[i]
+        if table.nums(curData.att) ~= 0 then
+            if curData.rec == 1 then
+                readNum = readNum + 1
+            end
+        else
+            if curData.rea == 1 then
+                readNum = readNum + 1
+            end
+        end
+    end
+
+    return readNum
+end
 
 return MailBoxModel

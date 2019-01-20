@@ -2492,11 +2492,17 @@ end
 
 function CityBattleModel:getRealNum(sec)
     sec = tonumber(sec)
-    local num = 0
+        local num = 0
     if sec < 5001 then
         num = sec % 1000
-    elseif (sec >= 5001 and sec < 5501) or (sec >= 6001 and sec < 6501) then
+    elseif (sec >= 5001 and sec < 5026) or (sec >= 6001 and sec < 6026) then
         num = (sec % 1000)*2 - 1
+    elseif (sec >= 5026 and sec < 5501) or (sec >= 6026 and sec < 6501) then   --5025  6025 以后不区分单双号服务器
+        local temp = 6025
+        if sec < 6000 then
+            temp = 5025
+        end
+        num = sec - temp + 50
     elseif (sec >= 5501 and sec < 6000) or (sec >= 6501 and sec < 7000) then
         num = (sec % 100) * 2
     else

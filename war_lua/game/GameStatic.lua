@@ -11,7 +11,7 @@ local globalAddress =
 	-- 4. 性能测试服
 	"http://117.121.26.143:8092/index.php?mod=global&channel=direct",
 
-	"http://172.16.42.102:8003/index.php?mod=global&channel=direct",
+	"http://10.2.145.101:8003/index.php?mod=global&channel=direct",
 }
 GameStatic = { 
 	version             = "1.0.216",
@@ -45,6 +45,8 @@ GameStatic = {
 	showLuaError        = OS_IS_WINDOWS or OS_IS_IPHONE_SIMULATOR,
 	showDEBUGInfo		= false,
 	showLockDebug 		= false,
+    --开启选择升级序列UI
+    showWalleUpdate    = false,
 
 	-- 关闭游戏中所有日志
 	closeLog			= not (OS_IS_WINDOWS or OS_IS_IPHONE_SIMULATOR),
@@ -70,6 +72,9 @@ GameStatic = {
 
     -- 设备引导开关
     deviceGuideOpen     = true,
+
+    --pc活动使用activityOpen_dev表开关
+    is_activityOpenDev = false,
 
     -- 设置
     setting_PowerSaving = false,
@@ -285,9 +290,9 @@ GameStatic = {
     huaxiaBankUrl = "http://www.ylxqgo.com/Luckdraw/tulong.html",
 
     -- 腾讯游戏许可及服务协议Url
-    contractUrl = "https://game.qq.com/contract.shtml",
+    contractUrl = "http://game.qq.com/contract.shtml",
     -- 隐私政策Url
-    privacyUrl = "https://www.tencent.com/en-us/zc/privacypolicy.shtml",
+    privacyUrl = "https://privacy.qq.com/",
     -- 服务条款Url
     serviceUrl = "https://www.tencent.com/en-us/zc/termsofservice.shtml",
 
@@ -323,6 +328,14 @@ GameStatic = {
     AD_wxGame_url                       = "https://game.weixin.qq.com/cgi-bin/h5/static/acts/appstore97.html",
     --广告 心悦运营圈
     AD_xinyueClub_url                   = "https://apps.game.qq.com/xyapp/h5/jump/app_download",
+
+    --主播活动
+    activityZhuboUrl                    = "http://m.egame.qq.com/live?anchorid=384758517&_wv=16777217&_pggwvx=11&_wvx=11&_wvxBclr=0xFFFFFF&jumpegame=1&from=groupmessage&isappinstalled=0",
+
+    --注册送礼
+    AD_zheceAward_url                   = "https://ylxqgo.com/201807DHYHYXWD/index.html",
+    --英雄助力抽电视
+    AD_tvLottery_url                    = "https://wqs.jd.com/jump/middle_new.shtml?turl=https%3A%2F%2Fwq.jd.com%2Flink%2Fjump%3FstrLinkId%3DxmpgF6bje",
 
     -- 苹果审核
     appleExamine = false,
@@ -365,7 +378,7 @@ GameStatic = {
     -- 中秋节
     mainViewJieRi2 = false,
     -- 圣诞节
-    mainViewJieRi3 = false,
+    mainViewJieRi3 = true,
     -- 主程特殊版本
     mainViewSpecialVer = 4,
 
@@ -382,4 +395,15 @@ GameStatic = {
     diantai_url3_param4="7f7328f8d47b83fd628d1feefbb5cd05",
 
     is_show_realName = true,
+    showGrowthWay = true,
+    is_show_acWorldCup = true,         --世界杯竞猜活动
+    is_show_signShop = true,           --签到商店
+	is_open_crossGodWar = true,			--是否开启跨服诸神
+    is_show_eleGift = true,             --元素馈赠活动开关
+    is_show_arrowBoss = true,
+    is_show_limitPray = true,           --限时祈愿
+    is_show_chatFSer = true,            --全服聊天
+    is_show_treasureMerchant = true,    --神秘商人 宝物
+    is_show_gloryArena = true,          --荣耀竞技场
+    is_show_worldBoss = true,           --世界boss
 }

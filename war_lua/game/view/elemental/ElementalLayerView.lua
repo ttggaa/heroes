@@ -69,7 +69,7 @@ function ElementalLayerView:initOrder(result)
     self._orderList[1]:setString("暂无数据")
     self._orderList[2]:setString("暂无数据")
     self._orderList[3]:setString("暂无数据")
-    if result == {} or result == nil then return end 
+    if result == nil or not next(result) then return end 
     if result["rankData"] then
         for k , v in pairs(result["rankData"]) do
             self._orderList[v["rank"]]:setString(v["name"])

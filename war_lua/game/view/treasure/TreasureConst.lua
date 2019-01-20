@@ -38,4 +38,11 @@ TreasureConst.comMcs = {
     -- +2 新增宝物 寒冰之剑
     [43] = "hanbingzhijian_treasurehanbingzhijian",
 
+    [44] = "morizhiren_morizhiren",
+
+    [46] = "mofamaozi_mofamaozi",
+    
+    [45] = "jinmoqiu_jinmoqiu",
+
+
 }

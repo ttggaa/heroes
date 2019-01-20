@@ -35,6 +35,7 @@ function MovieClipAnim:ctor(parentNode, filename, callback, changeColor, maxW, m
     self._cacheAllMotion = cacheAllMotion
     self._callback = callback
     self._changeColor = changeColor
+    self._opaction =  255
     if mcMgr:isResLoaded(filename) then
     	self:initMovieClip()
     else
@@ -320,6 +321,7 @@ function MovieClipAnim:changeMotion(motion, tick, callback, noloop, inv, startFr
 			self._node:addChild(self._mc)
             self._mc:play()
             self._mc:gotoAndStop(1)
+            self._mc:setOpacity(self._opaction)
 		end
 	end
     if tick == nil then
@@ -357,7 +359,16 @@ end
 
 function MovieClipAnim:setOpacity(o)
     if self._node then
+--        self._opaction = o
         self._node:setOpacity(o)
+    end
+end
+
+--作为buff的隐藏效果的添加，和上面的区分开
+function MovieClipAnim:lSetOpacity(o)
+    if self._mc then
+        self._opaction = o
+        self._mc:setOpacity(o)
     end
 end
 

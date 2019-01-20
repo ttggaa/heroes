@@ -184,7 +184,10 @@ function GuildMapAQView:checkAnswer(result)
                     	if self._callback then
                     		self._callback()
                     	end
-                    	self:close()
+
+                    	if self.close then
+                    		self:close()
+                    	end
                     end})
 			end)
 		))

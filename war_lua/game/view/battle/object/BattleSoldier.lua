@@ -115,8 +115,10 @@ function BattleSoldier:ctor(team, x, y)
     self.beDamageType = 0
     -- 上一次攻击miss
     self.lastMiss = false
-    
+    --免疫图腾
     self.totemImmune = {}
+    -- 免疫buff种类编号 更具buff的时间来控制
+    self.buffimmuneBuff = {}
     -- 免疫限制
     self.immuneForbidMove = false
     self.immuneForbidAttack = false
@@ -157,6 +159,9 @@ function BattleSoldier:ctor(team, x, y)
     -- 饱和度
     self.saturation = 0
 
+    -- 记录攻击的次数
+    self._nAttackCount = 0
+
     -- 伤害治疗互换
     self.dmghealrvt = false
     self.dmgrvt1 = false    -- 法术伤害
@@ -164,6 +169,14 @@ function BattleSoldier:ctor(team, x, y)
     self.healrvt1 = false   -- 法术治疗
     self.healrvt2 = false   -- 兵团治疗
 
+    self._isAntiInjury = false --是否禁止 吸血/反弹 效果
+
+    --buff控制 debuff的持续时间
+    self._reduceBuffTime = {}
+
+    --模型隐藏的次数
+    -- self._isVisibleCount = 0
+    self._nOpactiom = 255
     self:initSprite(x, y)
     self:setPos(x, y)
 end
@@ -182,6 +195,10 @@ function BattleSoldier:initSprite(x, y)
     local dir = self.direct
     self.direct = nil
     self:setDirect(dir)
+    --出生有出生动画，因此开始隐藏模型
+--    if not BATTLE_PROC and not BC.jump and self.team.playBornAnim then
+--        objLayer:setVisible(self.ID, false)
+--    end
 end
 
 -- 更换资源图
@@ -231,6 +248,7 @@ function BattleSoldier:clear()
     self._attacker = nil
     self.caster = nil
     self.hitPos = nil
+    self.buffimmuneBuff = nil
     super.clear(self)
 end
 
@@ -242,6 +260,7 @@ local EMotionMOVE = EMotion.MOVE
 local EMotionBORN = EMotion.BORN
 local EMotionIDLE = EMotion.IDLE
 local EMotionDIE = EMotion.DIE
+local EMotionINIT = EMotion.INIT
 if BATTLE_PROC then
 function BattleSoldier:changeMotion(motion, inv, callback, idleAfterAttack) 
     self.motion = motion
@@ -328,6 +347,13 @@ function BattleSoldier:setVisible(visible)
     objLayer:setVisible(self.ID, visible)
 end
 
+function BattleSoldier:lSetOpacity(nValue)
+    if self._nOpactiom ~= nValue then
+        self._nOpactiom = nValue
+        objLayer:lSetOpacity(self.ID, nValue)
+    end
+end
+
 function BattleSoldier:setShadowVisible(visible)
     objLayer:setShadowVisible(self.ID, visible)
 end
@@ -339,7 +365,7 @@ end
 function BattleSoldier:setCanCaught(isCanCaught)
     self.team.canTaunt = isCanCaught
     if not isCanCaught then
-        delayCall(1500, self, function ()
+        delayCall(1.5, self, function ()
             self.team.canTaunt = true
         end)
     end
@@ -469,6 +495,11 @@ function BattleSoldier:setTargetS(target)
                 local x1, y1 = self.x, self.y
                 local x2, y2 = tarTeam.x, tarTeam.y
                 local cx = (x1 + x2) * 0.5
+                
+                if not team.walk then
+                    --大恶魔特殊处理，因为位移比较大，所以，这里就直接跑到敌方位置，而不是两者中间
+                    cx = x2
+                end
                 local cy = y2
                 if x1 > x2 + 0.00000001 then
                     cx = cx + (self.radius + target.radius) * 0.5
@@ -577,7 +608,13 @@ function BattleSoldier:invokeSkill(skillkind, attacker, param, isForce)
                 if self:checkSkill(skillkind, skillgroup[i], attacker, param) then return true end
             else
                 -- 考虑到一帧释放多个技能
-                self:checkSkill(skillkind, skillgroup[i], attacker, param)
+                if skillkind == 22 or skillkind == 23 then
+                    if param and type(param) == "number" and param ~= 0 then
+                        self:checkSkill(skillkind, skillgroup[i], attacker, param)
+                    end
+                else
+                    self:checkSkill(skillkind, skillgroup[i], attacker, param)
+                end
             end 
         end
     end
@@ -588,8 +625,11 @@ local BattleSoldier_invokeSkill = BattleSoldier.invokeSkill
 
 function BattleSoldier:setDie(dieKind)
     if self.die then return end
+    self._nAttackCount = 0
     self.die = true
     local team = self.team
+    local hero = logic:getHero(self.camp)
+    if hero then hero.lastDieId = self.team.ID end
     -- 死
     -- 自己方阵死亡触发技能, 当自己是最后一个活着的单位时, 触发
     if not self.reviveHPPro and #team.aliveSoldier == 1 then
@@ -616,23 +656,51 @@ function BattleSoldier:setDie(dieKind)
 
     local camp = team.camp
     if self.die and self.reviveHPPro then
-        local hpPro = self.reviveHPPro
-        self.reviveHPPro = nil
-        team.reviveing = true
-        logic:onReviveBegin(camp)
-        delayCall(1, self, function ()
-            self:changeMotion(EMotionCAST3, nil, nil, false)
-            delayCall(5, self, function ()
-                self:changeMotion(EMotionBORN)
+        -- if (not self.banfuhuo or self.banfuhuo <= 0 or not logic:getHero(self.camp).lastDieId or logic:getHero(self.camp).lastDieId ~= self.team.ID) then
+            local hpPro = self.reviveHPPro
+            self.reviveHPPro = nil
+            team.reviveing = true
+            logic:onReviveBegin(camp)
+            if team.walk then
+                --凤凰的复活逻辑
                 delayCall(1, self, function ()
-                    self:setRevive(false, hpPro)
-                    team.reviveing = nil
-                    logic:onReviveEnd(camp, self)
-                    if self.skillTab[41] then BattleSoldier_invokeSkill(self, 41) end
-                end)           
-            end)
-            
-        end)
+                    self:changeMotion(EMotionCAST3, nil, nil, false)
+                    delayCall(5, self, function ()
+                        self:changeMotion(EMotionBORN)
+                        delayCall(1, self, function ()
+                            self:setRevive(false, hpPro)
+                            team.reviveing = nil
+                            logic:onReviveEnd(camp, self)
+                            if self.skillTab[41] then BattleSoldier_invokeSkill(self, 41) end
+                        end)           
+                    end)
+                
+                end)
+            else
+                --大恶魔的复活逻辑
+                delayCall(1.3, self, function ()
+                    self:changeMotion(EMotionINIT, nil, nil, false)
+                    delayCall(1.4, self, function ()
+                        self:changeMotion(EMotionBORN)
+                        local pos = 1
+                        if team.info and team.info.pos then
+                            pos = team.info.pos
+                        end 
+                        local _x, _y = BC.getFormationScenePos(pos, camp)
+                        self:setPos(_x, _y)
+                        delayCall(3.3, self, function ()
+                            self:setRevive(false, hpPro)
+                            team.reviveing = nil
+                            logic:onReviveEnd(camp, self)
+                            if self.skillTab[41] then BattleSoldier_invokeSkill(self, 41) end
+                        end)           
+                    end)
+                
+                end)
+            end
+        -- elseif self.banfuhuo then
+        --     self.banfuhuo = self.banfuhuo-1
+        -- end
     end
 
     -- 死亡回调
@@ -648,7 +716,14 @@ function BattleSoldier:setDie(dieKind)
 end
 
 function BattleSoldier:setRevive(noAnim, hppro)
-    if not self.die then return end
+    if not self.die then
+        -- or ((self.banfuhuo and self.banfuhuo > 0) and (not logic:getHero(self.camp).lastDieId or logic:getHero(self.camp).lastDieId == self.team.ID))then 
+        -- if self.banfuhuo then
+        --     self.banfuhuo = self.banfuhuo - 1
+        -- end
+        return 
+    end
+    self._nAttackCount = 0
     self.die = false
     -- 复活
     self:onRevive()
@@ -775,13 +850,20 @@ function BattleSoldier:updateSoldier(Mspeed)
                     end
                 else
                     -- 大体型单位
-
+                    
                     -- 如果对方是近战, 并且目标是我
                     -- 为了解决 双方都没有fightPtX, 而导致的追着打的死循环问题
                     if tarTeam.isMelee and fightPtX == nil and target.targetS == self and target.fightPtX == nil then
                         if self._attackOffsetX and tarTeam.volume == 5 then
-                            self.fightPtX = (x1 + x2 + self._attackOffsetX) * 0.5
-                            self.fightPtY = (y1 + y2 + self._attackOffsetY) * 0.5
+                            if team.walk then
+                                self.fightPtX = (x1 + x2 + self._attackOffsetX) * 0.5
+                                self.fightPtY = (y1 + y2 + self._attackOffsetY) * 0.5
+                            else
+                                --大恶魔特殊处理，因为位移比较大，所以，这里就直接跑到敌方位置，而不是两者中间
+                                self.fightPtX = x2 + self._attackOffsetX--(x1 + x2 + self._attackOffsetX) * 0.5
+                                self.fightPtY = y2 + self._attackOffsetY--(y1 + y2 + self._attackOffsetY) * 0.5
+                            end
+
                             move = true
                             _moveX = fx
                             _moveY = fy
@@ -898,6 +980,11 @@ function BattleSoldier:attack(target)
     -- 如果目标是某种兵种
     if skillTab[26] then BattleSoldier_invokeSkill(self, 26, nil, target) end
 
+    -- 如果目标血量低于N%
+    if skillTab[50] then BattleSoldier_invokeSkill(self, 50, nil, target) end
+
+    self._nAttackCount = self._nAttackCount + 1
+
     -- 成功释放替换普攻, 如果释放失败, 资格保留
     if self._nextSkill then
         if skillTab[1] and BattleSoldier_invokeSkill(self, 1) then 
@@ -905,7 +992,6 @@ function BattleSoldier:attack(target)
             return 
         end
     end
-
     -- 技能替换普攻
     local isBuilding = tarTeam.building
     if skillTab[8] and BattleSoldier_invokeSkill(self, 8) then
@@ -915,8 +1001,22 @@ function BattleSoldier:attack(target)
                 local aeD = tab.skillAttackEffect[ae]
                 if aeD then
                     local buffid = aeD["buff"]
-                    if buffid then
-                        target:addBuff(initSoldierBuff(buffid, 1, updateCaster(self, logic), target))
+                    local nPro = aeD["buffpro"] or 100
+                    if buffid and nPro then
+                        if random(100) <= nPro then
+                            target:addBuff(initSoldierBuff(buffid, 1, updateCaster(self, logic), target)) 
+                        end
+                    end
+                end
+            end
+
+            -- 攻击附加
+            if skillTab[34] then 
+                BattleSoldier_invokeSkill(self, 34) 
+                if skillTab[38] then 
+                    BattleSoldier_invokeSkill(self, 38) 
+                    if skillTab[39] then 
+                        BattleSoldier_invokeSkill(self, 39) 
                     end
                 end
             end
@@ -945,8 +1045,11 @@ function BattleSoldier:attack(target)
                     local aeD = tab.skillAttackEffect[ae]
                     if aeD then
                         local buffid = aeD["buff"]
-                        if buffid then
-                            target:addBuff(initSoldierBuff(buffid, 1, updateCaster(self, logic), target))
+                        local nPro = aeD["buffpro"] or 100
+                        if buffid and nPro then
+                            if random(100) <= nPro then
+                                target:addBuff(initSoldierBuff(buffid, 1, updateCaster(self, logic), target)) 
+                            end
                         end
                     end
                 end
@@ -993,12 +1096,14 @@ function BattleSoldier:attack(target)
         
         local damagePro = 100 * (percent * 0.01)
         local buffid = nil
+        local _buffPro = nil
         if not isBuilding then
             local ae = team.skillAttackEffect
             if ae then
                 local aeD = tab.skillAttackEffect[ae]
                 if aeD then
                     buffid = aeD["buff"]
+                    _buffPro = aeD["buffpro"] or 100
                     damagePro = aeD["effect"][2] + aeD["effect"][3]
                     local count = aeD["effect"][1] - 1
                     -- if BattleUtils.XBW_SKILL_DEBUG then print(os.clock(), "攻击特效", ae) end
@@ -1173,7 +1278,7 @@ function BattleSoldier:attack(target)
                                         if skillTab[16] then BattleSoldier_invokeSkill(self, 16) end
                                     else
                                         -- 攻击特效buff
-                                        if buffid then
+                                        if buffid and _buffPro and random(100) <= _buffPro then
                                             local buff = initSoldierBuff(buffid, 1, updateCaster(self, logic), tar)
                                             tar:addBuff(buff)
                                         end
@@ -1183,7 +1288,7 @@ function BattleSoldier:attack(target)
                                         BattleTeam_addDamage(team, hurtValue, -realDamage)
                                     end
                                     BattleTeam_addHurt(tar.team, hurtValue, -realDamage)
-                                    if realDamage ~= 0 and team.canDestroy then    
+                                    if realDamage < 0 and team.canDestroy and not self._isAntiInjury then    
                                         -- 吸血/反弹
                                         local damage2, avoidDamage2 = formula_vampire_modifier(self.caster, self, tar, -realDamage, avoidDamage)
                                         avoidDamage2 = avoidDamage2 or 0
@@ -1241,6 +1346,27 @@ function BattleSoldier:heal(healer, heal, noAnim, param1, param2)
 end
 -- 与HPChange区别开, 加了一层灵魂链接
 function BattleSoldier:beDamaged(attacker, damage, crit, damageKind, dieKind, noAnim, param1, param2, isSureNoDie)
+    if damage < 0 and logic:getDamageTransfer(self.camp)[self.team.ID] then
+        --伤害转移优先级高于生命链接
+        local isHero = attacker == nil
+        local __nType = 2
+        if isHero then
+            __nType = 3
+        end
+        local isTransfer = false
+        for key, var in pairs(logic:getDamageTransfer(self.camp)[self.team.ID]) do
+            if var and (var[1] == 1 or var[1] == __nType) then
+                isTransfer = true
+                break
+            end
+        end
+        
+        if  isTransfer then
+            logic:addDamageTransferValue(self.team.ID, damage, isHero)
+            return damage
+        end
+    end
+
     if damage < 0 and logic:getDamageShareList(self.camp)[self.ID] then
         -- 灵魂连接, 每帧最后结算
         logic:addDamageShareValue(self.camp, damage)
@@ -1274,7 +1400,7 @@ function BattleSoldier:HPChange(attacker, _damage, crit, _damageKind, dieKind, n
     local damage = _damage
     local isDamage = damage < 0
     local isHeal = damage > 0
-
+--    self.minHP = 1
     local curMinHp = self.minHP -- 重置前的最低血量
 
     local isHero = attacker == nil
@@ -1365,14 +1491,20 @@ function BattleSoldier:HPChange(attacker, _damage, crit, _damageKind, dieKind, n
     end
     local realD = 0
     if realDamage ~= 0 then
+        if self.team.maxDamagePro and realDamage < 0 then
+            --(受到的伤害不能超过总血量的%)
+            if abs(realDamage) > self.maxHP * self.team.maxDamagePro then
+                realDamage = floor(self.maxHP * self.team.maxDamagePro) * -1
+            end
+        end
         local hp = self.HP + realDamage
         if realDamage < 0 then
             -- 濒死触发
-            if hp <= 0 then
+            if hp <= 0 and not self.bandie then
                 if self.skillTab[42] then BattleSoldier_invokeSkill(self, 42) end
             end
             -- 受到超过血量上限n%的伤害触发技能
-            if self.skillTab[14] then BattleSoldier_invokeSkill(self, 14, -realDamage) end
+            if self.skillTab[14] then BattleSoldier_invokeSkill(self, 14, nil, -realDamage) end
 
             -- add by hxp : 如果有护盾 伤害溢出时会重置最低血量为0，在保证不死的情况下最低血量外面已经设置了为1
             if isSureNoDie then
@@ -1565,7 +1697,8 @@ function BattleSoldier:buffDot(buff)
             -- 战斗统计
             if buff.countDamage and buff.attacker then
                 if not dontCount then
-                    BattleTeam_addDamage(buff.attacker.team, buff.hurt, -realDamage, buffD["id"])
+                    local skillId = buffD.fromSkillId or buffD["id"]
+                    BattleTeam_addDamage(buff.attacker.team, buff.hurt, -realDamage, skillId)
                 end
                 BattleTeam_addHurt(self.team, buff.hurt, -realDamage)
             end
@@ -1580,7 +1713,9 @@ function BattleSoldier:buffDot(buff)
                 value = -ceil(value * (100 + behealpro) * 0.01)
             end
             -- hot
-            local _, dontCount = self:beDamaged(nil, value, false, 999)
+            -- local _, dontCount = self:beDamaged(nil, value, false, 999)
+            -- hot 这里因为要区分治疗是英雄的还是兵团的所以修改
+            local _, dontCount = self:beDamaged(buff.attacker, value, false, 999)
             if buff.countDamage and buff.attacker and not dontCount then
                 BattleTeam_addHeal(buff.attacker.team, value)
             end
@@ -1767,7 +1902,14 @@ function BattleSoldier:resetAttr()
     end
 
     -- 攻速转换
-    local atkSpeed = self.atkspeed * (1 + K_ASPEED * self.attr[ATTR_Haste])
+    local atkSpeed = 0
+    local baseAtkSpeed = self.attr[ATTR_Haste]
+    if baseAtkSpeed >= 0 then
+        atkSpeed = self.atkspeed * (1 + K_ASPEED * self.attr[ATTR_Haste])
+    else
+        atkSpeed = self.atkspeed / (1 - K_ASPEED * self.attr[ATTR_Haste])
+    end
+    atkSpeed = tonumber(string.format("%.3f", atkSpeed))
     if atkSpeed < 0.1 then
         atkSpeed = 0.1
     end
@@ -1780,6 +1922,14 @@ function BattleSoldier:resetAttr()
 
     if self.isMove and not self.canMove then
         self:stopMove()
+    end
+    if not BATTLE_PROC and not BC.jump then 
+        --这里和隐藏效果区分开
+        if self._isVisible then
+            self:lSetOpacity(0)
+        else    
+            self:lSetOpacity(255)
+        end
     end
 end
 
@@ -1866,6 +2016,7 @@ function BattleSoldier:clearBuff(noResetAttr)
     objLayer:cancelColor(self.ID)
     super.clearBuff(self)
     logic:getDamageShareList(self.camp)[self.ID] = nil
+    logic:getDamageTransfer(self.camp)[self.team.ID] = nil
     if self.windFly then
         objLayer:cancelWindFly(self.ID)
         self.windFly = nil
@@ -1999,6 +2150,9 @@ SRBUFFFUNC =
 end
 
 local buffFilter = {[449005] = 1, [4490051] = 1, [4490052] = 1, [4490053] = 1, [4490054] = 1, [4490055] = 1}
+
+--宝石的降低治疗效果Buff，权限有高到低
+local FuWeGemstoneBuff = {[101001] = 0, [101006] = 1, [101011] = 2, [101016] = 3}
 local copyBuff = BC.copyBuff
 function BattleSoldier:addBuff(buff)
     local buffD = buff.buffD
@@ -2009,6 +2163,7 @@ function BattleSoldier:addBuff(buff)
     end
     local label = buffD["label"]
     if label and team.immuneBuff[label]  then return end
+    if label and self.buffimmuneBuff and self.buffimmuneBuff[label] then return end
 
     -- 带有符文宝石的己方兵团有X%的免疫buff概率(对方释放在我方身上才生效)
     if self.team.rune and self.team.camp ~= buff.camp and label then
@@ -2018,7 +2173,24 @@ function BattleSoldier:addBuff(buff)
             return 
         end
     end 
-    
+    --宝石攻击的目标受到治疗效果，这个buff应需求是不需要叠加的，所以这里做了改变(暂时针对这一个类型Buff写死，之后有需求在修改) dongcheng   2018.05.18
+    local buffId = buffD["id"]
+    if FuWeGemstoneBuff[buffId] then
+        local nIndex = FuWeGemstoneBuff[buffId]
+        for k = 1, nIndex do
+            local newBuffid = buffId - k * 5 
+            if self.buff[newBuffid] ~= nil then
+                return
+            end
+        end
+        for k = nIndex + 1, 3 do
+            local newBuffid = buffId + k * 5
+            if self.buff[newBuffid] then
+                self:delBuff(newBuffid)
+            end
+        end
+    end
+
     local id, valid = super.addBuff(self, buff)
     if SRData then
         if buffD.sr and buff.camp == 1 then
@@ -2041,11 +2213,15 @@ function BattleSoldier:addBuff(buff)
             -- 携带符文宝石的兵团触发
             if self.skillTab[46] then BattleSoldier_invokeSkill(self, 46, nil, label) end 
         end
+        if buffD.label and buffD.label == 82 and not buff.isPlayer and buff.camp == self.camp and self.skillTab[35] then
+            --强制获取类型是82的时候触发魔力唤醒技能
+            BattleSoldier_invokeSkill(self, 35)
+        end
     end
-
-    if id and not BC.jump and not BATTLE_PROC then
+    --这个时候添加的buff可能会被别的技能驱散掉
+    if id and self.buff[id] and not BC.jump and not BATTLE_PROC then
         if buffD["buffart"] then
-            if not (team.camp == mainCamp and buffFilter[buffD["id"]]) then
+            if not (team.camp == mainCamp and buffFilter[buffId]) then
                 local buffpoint = buffD["buffpoint"]
                 if buffpoint == nil then
                     buffpoint = 1
@@ -2088,6 +2264,16 @@ function BattleSoldier:addBuff(buff)
     if buffD["kind"] == 4 then
         logic:getDamageShareList(self.camp)[self.ID] = self
     end
+
+    --伤害转移
+    if buffD["kind"] == 5 then
+        local damagetotargetTable = logic:getDamageTransfer(self.camp)[self.team.ID]
+        if damagetotargetTable == nil then
+            damagetotargetTable = {}
+        end
+        damagetotargetTable[buffId] = buffD["damagetotarget"] or {}
+        logic:getDamageTransfer(self.camp)[self.team.ID] = damagetotargetTable
+    end
 end
 
 function BattleSoldier:delBuff(id, reset)
@@ -2099,6 +2285,17 @@ function BattleSoldier:delBuff(id, reset)
         local buffD = buff.buffD
         if buffD["kind"] == 4 then
             logic:getDamageShareList(self.camp)[self.ID] = nil
+        end
+        if buffD["kind"] == 5 then
+            local damagetotargetTable = logic:getDamageTransfer(self.camp)[self.team.ID]
+            if damagetotargetTable ~= nil and type(damagetotargetTable) == "table" then
+                damagetotargetTable[buffD["id"]] = nil
+                if next(damagetotargetTable) == nil then
+                    --这个时候数组为{}，所以直接将这个数组变成nil
+                    damagetotargetTable = nil
+                end
+            end
+            logic:getDamageTransfer(self.camp)[self.team.ID] = damagetotargetTable
         end
         if not BC.jump then
             if buff.eff then
@@ -2125,7 +2322,10 @@ function BattleSoldier:delBuff(id, reset)
                 self.freplace = nil
             end
         end
+        --失去X类buff的时候触发技能
+        if self.skillTab[51] then BattleSoldier_invokeSkill(self, 51, nil, buffD["label"] or 0) end
     end
+    
     super.delBuff(self, id, reset)
     if not self.customRGB and cancelColor then
         -- 看看其他BUFF有没有颜色, 没有颜色的话就还原
@@ -2281,7 +2481,7 @@ end
 -- 32.己方英雄释放法术  [1伤害 2辅助 3召唤 4其他]
 -- 33.受到英雄法术攻击(伤害)
 -- 34.攻击附加1
--- 35.受到己方英雄辅助法术效果 (只给己方兵团加BUff)
+-- 35.受到己方英雄辅助法术效果 (只给己方兵团加BUff)兵团添加给己方兵团的buff时label== 82
 -- 36.兵团生命到n 
 -- 37.对方阵目标第一次攻击且拥有某buff
 -- 38.攻击附加2
@@ -2294,6 +2494,11 @@ end
 -- 45.己方任意单位死亡（不包括召唤物）
 -- 46.获得多个buff类型中的一种
 -- 47.己方任意兵团生命到n 
+-- 48.己方任意方阵死亡（复活之外的功能使用）
+-- 49.敌方单位死亡
+-- 50.目标兵团（攻击目标）血量达到N%
+-- 51.失去X类buff时触发
+
 
 -- 判断技能是否可以触发
 local skillMotion = {3, 5, 6, 7}
@@ -2318,7 +2523,7 @@ function BattleSoldier:checkSkill(skillkind, skillid, attacker, param)
         end
     end
 
-    -- 特殊检查
+    -- 特殊检查(比如时间和生命，血量还有释放法术的检查)
     if self["checkSkill"..skillkind] and 47 ~= skillkind then
         if not self["checkSkill"..skillkind](self, skillD, param) then return false end
     end
@@ -2334,7 +2539,54 @@ function BattleSoldier:checkSkill(skillkind, skillid, attacker, param)
     if tick < skill.canCastTick - 0.00000001 then return false end
     -- 概率
     if random(100) > skill.pro then return false end
-
+    --
+    -- -- 随机到禁止复活目标，要传入技能释放对象里
+    -- local forceTargets
+    -- if skillD["damagekind1"] == 5 or skillD["damagekind2"] == 5 then
+    --     local x = 1
+    --     local y = x
+    --     -- x, y, caster, rangetype, range, count, camp
+    --     -- ptx, pty, point, caster, rangetype, skillD["range"..k], skillD["target"..k], skillD["count"..k], camp, skillD["damagekind"..k] == 5
+    --     if skillD["pointkind"] then
+    --         local targets = {}
+    --         local caster = updateCasterPos(self)
+    --         local points = logic:getSkillPoint(caster, skillD["pointrange"], skillD["pointkind"], skillD["pointcount"], attacker)
+    --         for i = 1, #points do
+    --             local point = points[i] --point就是soldier
+    --             local ptx, pty = point.x, point.y
+    --             -- 通用技能光影
+    --             for k = 1, 2 do
+    --                 local rangetype
+    --                 local buffid, buff, pro
+    --                 rangetype = skillD["rangetype"..k]
+    --                 if rangetype == nil then 
+    --                     break 
+    --                 end
+    --                 -- 目标选择
+    --                 targets[k] = logic:getSkillTargets(ptx, pty, point, caster, rangetype, skillD["range"..k], skillD["target"..k], skillD["count"..k], caster.camp, skillD["damagekind"..k] == 5)
+    --             end
+    --         end
+    --         local canfuhuo = false
+    --         for i=1,2 do
+    --             if targets[i] then
+    --                 for k,v in pairs(targets[i]) do
+    --                     if (not v.banfuhuo or v.banfuhuo <= 0) 
+    --                         or (v.banfuhuo > 0 and logic:getHero(self.camp).lastDieId and logic:getHero(self.camp).lastDieId ~= v.team.ID) then
+    --                         canfuhuo = true
+    --                         break
+    --                     elseif v.banfuhuo then
+    --                         v.banfuhuo = v.banfuhuo-1
+    --                     end
+    --                 end
+    --             end
+    --         end
+    --         if not canfuhuo then
+    --             return false
+    --         else
+    --             forceTargets = targets
+    --         end
+    --     end
+    -- end
     -- 移动中释放技能,没用动作
     if not self.isMove and not self.die then
         local actionart = skillD["actionart"]
@@ -2377,10 +2629,17 @@ function BattleSoldier:checkSkill(skillkind, skillid, attacker, param)
         -- 技能cd
         skill.canCastTick = tick + (skillD["cdLimit"][2] - skillD["cdLimit1"][2] * (skill.level - 1)) * 0.001
     end
-    
-    logic:soldierCastSkill(BC.noEff or self.noEff, skillD, skill.level, updateCasterPos(self), attacker, true)
+    logic:soldierCastSkill(BC.noEff or self.noEff, skillD, skill.level, updateCasterPos(self), attacker, true)--,forceTargets)
     if not BATTLE_PROC and not BC.jump and skillD["show"] then
         objLayer:showSkillName(self.ID, #team.aliveSoldier == 1, team.x, team.y, team.camp, lang(skillD["name"]))
+    end
+    if not BATTLE_PROC then
+        local damageSkillCount = self.team.damageSkillCount[skillid]
+        if damageSkillCount then
+            self.team.damageSkillCount[skillid] = damageSkillCount + 1
+        else
+            self.team.damageSkillCount[skillid] = 1
+        end
     end
 
     -- 法术触发法术
@@ -2495,6 +2754,19 @@ function BattleSoldier:checkSkill47(value)
     return self.team.curHP / self.team.maxHP * 100 < value + 0.00000001
 end
 
+-- 50.目标兵团（攻击目标）血量达到N%
+function BattleSoldier:checkSkill50(skillD, param)
+    if param and param.team then
+        return (param.team.curHP / param.team.maxHP) < (skillD["condition"][2] / 100 + 0.00000001)
+    end
+    return false
+end
+
+-- 51.失去X类buff时触发
+function BattleSoldier:checkSkill51(skillD, param) 
+    return skillD["condition"][2] == param
+end
+
 function BattleSoldier.dtor()
     abs = nil -- math.abs
     actionInv = nil -- BC.actionInv
@@ -2520,6 +2792,7 @@ function BattleSoldier.dtor()
     EMotionCAST2 = nil -- EMotion.CAST2
     EMotionCAST3 = nil -- EMotion.CAST3
     EMotionMOVE = nil -- EMotion.MOVE
+    EMotionINIT = nil--EMotion.INIT
     enemyHeroShowHP = nil -- false
     EState = nil -- BC.EState
     EStateING = nil -- EState.ING

@@ -27,6 +27,8 @@ ItemUtils.ITEM_TYPE_HEROSPLICE = 6   -- 英雄魂魄
 ItemUtils.ITEM_TYPE_AWAKESPLICE = 13 -- 觉醒碎片
 ItemUtils.ITEM_TYPE_SKILL       = 14 -- 法术碎片
 ItemUtils.ITEM_TYPE_OTHER = 99     -- 其他道具
+ItemUtils.ITEM_TYPE_EXCLUSIVE_SPLICE = 107  -- 专属升级材料
+ItemUtils.ITEM_TYPE_GUILD_MAP_TREASURE = 108 -- 联盟地图藏宝图
 
 ItemUtils.formatItemCount = function( number,symbol )
     local num = tonumber(number)

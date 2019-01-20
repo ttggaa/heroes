@@ -2,51 +2,54 @@
 -- Author: <wangguojun@playcrab.com>
 -- Date: 2017-08-05 19:21:14
 --
-local TreasureSelectFormDialog = class("TreasureSelectFormDialog",BasePopView)
+local TreasureSelectFormDialog = class("TreasureSelectFormDialog", BaseLayer)
 function TreasureSelectFormDialog:ctor(param)
     self.super.ctor(self)
     self._tFModel   	 = self._modelMgr:getModel("TformationModel")
-    self._formationId 	 = param and param.formationId
     self._formationModel = self._modelMgr:getModel("FormationModel")
     self._formationData  = self._formationModel:getFormationDataByType(self._formationId) or {}
-    self._tFormId		 = param and param.tFormId
 
     self._callback 		 = param and param.callback
 end
 
 -- 初始化UI后会调用, 有需要请覆盖
 function TreasureSelectFormDialog:onInit()
-	self:registerClickEventByName("bg.closeBtn", function()
-        self:close()
-        UIUtils:reloadLuaFile("treasure.TreasureSelectFormDialog")
-    end )
-	-- 监听事件
-    self:listenReflash("TformationModel",function( )
-    	self:reflashUI()
-    end)
     self._scrollView = self:getUI("bg.scrollView")
     self._cell = self:getUI("bg.cell")
 end
 
 -- 接收自定义消息
-function TreasureSelectFormDialog:reflashUI(data)
+function TreasureSelectFormDialog:reflashUI(tFormId, formationId)
+	self._tFormId = tFormId or self._tFormId
+	self._formationId = formationId or self._formationId
     local formInfo = self._tFModel:getData()
     local formNum = table.nums(formInfo)
-    self._scrollView:removeAllChildren()
-    local cellW,cellH = self._cell:getContentSize().width,self._cell:getContentSize().height
+    local autoList = self._scrollView:getChildByFullName("autoList")
+    autoList:removeAllChildren()
+    local cellW, cellH = self._cell:getContentSize().width,self._cell:getContentSize().height
     cellW = cellW+3
     cellH = cellH+3
-    local x,y = 0,0
+    local x,posY = 0,0
     local height = 250
     local offsetX,offsetY = 2,5
-    for i=1,8 do
+    for i = 8, 1, -1 do
     	local formD = formInfo[i]
     	local cell = self:createFormCell(formD,i)
     	x = (i-1)%2*cellW
-    	y = height - math.floor((i-1)/2)*cellH
-    	cell:setPosition(x+offsetX,y+offsetY)
-    	self._scrollView:addChild(cell)
+    	cell:setPosition(x+offsetX, posY)
+    	autoList:addChild(cell)
+    	if i % 2 ~= 0 then
+    		posY = posY + cellH + offsetY
+    	end
     end
+    autoList:setContentSize(autoList:getContentSize().width, posY)
+    autoList:setPositionY(0)
+    local minH = self._scrollView:getContentSize().height
+	if posY < minH then
+		autoList:setPositionY(minH - posY)
+		posY = minH
+	end
+    self._scrollView:setInnerContainerSize(cc.size(self._scrollView:getContentSize().width, posY))
 end
 
 function TreasureSelectFormDialog:createFormCell( data,idx )
@@ -71,8 +74,8 @@ function TreasureSelectFormDialog:createFormCell( data,idx )
 		self:registerClickEvent(btn, function()
 			if not self._formationId then
 				if self._callback then
-					self._callback(idx)
-					self:close()
+					self._callback(idx, true)
+					-- self:close()
 				end
 				return 
 			end

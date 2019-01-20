@@ -133,6 +133,7 @@ local comMcs = TreasureConst.comMcs or {
     -- "shenglongkaijia",
     [41] = "jian_treasureicon",
     [42] = "taitanshenjian_treasuretaitanshenjian",
+    [45] = "jinmoqiu_jinmoqiu",
 }
 local comMcOffsetY =
 {
@@ -153,6 +154,9 @@ local comMcOffsetY =
     [43] = 30,
     [23] = 0,
     [12] = 20,
+    [44] = 20,
+    [45] = 20,
+    [46] = 20,
 }
 
 -- 接收自定义消息
@@ -368,20 +372,41 @@ function TreasureComUpView:createComTreasureIcon(id, stage, up)
 
     desBg:addChild(bgNode)
 
+
+    -- if desBg.scrollView then
+    --     desBg.scrollView:removeFromParentAndCleanup()
+    -- end
+    local scrollView = ccui.ScrollView:create()
+    scrollView:setDirection(cc.SCROLLVIEW_DIRECTION_VERTICAL)
+    scrollView:setContentSize(cc.size(300,54))
+    scrollView:setAnchorPoint(0,0)
+    scrollView:setPosition(85,-10)
+    scrollView:setBounceEnabled(true)
+    desBg.scrollView = scrollView
+    desBg:addChild(scrollView,99)
+
+    local sWidth = scrollView:getContentSize().width
+    local sHeight = scrollView:getContentSize().height
+
     local skillDes
-
     -- skillDes = GlobalTipView._des 825528
-
     skillDes = self:generateDes(stage)
-    local rtx = RichTextFactory:create("[color = 8a5c1d,fontsize=16]" .. skillDes ..  "[-]", 300, 55) -- ,fontsize=18
+    local rtx = RichTextFactory:create("[color = 8a5c1d,fontsize=16]" .. skillDes ..  "[-]", 290, 54) -- ,fontsize=18
     -- rtx:setVerticalSpace(-4)
     -- rtx:ignoreContentAdaptWithSize(true)
     -- rtx:setPixelNewline(true)
     rtx:formatText()
     rtx:setName("rtx")
-    rtx:setPosition(desBg:getContentSize().width / 2+45, 40-rtx:getInnerSize().height / 2)
-    desBg:addChild(rtx, 99)
-    UIUtils:alignRichText(rtx, { hAlign = "left",vAlign="bottom" })
+    local rtRealHeight = rtx:getRealSize().height
+
+    rtx:setPosition(sWidth/2 - 5, rtRealHeight / 2)
+    scrollView:addChild(rtx)
+    scrollView:getInnerContainer():setContentSize(cc.size(sWidth,rtRealHeight))
+    scrollView:getInnerContainer():setPositionY(sHeight  - rtRealHeight)
+    scrollView:setTouchEnabled(rtRealHeight > sHeight)
+    -- UIUtils:alignRichText(rtx, { hAlign = "left",vAlign="bottom" })
+
+
 
     -- if up then
     -- 	iconName:setString(lang(tab:DisTreasure(id).name) .. " +1")
@@ -595,12 +620,13 @@ function TreasureComUpView:generateExAtts( id, stage, node, offsetx, offsety )
 
         local des = lang("HEROMASTERYDES_" .. addValue .. math.max(i-1,1))
         local desEx = ""
+        desEx = lang("HEROMASTERYDESEX_" .. addValue .. math.max(i-1,1))
         if des == "" then
             des   = lang("PLAYERSKILLDES2_" .. addValue .. math.max(i-1,1))
             desEx = lang("PLAYERSKILLDESEX_" .. addValue .. math.max(i-1,1))
         end
         -- print("des",des)
-        -- print("desEx",desEx,"lll",addValue)
+        -- print("desEx",desEx,"lll",addValue,i)
         if desEx ~= "" then
             local button = item:getChildByName("infoBtn")
             if not button then

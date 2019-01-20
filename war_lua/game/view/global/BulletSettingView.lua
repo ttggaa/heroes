@@ -201,6 +201,9 @@ function BulletSettingView:onPush(type)
     else
         actionName = "sendBullet"
     end
+    if self._bulletD and self._bulletD.name and self._bulletD.name == 1 then
+        w = self._modelMgr:getModel('UserModel'):getUserName() .. ":" .. w
+    end
     if type == 1 then
         local c = 1
         local p = self._pos

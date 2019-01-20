@@ -18,6 +18,7 @@ HeroDuelModel.HD_OPEN = "HD_OPEN"
 HeroDuelModel.HD_CLOSE = "HD_CLOSE"
 HeroDuelModel.LOGIN_SERVER_ERROR = "LOGIN_SERVER_ERROR"
 HeroDuelModel.MATCH_ERROR = "MATCH_ERROR"
+HeroDuelModel.CHANGE_MODE = "CHANGE_MODE"
 
 -- 事件名
 
@@ -92,6 +93,14 @@ function HeroDuelModel:setHeroDuelData(data)
         end
         self._timerOpen = true
     end
+end
+--[[
+--! @desc 更新交锋模式选择
+--! @param mode
+--]]
+function HeroDuelModel:setMode( mode )
+    self._heroDuelData.mode = mode
+    self:reflashData(HeroDuelModel.CHANGE_MODE)
 end
 
 --[[

@@ -132,6 +132,19 @@ function CrossPKServer:onGetChallengeInfo(result, error)
     self:callback(result)
 end
 
+--获取弱NPC
+function CrossPKServer:onGetWeakNpcData( result, error )
+    if error ~= 0 then
+        return
+    end
+    if result["d"] and result["d"]["crossPK"] ~= nil then 
+        local crossModel = self._modelMgr:getModel("CrossModel")
+        crossModel:setWeakNpcData(result["d"]["crossPK"])
+        result["d"]["crossPK"] = nil
+    end
+    self:callback(result)
+end
+
 -- 获取本竞技场两个服务器前三玩家信息 9
 function CrossPKServer:onGetNowFT(result, error)
     if error ~= 0 then 
@@ -209,6 +222,14 @@ function CrossPKServer:onGetActiveReward( result, error )
         crossModel:setActiveData(result["d"]["crossPK"]["activeIds"])
         result["d"]["crossPK"]["activeIds"] = nil
     end 
+    self:handAboutServerData(result)
+    self:callback(result)
+end
+
+function CrossPKServer:onOneKeySweepPK( result, error )
+    if error ~= 0 then 
+        return
+    end
     self:handAboutServerData(result)
     self:callback(result)
 end

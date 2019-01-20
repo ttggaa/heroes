@@ -15,7 +15,7 @@ function RuneLotteryServer:onGetInfo(result, error)
     if error ~= 0 then 
         return
     end
-    dump(result,"onGetInfo==>",5)
+--    dump(result,"onGetInfo==>",5)
     self._runeLotteryModel:setData(result)
     self:handAboutServerData(result)
     self:callback(result)
@@ -105,6 +105,12 @@ function RuneLotteryServer:handAboutServerData(result)
 
     if result["d"]["drawAward"] then
         self._playerTodayModel:updateDrawAward(result["d"]["drawAward"])
+    end
+
+    if result["d"] and result["d"]["dayInfo"] then
+        local playerTodataModel = self._modelMgr:getModel("PlayerTodayModel")
+        playerTodataModel:updateDayInfo(result["d"]["dayInfo"])
+        result["d"]["dayInfo"] = nil
     end
 
     local userModel = self._modelMgr:getModel("UserModel")

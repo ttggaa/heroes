@@ -208,7 +208,8 @@ function GuildRankView:reflashNo1( data )
 	local name = self._leftBoard:getChildByFullName("name")
 	name:setString(data.name)
 	local level = self._leftBoard:getChildByFullName("level")
-	level:setString("Lv." .. (data.level or data.lvl or 0))
+	local inParam = {lvlStr = "Lv." .. (data.level or data.lvl or 0), lvl = (data.level or data.lvl or 0), plvl = data.plvl}
+    UIUtils:adjustLevelShow(level, inParam, 1)
 	--联盟label
 	local guildName = data.guildName
 	if guildName and guildName ~= "" then 
@@ -455,7 +456,7 @@ function GuildRankView:createRoleHead(data,headNode,scaleNum)
 	local lvl = data.lvl
 
     local tencetTp = data["qqVip"]
-	local icon = IconUtils:createHeadIconById({avatar = avatarName,tp = 3 ,level = lvl,avatarFrame = data["avatarFrame"], tencetTp = tencetTp})
+	local icon = IconUtils:createHeadIconById({avatar = avatarName,tp = 3 ,level = lvl,avatarFrame = data["avatarFrame"], tencetTp = tencetTp, plvl = data["plvl"]})
 	icon:setName("avatarIcon")
 	icon:setAnchorPoint(cc.p(0.5,0.5))
 	icon:setScale(scale)

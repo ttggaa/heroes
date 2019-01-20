@@ -24,6 +24,8 @@ end
 
 function ChatCommonCell:reflashUI(data, richText, width, height, isMyself, oldUI)
     self._data = data
+    self._isMyself = isMyself
+    self._oldUI = oldUI
     self._infoData = data.message
     local userData = data.message.udata
     -- dump(data,"123", 10)
@@ -40,20 +42,23 @@ function ChatCommonCell:reflashUI(data, richText, width, height, isMyself, oldUI
     --headIcon
     if not self._avatar then
         if data.message.typeCell == ChatConst.CELL_TYPE.WORLD4 then
-            self._avatar = IconUtils:createHeadIconById({art = "ti_xiaojingling", level = 0, tp = 4, eventStyle=1,avatarFrame=userData["avatarFrame"]}) 
+            local headP = {art = "ti_xiaojingling", level = 0, tp = 4, eventStyle=1,avatarFrame=userData["avatarFrame"]}
+            self._avatar = IconUtils:createHeadIconById(headP) 
         else
-            self._avatar = IconUtils:createHeadIconById({avatar = userData.avatar, level = userData.lvl, tp = 4, eventStyle=1,avatarFrame = userData["avatarFrame"]})    --,tp = 2
+            local headP = {avatar = userData.avatar, level = userData.lvl, tp = 4, eventStyle=1,avatarFrame = userData["avatarFrame"], plvl = userData.plvl}
+            self._avatar = IconUtils:createHeadIconById(headP)
         end
         self._avatar:setScale(0.64)
         self._avatar:setAnchorPoint(0, 1)
         self:addChild(self._avatar)
     else
         if data.message.typeCell == ChatConst.CELL_TYPE.WORLD4 then
-            IconUtils:updateHeadIconByView(self._avatar,{art = "ti_xiaojingling", level = 0, tp = 4,avatarFrame = userData["avatarFrame"]})   --,tp = 2
+            local headP = {art = "ti_xiaojingling", level = 0, tp = 4,avatarFrame = userData["avatarFrame"]}
+            IconUtils:updateHeadIconByView(self._avatar, headP)
         else
-            IconUtils:updateHeadIconByView(self._avatar,{avatar = userData.avatar, level = userData.lvl, tp = 4,avatarFrame = userData["avatarFrame"]})   --,tp = 2
+            local headP = {avatar = userData.avatar, level = userData.lvl, tp = 4,avatarFrame = userData["avatarFrame"], plvl = userData.plvl}
+            IconUtils:updateHeadIconByView(self._avatar, headP)   --,tp = 2
         end
-        
     end
 
     if isMyself == true then 
@@ -71,7 +76,7 @@ function ChatCommonCell:reflashUI(data, richText, width, height, isMyself, oldUI
                 ServerManager:getInstance():sendMsg("UserServer", "getTargetUserBattleInfo", {tagId = userData["rid"],fid=fId}, true, {}, function(result)                 
                     -- 打开聊天详情界面
                     if self._viewMgr then
-                        self._viewMgr:showDialog("chat.DialogFriendHandle", {detailData = result, oldUI = oldUI}, true)
+                        self._viewMgr:showDialog("chat.DialogFriendHandle", {uiData = data, detailData = result, oldUI = oldUI}, true)
                     end
                 end)
             end)
@@ -383,7 +388,7 @@ function ChatCommonCell:createBtnEvent(data, height, isMyself)
         _typeCell = data.message.typeCell
     end
 
-    if _typeCell == ChatConst.CELL_TYPE.WORLD2 then         --战斗回放
+    if _typeCell == ChatConst.CELL_TYPE.WORLD2 or _typeCell == ChatConst.CELL_TYPE.WORLD5 then         --战报回放
         img = "chatAll_replayBtn.png"
         title = "回放"
         btnColor = cc.c4b(252,244,194,255)
@@ -391,7 +396,11 @@ function ChatCommonCell:createBtnEvent(data, height, isMyself)
         titlePosX, titlePosY, btnScale, titleSize = 27, -13, 1, 16
         isVisible = true
         callback = function()
-            self:callbackHandle1(data)
+            if _typeCell == ChatConst.CELL_TYPE.WORLD2 then
+                self:callbackHandle1(data)
+            else
+                self:callbackHandle3(data)
+            end
         end
 
     elseif _typeCell == ChatConst.CELL_TYPE.WORLD3 then     --联盟招募
@@ -548,6 +557,32 @@ function ChatCommonCell:callbackHandle2(data)
                 self._viewMgr:showTip(lang("GUILD_RECRUIT_6"))  --已申请过
             end
         end)
+end
+
+--荣耀竞技场 战斗回放
+function ChatCommonCell:callbackHandle3(inData)
+    if self._oldUI._infoNode then
+        self._oldUI._infoNode:removeFromParent(true)
+        self._oldUI._infoNode = nil
+    end
+
+    local infoNode = require("game.view.chat.ChatReportInfoNode").new()
+    infoNode:setScale(0.8)
+    self._oldUI:addChild(infoNode, 100001) --比监听layer高1层级
+
+    local point = self._clickBtn:convertToWorldSpace(cc.p(0, 0)) 
+    point = self._oldUI:convertToNodeSpace(point)
+    if self._isMyself then
+        infoNode:setPosition(point.x + 20, point.y + 100)
+    else
+        infoNode:setPosition(point.x + 70, point.y + 100)
+    end
+
+    infoNode:reflashUI(inData)
+   
+    --屏幕监听事件
+    self._oldUI._lockScrollBtn:setSelected(true)
+    self._oldUI._infoNode = infoNode  --用于chatView处理node显示
 end
 
 return ChatCommonCell

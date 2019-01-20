@@ -79,6 +79,7 @@ function CrossModel:ctor()
     self._openArena = {}
     self._enemyData = {}
     self._soloData = {}
+    self._weakNpcData = {}
     self._myInfo = {}
     self._rankList = {}
     self._serverMap = {}
@@ -135,8 +136,8 @@ function CrossModel:setData(data)
     else
         self._activeIds = {}
     end
-	
-	self:setHistoryData(data)
+    
+    self:setHistoryData(data)
 
     self:updateCdiff(data)
 
@@ -271,6 +272,15 @@ function CrossModel:setSoloArenaData(data)
     end
 end
 
+function CrossModel:setWeakNpcData( data )
+    if data.weaknpc then
+        for k, v in pairs(data.weaknpc) do
+            local key = tonumber(k)
+            self._weakNpcData[key] = v
+        end
+    end
+end
+
 function CrossModel:getSeasonSpot(  )
     return self._seasonSpot or 0
 end
@@ -353,6 +363,10 @@ end
 
 function CrossModel:getSoloArenaData(key)
     return self._soloData[key]
+end
+
+function CrossModel:getWeakNpcData( key )
+    return self._weakNpcData[key]
 end
 
 function CrossModel:getEnemyData()
@@ -442,8 +456,14 @@ function CrossModel:getServerNameStr(serverId)
         local num = 0
         if sec < 5001 then
             num = sec % 1000
-        elseif (sec >= 5001 and sec < 5501) or (sec >= 6001 and sec < 6501) then
+        elseif (sec >= 5001 and sec < 5026) or (sec >= 6001 and sec < 6026) then
             num = (sec % 1000)*2 - 1
+        elseif (sec >= 5026 and sec < 5501) or (sec >= 6026 and sec < 6501) then   --5025  6025 以后不区分单双号服务器
+            local temp = 6025
+            if sec < 6000 then
+                temp = 5025
+            end
+            num = sec - temp + 50
         elseif (sec >= 5501 and sec < 6000) or (sec >= 6501 and sec < 7000) then
             num = (sec % 100) * 2
         else
@@ -465,16 +485,16 @@ function CrossModel:getWarZoneName(isBreakServerName)
     local secTab2 = {}
     table.insert(secTab1, secNum1)
     table.insert(secTab2, secNum2)
-	if isBreakServerName then
-		local mergeList = self._userModel:getServerIDMap()
-		for k,v in pairs(mergeList) do
-			if tostring(k) ~= tostring(secNum1) and tostring(v) == tostring(secNum1) then
-				table.insert(secTab1, k)
-			elseif tostring(k) ~= tostring(secNum2) and tostring(v) == tostring(secNum2) then
-				table.insert(secTab2, k)
-			end
-		end
-	end
+    if isBreakServerName then
+        local mergeList = self._userModel:getServerIDMap()
+        for k,v in pairs(mergeList) do
+            if tostring(k) ~= tostring(secNum1) and tostring(v) == tostring(secNum1) then
+                table.insert(secTab1, k)
+            elseif tostring(k) ~= tostring(secNum2) and tostring(v) == tostring(secNum2) then
+                table.insert(secTab2, k)
+            end
+        end
+    end
 
     local leagueModel = self._modelMgr:getModel("LeagueModel")
     local sNameStr1 = ""
@@ -512,7 +532,7 @@ function CrossModel:isSelfWinner()
     local winner = tonumber(self:getArenaWinner())
     local userId, mainId = self:getServerId()
     local usId = tonumber(mainId)
-	return usId == winner
+    return usId == winner
 end
 
 -- 布阵数据处理
@@ -601,7 +621,7 @@ function CrossModel:getOpenTime()
     speedTime[0] = lastTime           -- 赛季开始
     speedTime[1] = lastTime + 3600*5            -- 赛季开始
     speedTime[2] = lastTime + 86400*2 + 3600*9  -- 战斗开始
-    speedTime[3] = lastTime + 86400*4 + 3600*22 + 120 -- 战斗结束   结算界面弹出世间额外增加2分钟，防止结算数据不准确
+    speedTime[3] = lastTime + 86400*4 + 3600*22 + 120 -- 战斗结束
     speedTime[4] = lastTime + 86400*7           -- 赛季结束
     speedTime[5] = lastTime + 86400*7 + 3600*5  -- 维护试卷
     return speedTime
@@ -733,7 +753,7 @@ function CrossModel:getDialogState()
     speedTime[3] = lastTime + 86400*3 + 3600*5      -- 战斗开始     
     speedTime[4] = lastTime + 86400*3 + 3600*22 + 300    -- 战斗结束
     speedTime[5] = lastTime + 86400*4 + 3600*5      -- 战斗结束
-    speedTime[6] = lastTime + 86400*4 + 3600*22      -- 赛季战斗结束
+    speedTime[6] = lastTime + 86400*4 + 3600*22      -- 赛季战斗结束  结算界面弹出世间额外增加2分钟，防止结算数据不准确
     speedTime[7] = lastTime + 86400*7            -- 赛季结束
 
     local state = 0
@@ -1071,14 +1091,14 @@ function CrossModel:getCrossMainState()
 end
 
 function CrossModel:setHistoryData(data)
-	self._historyData = {
-		[1] = { level = data.level1, score = data.score1, win = data.win1 },
-		[2] = { level = data.level2, score = data.score2, win = data.win2 },
-	}
+    self._historyData = {
+        [1] = { level = data.level1, score = data.score1, win = data.win1 },
+        [2] = { level = data.level2, score = data.score2, win = data.win2 },
+    }
 end
 
 function CrossModel:getHistoryData()
-	return self._historyData
+    return self._historyData
 end
 
 function CrossModel:updateRegionPrompt( region )
@@ -1101,6 +1121,20 @@ end
 
 function CrossModel:removeRegionPrompt( region )
     SystemUtils.saveAccountLocalData("CROSSPK_REGION_PROMPT_" .. region, "1")
+end
+
+--王国联赛是否可以扫荡  by:haotaian
+function CrossModel:canSweepBattle()
+    local can = false
+    if self._myinfo then
+        for i=1,3 do
+            if self._myinfo["rank"..i] ~= 0 then
+                can = true
+                break
+            end
+        end
+    end
+    return can
 end
 
 return CrossModel

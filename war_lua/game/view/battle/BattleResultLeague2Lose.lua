@@ -287,9 +287,9 @@ function BattleResultLeague2Lose:initLabel(node,isGreen)
 end
 
 function BattleResultLeague2Lose:onQuit()
-	if self._callback then
-		self._callback()
-	end
+    if self._callback then
+        self._callback()
+    end
 end
 function BattleResultLeague2Lose:onShow( )
     self._countBtn:setVisible(false)
@@ -323,12 +323,12 @@ function BattleResultLeague2Lose:onShow( )
 end
 
 function BattleResultLeague2Lose:onCount()
-	self._viewMgr:showView("battle.BattleCountView",self._battleInfo,true)
+    self._viewMgr:showView("battle.BattleCountView",self._battleInfo,true)
 end
 
 function BattleResultLeague2Lose:animBegin()
     audioMgr:stopMusic()
-	audioMgr:playSoundForce("SurrenderBattle")
+    audioMgr:playSoundForce("SurrenderBattle")
 
     -- 如果兵团有变身技能，这里改变立汇
     local curHeroId = self._battleInfo.hero1["id"]
@@ -350,13 +350,13 @@ function BattleResultLeague2Lose:animBegin()
         local teamModel = self._modelMgr:getModel("TeamModel")
         local tdata,_idx = teamModel:getTeamAndIndexById(lihuiId)
         local isAwaking,_ = TeamUtils:getTeamAwaking(tdata)
-        local teamName, art1, art2, art3 = TeamUtils:getTeamAwakingTab(tdata, tdata.id)
-        if isAwaking then 
-            -- 结算例会单独处理 读配置
-            imgName = teamData.jxart2
-            artUrl = "asset/uiother/team/"..imgName..".png"
-        end
-
+        local teamName, art1, art2, art3 = TeamUtils:getTeamAwakingTab(tdata, self._lihuiId)
+        -- if isAwaking then 
+        --     -- 结算例会单独处理 读配置
+        --     imgName = teamData.jxart2
+        --     artUrl = "asset/uiother/team/"..imgName..".png"
+        -- end
+        artUrl = "asset/uiother/team/".. art2 ..".png"
         if  teamData["jisuan"] then
             local teamX ,teamY = teamData["jisuan"][1], teamData["jisuan"][2]
             local scale = teamData["jisuan"][3] 

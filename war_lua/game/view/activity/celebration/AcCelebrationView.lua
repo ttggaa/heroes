@@ -19,6 +19,7 @@ function AcCelebrationView:getAsyncRes()
     return 
     {
         {"asset/ui/acCelebration.plist", "asset/ui/acCelebration.png"},
+        {"asset/ui/acCelebration1.plist", "asset/ui/acCelebration1.png"},
     }
 end
 

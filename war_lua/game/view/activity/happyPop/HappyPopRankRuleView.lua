@@ -255,8 +255,12 @@ function HappyPopRankRuleView:createRewards(inObj, inRwas)
         rwdNum:setVisible(true)
 
         if inRwas[i] == nil then
-            rwd:setVisible(false)
-            rwdNum:setVisible(false)
+            for m = i, 3 do
+                local rwd11 = inObj:getChildByFullName("rwd" .. m)
+                local rwdNum11 = inObj:getChildByFullName("rwdNum" .. m)
+                rwd11:setVisible(false)
+                rwdNum11:setVisible(false)
+            end
             break
         end
 

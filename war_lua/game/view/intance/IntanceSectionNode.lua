@@ -407,9 +407,9 @@ function IntanceSectionNode:refreshHeroAnim()
         local cacheX, cacheY = 0, 0
         if self._intanceMcAnimNode ~= nil then
             -- 布阵中如果替换兵团也会触发此方法所以如果相同英雄就不进行英雄替换
-            if self._intanceMcAnimNode.heroId == heroId then 
-                return
-            end
+            -- if self._intanceMcAnimNode.heroId == heroId then 
+            --     return
+            -- end
             cacheX, cacheY = self._intanceMcAnimNode:getPosition()
             isHas = true
             self._intanceMcAnimNode:clear()

@@ -12,20 +12,12 @@ offset    ccp   偏移
 hideHead  bool  是否隐藏间隔条
 hideNavi  bool  隐藏资源(金币。。等)条
 hideBtn   bool  隐藏关闭按钮
-types     table 可选任意三个{"Gold","Gem","Physcal","Texp","Val"}
+types     table 可选任意三个{"Gold","Gem","Physcal","Texp","Val", "pTalentPoint"}
 --]]
 function UserInfoView:ctor()
     UserInfoView.super.ctor(self)
 end
 local iconMap = IconUtils.resImgMap
--- {
---     Gold = "globalImageUI_gold1.png",
---     Gem = "globalImageUI_diamond.png",
---     Physcal = "globalImageUI4_power.png",
---     Currency = "globalImage_jingjibi.png",
---     Crusading = "golbalIamgeUI5_yuanzhengbi.png",
---     Texp = "globalImageUI_texp.png",
--- }
 local firstInit = true
 local beginPhysic = 0
 local beginGuilPower = 0
@@ -38,9 +30,6 @@ function UserInfoView:onInit()
     self._closeBtn = self:getUI("closeBtn")
     self._closeBtn2 = self:getUI("closeBtn2")
     self._titleBg = self:getUI("titleBg")
-    -- local titleBgImg = self:getUI("titleBg.titleBgImg")
-    -- titleBgImg:setZOrder(-1)
-    -- 
     self._lineImg = self:getUI("bg.bar.lineImg")
     self._lineImg:setVisible(false)
     self._titleImg = self:getUI("titleBg.title_img")
@@ -270,45 +259,21 @@ function UserInfoView:onInit()
         upDatePhyscal()
     end)
 
-
     -- 为调整 按钮位置 初始化 默认位置
-    if not self._initResPoses then
-        self._initResPoses = {
-            [1] = {
-                self._icons[1]:getPositionX(),
-                self._boards[1]:getPositionX(),
-                self._buyBtns[1]:getPositionX(),
-                self._buyLabels[1]:getPositionX(),
-            },
-            [2] = {
-                self._icons[2]:getPositionX(),
-                self._boards[2]:getPositionX(),
-                self._buyBtns[2]:getPositionX(),
-                self._buyLabels[2]:getPositionX(),
-                
-                self._icons[2]:getPositionY(),
-                self._boards[2]:getPositionY(),
-                self._buyBtns[2]:getPositionY(),
-                self._buyLabels[2]:getPositionY(),
-            },
-            [3] = {
-                self._icons[3]:getPositionX(),
-                self._boards[3]:getPositionX(),
-                self._buyBtns[3]:getPositionX(),
-                self._buyLabels[3]:getPositionX(),
-
-                self._icons[3]:getPositionY(),
-                self._boards[3]:getPositionY(),
-                self._buyBtns[3]:getPositionY(),
-                self._buyLabels[3]:getPositionY(),
-            },
-            [4] = {
-                self._icons[4]:getPositionX(),
-                self._boards[4]:getPositionX(),
-                self._buyBtns[4]:getPositionX(),
-                self._buyLabels[4]:getPositionX()
-            },
-
+    if not self._initResPoses3 then
+        self._initResPoses3 = {
+            [1] = self._boards[1]:getPositionX(),
+            [2] = self._boards[2]:getPositionX(),
+            [3] = self._boards[3]:getPositionX(),
+            [4] = self._boards[4]:getPositionX()
+        }
+    end
+    if not self._initResPoses4 then
+        self._initResPoses4 = {
+            [1] = -44,
+            [2] = self._boards[1]:getPositionX(),
+            [3] = self._boards[2]:getPositionX(),
+            [4] = self._boards[3]:getPositionX()
         }
     end 
 end
@@ -517,6 +482,11 @@ function UserInfoView:buynests3( )
     self._viewMgr:showDialog("global.GlobalPromptDialog", param)
 end
 
+function UserInfoView:buynests4( )
+    local param = {indexId = 23}
+    self._viewMgr:showDialog("global.GlobalPromptDialog", param)
+end
+
 -- 购买竞技币回调
 -- function UserInfoView:buyVal( )
     
@@ -578,6 +548,22 @@ end
 function UserInfoView:buyRuneCoin( callback )
 	local param = {indexId = 18}
 	self._viewMgr:showDialog("global.GlobalPromptDialog", param)
+end
+
+function UserInfoView:buy3100( callback )
+    self._viewMgr:showDialog("bag.DialogAccessTo",{goodsId = 3100, needItemNum = 0},true)
+end
+
+function UserInfoView:buybattleSoul( callback )
+    if OS_IS_WINDOWS then
+        self._serverMgr:sendMsg("BattleArrayServer", "getInfo", {}, true, {}, function(success, data)
+        end, function ( errorId )
+            errorId = tonumber(errorId)
+            print("errorId:" .. errorId)
+            self._viewMgr:unlock()
+        end)
+    end
+    self._viewMgr:showDialog("global.GlobalPromptDialog", {indexId = 22})
 end
 
 
@@ -672,6 +658,8 @@ function UserInfoView:getResNum( costType )
     end
     if costType == "dice" then
         num = self._modelMgr:getModel("AdventureModel"):getHadDiceNum()
+    elseif costType == "battleSoul" then
+        num = self._modelMgr:getModel("BattleArrayModel"):getBattleSoulNum(self._baType)
     end
     return num or 0
 end
@@ -826,6 +814,7 @@ end
 function UserInfoView:reflashUI(data)
     if data then
         self._callback = data.callback 
+        self._baType = data.baType
     end
     if data and data.offset then
         self._bar:setPosition(data.offset[1], data.offset[2])
@@ -939,9 +928,22 @@ function UserInfoView:reflashUI(data)
         if self[funcName] then
             table.insert(self.btnEvents,self[funcName])
             self._buyBtns[i]:setVisible(true)
-            self._icons[i]:loadTexture(iconMap[resImg],1)
-            self._icons[i]:setScale(1)
-            -- self._icons[i]:setScale(52/self._icons[i]:getContentSize().width)
+            if iconMap[resImg] then
+                self._icons[i]:loadTexture(iconMap[resImg],1)
+                self._icons[i]:setScale(1)
+            elseif tab.tool[tonumber(resImg) or 0] then
+                local toolD = tab.tool[tonumber(resImg) or 0]
+                local filename = IconUtils.iconPath .. toolD.art .. ".png"
+                local sfc = cc.SpriteFrameCache:getInstance()
+                if not sfc:getSpriteFrameByName(filename) then
+                    filename = IconUtils.iconPath .. toolD.art .. ".jpg"
+                end
+                self._icons[i]:loadTexture(filename,1)
+                self._icons[i]:setScale(46/self._icons[i]:getContentSize().width)
+            elseif resImg == "battleSoul" then
+                self._icons[i]:loadTexture("battleSoul_" .. self._baType .. ".png", 1)
+                self._icons[i]:setScale(46/self._icons[i]:getContentSize().width)
+            end
         else
             if iconMap[resImg] then
                 self._icons[i]:loadTexture(iconMap[resImg],1)
@@ -1081,67 +1083,17 @@ end
 
 -- 重算资源条各图标的位置
 function UserInfoView:resetIconPos( )
-    -- 如果 资源条 显示4个 缩减相互之间的距离
-    -- 四个弃用
-    local i = 4
-    self._icons[i]:setVisible(false)
-    self._boards[i]:setVisible(false)
-    self._buyBtns[i]:setVisible(false)
-    self._buyLabels[i]:setVisible(false)
-    if true then return end
+    -- 适配3,4种资源位置
+    local pos = self._initResPoses3
     if #self.btnTypes == 4 then
-        for i=1,4 do
-            local offsetX = -25 - (i-1)*25
-            if i == 1 then offsetX = -20 end
-
-            if i == 4 and self.btnTypes[3] == "MapHurt" then
-                offsetX = - 150
-            end
-            self._icons[i]:setPositionX(self._initResPoses[i][1]+offsetX)
-            self._boards[i]:setPositionX(self._initResPoses[i][2]+offsetX)
-            self._buyBtns[i]:setPositionX(self._initResPoses[i][3]+offsetX)
-            self._buyLabels[i]:setPositionX(self._initResPoses[i][4]+offsetX)
-            if i == 3 and self.btnTypes[3] == "MapHurt" then       -- 损伤值换行
-                self._icons[i]:setPosition(self._initResPoses[2][1]-150,self._initResPoses[2][1+4])
-                self._boards[i]:setPosition(self._initResPoses[2][2]-150,self._initResPoses[2][2+4])
-                self._buyBtns[i]:setPosition(self._initResPoses[2][3]-150,self._initResPoses[2][3+4])
-                self._buyLabels[i]:setPosition(self._initResPoses[2][4]-150,self._initResPoses[2][4+4])
-                self._buyLabels[i]:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor,1)
-            end
-        end
-    else                       -- 默认按三个重设位置
-        for i=1,4 do
-            self._icons[i]:setPositionX(self._initResPoses[i][1])
-            self._boards[i]:setPositionX(self._initResPoses[i][2])
-            self._buyBtns[i]:setPositionX(self._initResPoses[i][3])
-            if i~=3 then
-                self._buyLabels[i]:setPositionX(self._initResPoses[i][4])
-                if self.btnTypes[3] == "MapHurt" then
-                    self._buyLabels[i]:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor,1)
-                else
-                    self._buyLabels[i]:disableEffect()
-                end
-            else
-                if self.btnTypes[3] == "MapHurt" then       -- 损伤值换行
-                    self._icons[i]:setPosition(self._initResPoses[2][1]-50,self._initResPoses[2][1+4])
-                    self._boards[i]:setPosition(self._initResPoses[2][2]-50,self._initResPoses[2][2+4])
-                    self._buyBtns[i]:setPosition(self._initResPoses[2][3]-50,self._initResPoses[2][3+4])
-                    self._buyLabels[i]:setPosition(self._initResPoses[2][4]-50,self._initResPoses[2][4+4])
-                    self._buyLabels[i]:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor,1)
-                else
-                    self._icons[i]:setPosition(self._initResPoses[3][1],self._initResPoses[3][1+4])
-                    self._boards[i]:setPosition(self._initResPoses[3][2],self._initResPoses[3][2+4])
-                    self._buyBtns[i]:setPosition(self._initResPoses[3][3],self._initResPoses[3][3+4])
-                    self._buyLabels[i]:setPositionY(self._initResPoses[3][4+4])
-                    self._buyLabels[i]:disableEffect()
-                end
-            end
-            if i == 4 then
-                self._icons[i]:setVisible(false)
-                self._boards[i]:setVisible(false)
-                self._buyBtns[i]:setVisible(false)
-                self._buyLabels[i]:setVisible(false)
-            end
+        pos = self._initResPoses4
+    end
+    for i = 1, 4 do
+        self._boards[i]:setPositionX(pos[i])
+        if i > #self.btnTypes or self.btnTypes[i] == "" then
+            self._boards[i]:setVisible(false)
+        else
+            self._boards[i]:setVisible(true)
         end
     end
 end

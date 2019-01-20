@@ -222,6 +222,10 @@ end
 
 --主界面活动icon红点
 function FriendRecallModel:checkAcRedPoint()
+    if not self._acData or type(self._acData) ~= "table" then
+        return
+    end
+    
     local bindInfo = self._acData["bindInfo"]
     if (not bindInfo or next(bindInfo) == nil) and next(self._bindData) ~= nil then
         return true
@@ -396,28 +400,3 @@ function FriendRecallModel:bindFriend(inId)
 end
 
 return FriendRecallModel
-
-
-
---[[
-    self._data = {
-     [1] = {rid = "8001_11", avatar = 1101, avatarFrame = 1000, pId = "800151342226", nickName = "啦啦啦", sec = "8001", bindTime = 1504445086, unbindTime = 1506445086, status = 1, level = 10, vipLvl = 11},
-     [2] = {rid = "8001_11", avatar = 1101, avatarFrame = 1000, pId = "800151342226", nickName = "啦啦啦", sec = "8001", bindTime = 1504445086, unbindTime = 1506445086, status = 1, level = 10, vipLvl = 11},
-     [3] = {rid = "8001_11", avatar = 1101, avatarFrame = 1000, pId = "800151342226", nickName = "啦啦啦", sec = "8001", bindTime = 1504445086, unbindTime = 1506445086, status = 1, level = 10, vipLvl = 11},
-    }
-
-    local avatar = item:getChildByFullName("avatar")
-    if not avatar then
-        avatar = IconUtils:createHeadIconById({avatar = data["avatar"], tp = 4,avatarFrame = data["avatarFrame"], tencetTp = data["qqVip"]}) 
-        avatar:setAnchorPoint(0, 0.5)
-        avatar:setPosition(25, item:getContentSize().height*0.5 - 1)
-        avatar:setName("avatar")
-        item:addChild(avatar, 2)
-
-    else
-        IconUtils:updateHeadIconByView(avatar,{avatar = data["avatar"], tp = 4,avatarFrame = data["avatarFrame"], tencetTp = data["qqVip"]})  
-    end
-
-
-
-]]

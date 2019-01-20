@@ -79,11 +79,13 @@ function BasePopView:addDecorateCorner( )
 end
 
 -- 弹出悬浮窗（如：获得物品）title动画
-function BasePopView:addPopViewTitleAnim( view,mcName,x,y)
+function BasePopView:addPopViewTitleAnim( view,mcName,x,y, maskDisY, scale)
     local mcStar = mcMgr:createViewMC( mcName or "gongxihuode_huodetitleanim", false, false, function (_, sender)
         
     end,RGBA8888)
     mcStar:setPosition(x,y+35)
+    scale = scale or 1
+    mcStar:setScale(scale)
     view:addChild(mcStar,99)
 
     mcStar:addCallbackAtFrame(6,function( )
@@ -111,7 +113,7 @@ function BasePopView:addPopViewTitleAnim( view,mcName,x,y)
         clipNode2:setPosition(x,y+45)
         local mask = cc.Sprite:createWithSpriteFrameName("globalImage_IconMaskHalfCircle.png")
         mask:setScale(2.5)
-        mask:setPosition(0,138)
+        mask:setPosition(0, 138 + (maskDisY or 0))
         clipNode2:setStencil(mask)
         clipNode2:setAlphaThreshold(0.5)
         mc1bg:setPositionY(-10)

@@ -44,6 +44,10 @@ NewFormationIconView.kIconTypeCrossPKTeam = 31        --元素位面英雄
 NewFormationIconView.kIconTypeCrossPKHero = 32        --元素位面英雄
 NewFormationIconView.kIconTypeClimbTowerTeam = 33         -- 无尽炼狱
 NewFormationIconView.kIconTypeClimbTowerHero = 34         -- 无尽炼狱
+NewFormationIconView.kIconTypeStakeAtk1Team = 35         -- 木桩
+NewFormationIconView.kIconTypeStakeAtk1Hero = 36         -- 木桩
+NewFormationIconView.kIconTypeProfessionTeam = 37       -- pve 军团试炼
+NewFormationIconView.kIconTypeProfessionHero = 38
 
 NewFormationIconView.kIconTypeHireTeam = 10000          --玩家雇佣兵团
 NewFormationIconView.kIconTypeIns = 10001          --玩家雇佣兵团
@@ -139,6 +143,10 @@ function NewFormationIconView:ctor(params)
         [NewFormationIconView.kIconTypeCrossPKHero] = handler(self, self.updateCrossPKHeroInformation),
         [NewFormationIconView.kIconTypeClimbTowerTeam] = handler(self, self.updateClimbTowerTeamInformation),
         [NewFormationIconView.kIconTypeClimbTowerHero] = handler(self, self.updateClimbTowerHeroInformation),
+        [NewFormationIconView.kIconTypeStakeAtk1Team] = handler(self, self.updateStakeAtk1TeamInformation),
+        [NewFormationIconView.kIconTypeStakeAtk1Hero] = handler(self, self.updateStakeAtk1HeroInformation),
+        [NewFormationIconView.kIconTypeProfessionTeam] = handler(self, self.updateInstanceTeamInformation),
+        [NewFormationIconView.kIconTypeProfessionHero] = handler(self, self.updateInstanceHeroInformation),
     }
 
     self._layerItemImage = nil
@@ -209,7 +217,8 @@ function NewFormationIconView:ctor(params)
     ]]
 
     local recommandFileName = "team_recommend_forma.png"
-    if self._formationType == self._formationModel.kFormationTypeLeague then
+    if self._formationType == self._formationModel.kFormationTypeLeague or 
+        self._formationType == self._formationModel.kFormationTypeStakeAtk1 then
         recommandFileName = "team_recommend1_forma.png"
     end
     self._imageRecommand = ccui.ImageView:create(recommandFileName, 1)
@@ -221,7 +230,16 @@ function NewFormationIconView:ctor(params)
 
     if self._formationType == self._formationModel.kFormationTypeGodWar1 or 
        self._formationType == self._formationModel.kFormationTypeGodWar2 or
-       self._formationType == self._formationModel.kFormationTypeGodWar3 then
+       self._formationType == self._formationModel.kFormationTypeGodWar3 or 
+       self._formationType == self._formationModel.kFormationTypeCrossGodWar1 or 
+       self._formationType == self._formationModel.kFormationTypeCrossGodWar2 or 
+       self._formationType == self._formationModel.kFormationTypeCrossGodWar3 or 
+       self._formationType == self._formationModel.kFormationTypeGloryArenaAtk1 or   
+       self._formationType == self._formationModel.kFormationTypeGloryArenaAtk2 or   
+       self._formationType == self._formationModel.kFormationTypeGloryArenaAtk3 or   
+       self._formationType == self._formationModel.kFormationTypeGloryArenaDef1 or   
+       self._formationType == self._formationModel.kFormationTypeGloryArenaDef2 or   
+       self._formationType == self._formationModel.kFormationTypeGloryArenaDef3 then   
         self._imageFormationIndex = ccui.ImageView:create("index_1_forma.png", 1)
         self._imageFormationIndex:setTouchEnabled(false)
         self._imageFormationIndex:setVisible(false)
@@ -238,6 +256,14 @@ function NewFormationIconView:ctor(params)
         self._imageFormationIndex:setVisible(false)
         self._imageFormationIndex:setPosition(cc.p(50, 50))
         self:addChild(self._imageFormationIndex, 20)
+    end
+    if table.indexof(self._formationModel.kBackupFormation, self._formationType) then
+        self._backupTagImage = ccui.ImageView:create("backup_img22.png", 1)
+        self._backupTagImage:setTouchEnabled(false)
+        self._backupTagImage:setVisible(true)
+        self._backupTagImage:setPosition(cc.p(45, 45))
+        self._backupTagImage:setVisible(false)
+        self:addChild(self._backupTagImage, 20)
     end
 
     --[[
@@ -383,9 +409,11 @@ function NewFormationIconView:showRelationEffect(effects)
         table.insert(actions, action)
         table.insert(actions, cc.DelayTime:create(1))
     end
-    self._layerItemBody:runAction(cc.Sequence:create(cc.Sequence:create(actions), cc.DelayTime:create(2 * #actions), cc.CallFunc:create(function()
-            self:clearRelationEffect()
-    end)))
+    if #actions > 0 then
+        self._layerItemBody:runAction(cc.Sequence:create(cc.Sequence:create(actions), cc.DelayTime:create(2 * #actions), cc.CallFunc:create(function()
+                -- self:clearRelationEffect()
+        end)))
+    end
 end
 
 function NewFormationIconView:clearRelationEffect()
@@ -421,6 +449,12 @@ function NewFormationIconView:getClassPosition()
        return clone(tab:GodWarPosition(teamTableData.posclass).position)
     else
         return clone(tab:ClassPosition(teamTableData.posclass).position)
+    end
+end
+
+function NewFormationIconView:showBackupTag( isShow )
+    if self._backupTagImage then
+        self._backupTagImage:setVisible(isShow)
     end
 end
 
@@ -629,7 +663,16 @@ function NewFormationIconView:showFormationIndexFlag(isShow, index, isFiltered)
         if index then
             if self._formationType == self._formationModel.kFormationTypeGodWar1 or 
                self._formationType == self._formationModel.kFormationTypeGodWar2 or
-               self._formationType == self._formationModel.kFormationTypeGodWar3 then
+               self._formationType == self._formationModel.kFormationTypeGodWar3 or 
+               self._formationType == self._formationModel.kFormationTypeCrossGodWar1 or 
+               self._formationType == self._formationModel.kFormationTypeCrossGodWar2 or 
+               self._formationType == self._formationModel.kFormationTypeCrossGodWar3 or 
+               self._formationType == self._formationModel.kFormationTypeGloryArenaAtk1 or 
+               self._formationType == self._formationModel.kFormationTypeGloryArenaAtk2 or 
+               self._formationType == self._formationModel.kFormationTypeGloryArenaAtk3 or 
+               self._formationType == self._formationModel.kFormationTypeGloryArenaDef1 or 
+               self._formationType == self._formationModel.kFormationTypeGloryArenaDef2 or 
+               self._formationType == self._formationModel.kFormationTypeGloryArenaDef3 then 
                 self._imageFormationIndex:loadTexture("index_" .. index .. "_forma.png", 1)
             elseif self._formationType == self._formationModel.kFormationTypeCityBattle1 or 
                self._formationType == self._formationModel.kFormationTypeCityBattle2 or
@@ -824,10 +867,12 @@ function NewFormationIconView:changeEnemyProfile(teamId)
        self._iconType ~= NewFormationIconView.kIconTypeCrusadeTeam and
        self._iconType ~= NewFormationIconView.kIconTypeLocalTeam and
        self._iconType ~= NewFormationIconView.kIconTypeGuildHero or
+       self._iconType ~= NewFormationIconView.kIconTypeProfessionTeam or
        self._iconChangedId == teamId then return end
 
     local teamTableData = nil
-    if self._iconType == NewFormationIconView.kIconTypeInstanceTeam then
+    if self._iconType == NewFormationIconView.kIconTypeInstanceTeam or 
+        self._iconType == NewFormationIconView.kIconTypeProfessionTeam then
         teamTableData = tab:Npc(teamId)
     elseif self._iconType == NewFormationIconView.kIconTypeArenaTeam then
         teamTableData = tab:Team(teamId)
@@ -849,11 +894,11 @@ function NewFormationIconView:changeEnemyProfile(teamId)
 
     if self._layerItemBody then
         self._layerItemBody:loadTexture(TeamUtils.getNpcTableValueByTeam(teamTableData, "steam") .. ".png", 1)
-
-        local quality = self._teamModel:getTeamQualityByStage(teamTableData.stage)
-        local teamNum = self._layerItemBody:getChildByTag(NewFormationIconView.kTagTeamNumber)
-        teamNum:setColor(UIUtils.colorTable["ccColorQuality" .. quality[1]])
-        teamNum:setString((6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")) * (6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")))
+        -- 变身的时候品质不变 bug#520
+        -- local quality = self._teamModel:getTeamQualityByStage(teamTableData.stage)
+        -- local teamNum = self._layerItemBody:getChildByTag(NewFormationIconView.kTagTeamNumber)
+        -- teamNum:setColor(UIUtils.colorTable["ccColorQuality" .. quality[1]])
+        -- teamNum:setString((6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")) * (6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")))
     end
     
     self._iconChangedId = teamId
@@ -939,6 +984,14 @@ function NewFormationIconView.getEnemyTeamTypeByFormationType(formationType)
         return NewFormationIconView.kIconTypeCrossPKTeam
     elseif formationType == FormationModel.kFormationTypeClimbTower then
         return NewFormationIconView.kIconTypeClimbTowerTeam
+    elseif formationType == FormationModel.kFormationTypeStakeAtk1 then
+        return NewFormationIconView.kIconTypeStakeAtk1Team
+    elseif formationType == FormationModel.kFormationTypeProfession1 or 
+        formationType == FormationModel.kFormationTypeProfession2 or 
+        formationType == FormationModel.kFormationTypeProfession3 or 
+        formationType == FormationModel.kFormationTypeProfession4 or 
+        formationType == FormationModel.kFormationTypeProfession5 then
+        return NewFormationIconView.kIconTypeProfessionTeam
     end
 end
 
@@ -987,8 +1040,16 @@ function NewFormationIconView.getEnemyHeroTypeByFormationType(formationType)
            formationType == FormationModel.kFormationTypeCrossPKDef3 or
            formationType == FormationModel.kFormationTypeCrossPKFight then
         return NewFormationIconView.kIconTypeCrossPKHero
-        elseif formationType == FormationModel.kFormationTypeClimbTower then
+    elseif formationType == FormationModel.kFormationTypeClimbTower then
         return NewFormationIconView.kIconTypeClimbTowerHero
+    elseif formationType == FormationModel.kFormationTypeStakeAtk1 then 
+        return NewFormationIconView.kIconTypeStakeAtk1Hero
+    elseif formationType == FormationModel.kFormationTypeProfession1 or 
+        formationType == FormationModel.kFormationTypeProfession2 or 
+        formationType == FormationModel.kFormationTypeProfession3 or 
+        formationType == FormationModel.kFormationTypeProfession4 or 
+        formationType == FormationModel.kFormationTypeProfession5 then
+        return NewFormationIconView.kIconTypeProfessionHero
     end
 end
 
@@ -1059,14 +1120,15 @@ function NewFormationIconView:updateTeamInformation(state)
         end
 
         local imageClass = self._layerItemImage:getChildByTag(NewFormationIconView.kTagTeamClass)
+        local className = TeamUtils:getClassIconNameByTeamD(teamData, "classlabel", teamTableData, true)
         if not imageClass then
-            imageClass = ccui.ImageView:create(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+            imageClass = ccui.ImageView:create(IconUtils.iconPath .. className .. ".png", 1)
             imageClass:setScale(0.7)
             imageClass:setPosition(13, 92)
             imageClass:setTag(NewFormationIconView.kTagTeamClass)
             self._layerItemImage:addChild(imageClass, 20)
         else
-            imageClass:loadTexture(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+            imageClass:loadTexture(IconUtils.iconPath .. className .. ".png", 1)
         end
         imageClass = self._layerItemImage:getChildByTag(NewFormationIconView.kTagTeamClass)
 
@@ -1119,7 +1181,8 @@ function NewFormationIconView:updateTeamInformation(state)
         teamNumBg:setTag(NewFormationIconView.kTagTeamNumberBg)
         self._layerItemBody:addChild(teamNumBg, 5)
 
-        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+        local className = TeamUtils:getClassIconNameByTeamD(teamData, "classlabel", teamTableData, true)
+        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. className .. ".png", 1)
         imageClass:setScale(0.7 / teamScale)
         imageClass:setPosition(teamNumBg:getPositionX() - teamNumBg:getContentSize().width / 2 - 5, teamNumBg:getPositionY() + 6)
         imageClass:setTag(NewFormationIconView.kTagTeamClass)
@@ -1174,14 +1237,15 @@ function NewFormationIconView:updateHireTeamInformation(state)
         end
 
         local imageClass = self._layerItemImage:getChildByTag(NewFormationIconView.kTagTeamClass)
+        local className = TeamUtils:getClassIconNameByTeamD(teamData, "classlabel", teamTableData, true)
         if not imageClass then
-            imageClass = ccui.ImageView:create(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+            imageClass = ccui.ImageView:create(IconUtils.iconPath .. className .. ".png", 1)
             imageClass:setScale(0.7)
             imageClass:setPosition(13, 92)
             imageClass:setTag(NewFormationIconView.kTagTeamClass)
             self._layerItemImage:addChild(imageClass, 20)
         else
-            imageClass:loadTexture(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+            imageClass:loadTexture(IconUtils.iconPath .. className .. ".png", 1)
         end
         imageClass = self._layerItemImage:getChildByTag(NewFormationIconView.kTagTeamClass)
 
@@ -1234,7 +1298,8 @@ function NewFormationIconView:updateHireTeamInformation(state)
         teamNumBg:setTag(NewFormationIconView.kTagTeamNumberBg)
         self._layerItemBody:addChild(teamNumBg, 5)
 
-        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+        local className = TeamUtils:getClassIconNameByTeamD(teamData, "classlabel", teamTableData, true)
+        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. className .. ".png", 1)
         imageClass:setScale(0.7 / teamScale)
         imageClass:setPosition(teamNumBg:getPositionX() - teamNumBg:getContentSize().width / 2 - 5, teamNumBg:getPositionY() + 6)
         imageClass:setTag(NewFormationIconView.kTagTeamClass)
@@ -1349,7 +1414,8 @@ function NewFormationIconView:updateClimbTowerTeamInformation(state)
         teamNumBg:setTag(NewFormationIconView.kTagTeamNumberBg)
         self._layerItemBody:addChild(teamNumBg, 5)
 
-        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+        local className = TeamUtils:getNpcClassName(teamTableData)
+        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. className .. ".png", 1)
         imageClass:setScale(0.7 / teamScale)
         imageClass:setRotation3D(cc.Vertex3F(0, 180, 0))
         imageClass:setPosition(teamNumBg:getPositionX() + teamNumBg:getContentSize().width / 2 + 5, teamNumBg:getPositionY() + 6)
@@ -1400,6 +1466,90 @@ function NewFormationIconView:updateClimbTowerHeroInformation(state)
     end
 end
 
+function NewFormationIconView:updateStakeAtk1TeamInformation( state )
+    state = state or self._iconState
+
+    local teamTableData = tab:Npc(self._iconId)
+    if not teamTableData then print("invalid team icon id", self._iconId) end
+    local quality = self._teamModel:getTeamQualityByStage(teamTableData.stage)
+    if NewFormationIconView.kIconStateImage == state then
+        if not self._layerItemImage then
+            self._layerItemImage = IconUtils:createTeamIconById({teamData = {id = self._iconId, star = teamTableData.star}, sysTeamData = teamTableData, quality = quality[1], quaAddition = quality[2],  eventStyle = 0})
+            self._layerItemImage:setScale(0.9)
+            self._layerItemImage:setVisible(false)
+            self:addChild(self._layerItemImage)
+        else
+            IconUtils:updateTeamIconByView(self._layerItemImage, {teamData = teamData, sysTeamData = teamTableData, quality = quality[1], quaAddition = quality[2],  eventStyle = 0})
+        end
+    else
+        local teamScale = NewFormationIconView.kTeamScale
+        if self:isTeamSpecial() then
+            teamScale = NewFormationIconView.kTeamSpecialScale
+        end
+
+        self._layerItemBody = ccui.ImageView:create(TeamUtils.getNpcTableValueByTeam(teamTableData, "steam") .. ".png", 1)
+        self._layerItemBody:setAnchorPoint(cc.p(0.5, 0.1))
+        self._layerItemBody:setScale(teamScale)
+        self._layerItemBody:setRotation3D(cc.Vertex3F(0, 180, 0))
+        self._layerItemBody:setPosition(self:getContentSize().width / 2, self:getContentSize().height / 2)
+        self._layerItemBody:setVisible(false)
+        self:addChild(self._layerItemBody)
+
+        local teamNumBg = ccui.ImageView:create("team_num_bg_forma.png", 1)
+        teamNumBg:setScale(1 / teamScale)
+        teamNumBg:setPosition(self._layerItemBody:getContentSize().width / 2 - teamNumBg:getContentSize().width / 2, 0)
+        teamNumBg:setTag(NewFormationIconView.kTagTeamNumberBg)
+        self._layerItemBody:addChild(teamNumBg, 5)
+
+        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+        imageClass:setScale(0.7 / teamScale)
+        imageClass:setRotation3D(cc.Vertex3F(0, 180, 0))
+        imageClass:setPosition(teamNumBg:getPositionX() + teamNumBg:getContentSize().width / 2 + 5, teamNumBg:getPositionY() + 6)
+        imageClass:setTag(NewFormationIconView.kTagTeamClass)
+        self._layerItemBody:addChild(imageClass, 20)
+
+        local teamNumX = ccui.Text:create("X", UIUtils.ttfName, 14)
+        teamNumX:setScale(1 / teamScale)
+        teamNumX:setPosition(imageClass:getPositionX() - 30, -1)
+        teamNumX:setTag(NewFormationIconView.kTagTeamX)
+        teamNumX:setColor(UIUtils.colorTable["ccColorQuality" .. quality[1]])
+        teamNumX:enableOutline(cc.c4b(60, 30, 10, 255), 1)
+        self._layerItemBody:addChild(teamNumX, 10)
+
+        local teamNum = ccui.Text:create((6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")) * (6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")), UIUtils.ttfName, 22)
+        teamNum:setFlippedX(true)
+        teamNum:setScale(1 / teamScale)
+        teamNum:setPosition(teamNumX:getPositionX() - teamNum:getContentSize().width, -1)
+        teamNum:setTag(NewFormationIconView.kTagTeamNumber)
+        teamNum:setColor(UIUtils.colorTable["ccColorQuality" .. quality[1]])
+        teamNum:enableOutline(cc.c4b(60, 30, 10, 255), 1)
+        self._layerItemBody:addChild(teamNum, 10)
+    end
+end
+
+function NewFormationIconView:updateStakeAtk1HeroInformation( state )
+    state = state or self._iconState
+    local heroTableData = clone(tab:NpcHero(self._iconId))
+    if not heroTableData then print("invalid hero icon id", self._iconId) end
+    if NewFormationIconView.kIconStateImage == state then
+        if not self._layerItemImage then
+            self._layerItemImage = IconUtils:createHeroIconById({sysHeroData = heroTableData})
+            self._layerItemImage:setScale(0.9)
+            self._layerItemImage:setPosition(cc.p(45, 45))
+            self:addChild(self._layerItemImage)
+        else
+            IconUtils:updateHeroIconByView(self._layerItemImage, {sysHeroData = heroTableData})
+        end
+    else
+        self._layerItemBody = ccui.ImageView:create(heroTableData.shero .. ".png", 1)
+        self._layerItemBody:setAnchorPoint(cc.p(0.5, 0.1))
+        self._layerItemBody:setScale(NewFormationIconView.kHeroScale)
+        self._layerItemBody:setRotation3D(cc.Vertex3F(0, 180, 0))
+        self._layerItemBody:setPosition(self:getContentSize().width / 2, self:getContentSize().height / 2 + 5)
+        self._layerItemBody:setVisible(false)
+        self:addChild(self._layerItemBody)
+    end
+end
 
 function NewFormationIconView:updateInsInformation(state)
     --print("NewFormationIconView:updateTeamInformation")
@@ -1577,7 +1727,8 @@ function NewFormationIconView:updateInstanceTeamInformation(state)
         teamNumBg:setTag(NewFormationIconView.kTagTeamNumberBg)
         self._layerItemBody:addChild(teamNumBg, 5)
 
-        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+        local className = TeamUtils:getNpcClassName(teamTableData)
+        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. className .. ".png", 1)
         imageClass:setScale(0.7 / teamScale)
         imageClass:setRotation3D(cc.Vertex3F(0, 180, 0))
         imageClass:setPosition(teamNumBg:getPositionX() + teamNumBg:getContentSize().width / 2 + 5, teamNumBg:getPositionY() + 6)
@@ -1667,7 +1818,8 @@ function NewFormationIconView:updateArenaTeamInformation(state)
         teamNumBg:setTag(NewFormationIconView.kTagTeamNumberBg)
         self._layerItemBody:addChild(teamNumBg, 5)
 
-        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+        local className = TeamUtils:getClassIconNameByTeamD(teamData, "classlabel", teamTableData, true)
+        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. className .. ".png", 1)
         imageClass:setScale(0.7 / teamScale)
         imageClass:setRotation3D(cc.Vertex3F(0, 180, 0))
         imageClass:setPosition(teamNumBg:getPositionX() + teamNumBg:getContentSize().width / 2 + 5, teamNumBg:getPositionY() + 6)
@@ -1744,7 +1896,8 @@ function NewFormationIconView:updateAiRenMuWuTeamInformation(state)
         teamNumBg:setTag(NewFormationIconView.kTagTeamNumberBg)
         self._layerItemBody:addChild(teamNumBg, 5)
 
-        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+        local className = TeamUtils:getNpcClassName(teamTableData)
+        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. className .. ".png", 1)
         imageClass:setScale(0.7 / teamScale)
         imageClass:setRotation3D(cc.Vertex3F(0, 180, 0))
         imageClass:setPosition(teamNumBg:getPositionX() + teamNumBg:getContentSize().width / 2 + 5, teamNumBg:getPositionY() + 6)
@@ -1821,7 +1974,8 @@ function NewFormationIconView:updateZombieTeamInformation(state)
         teamNumBg:setTag(NewFormationIconView.kTagTeamNumberBg)
         self._layerItemBody:addChild(teamNumBg, 5)
 
-        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+        local className = TeamUtils:getNpcClassName(teamTableData)
+        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. className .. ".png", 1)
         imageClass:setScale(0.7 / teamScale)
         imageClass:setRotation3D(cc.Vertex3F(0, 180, 0))
         imageClass:setPosition(teamNumBg:getPositionX() + teamNumBg:getContentSize().width / 2 + 5, teamNumBg:getPositionY() + 6)
@@ -1898,7 +2052,8 @@ function NewFormationIconView:updateDragonTeamInformation(state)
         teamNumBg:setTag(NewFormationIconView.kTagTeamNumberBg)
         self._layerItemBody:addChild(teamNumBg, 5)
 
-        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+        local className = TeamUtils:getNpcClassName(teamTableData)
+        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. className .. ".png", 1)
         imageClass:setScale(0.7 / teamScale)
         imageClass:setRotation3D(cc.Vertex3F(0, 180, 0))
         imageClass:setPosition(teamNumBg:getPositionX() + teamNumBg:getContentSize().width / 2 + 5, teamNumBg:getPositionY() + 6)
@@ -1982,7 +2137,8 @@ function NewFormationIconView:updateCrusadeTeamInformation(state)
         teamNumBg:setTag(NewFormationIconView.kTagTeamNumberBg)
         self._layerItemBody:addChild(teamNumBg, 5)
 
-        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+        local className = TeamUtils:getClassIconNameByTeamD(teamData, "classlabel", teamTableData, true)
+        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. className .. ".png", 1)
         imageClass:setScale(0.7 / teamScale)
         imageClass:setRotation3D(cc.Vertex3F(0, 180, 0))
         imageClass:setPosition(teamNumBg:getPositionX() + teamNumBg:getContentSize().width / 2 + 5, teamNumBg:getPositionY() + 6)
@@ -2059,7 +2215,8 @@ function NewFormationIconView:updateLocalTeamInformation(state)
         teamNumBg:setTag(NewFormationIconView.kTagTeamNumberBg)
         self._layerItemBody:addChild(teamNumBg, 5)
 
-        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+        local className = TeamUtils:getClassIconNameByTeamD(teamData, "classlabel", teamTableData, true)
+        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. className .. ".png", 1)
         imageClass:setScale(0.7 / teamScale)
         imageClass:setRotation3D(cc.Vertex3F(0, 180, 0))
         imageClass:setPosition(teamNumBg:getPositionX() + teamNumBg:getContentSize().width / 2 + 5, teamNumBg:getPositionY() + 6)
@@ -2153,7 +2310,8 @@ function NewFormationIconView:updateGuildTeamInformation(state)
         teamNumBg:setTag(NewFormationIconView.kTagTeamNumberBg)
         self._layerItemBody:addChild(teamNumBg, 5)
 
-        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+        local className = TeamUtils:getClassIconNameByTeamD(teamData, "classlabel", teamTableData, true)
+        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. className .. ".png", 1)
         imageClass:setScale(0.7 / teamScale)
         imageClass:setRotation3D(cc.Vertex3F(0, 180, 0))
         imageClass:setPosition(teamNumBg:getPositionX() + teamNumBg:getContentSize().width / 2 + 5, teamNumBg:getPositionY() + 6)
@@ -2237,7 +2395,8 @@ function NewFormationIconView:updateMFTeamInformation(state)
         teamNumBg:setTag(NewFormationIconView.kTagTeamNumberBg)
         self._layerItemBody:addChild(teamNumBg, 5)
 
-        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+        local className = TeamUtils:getNpcClassName(teamTableData)
+        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. className .. ".png", 1)
         imageClass:setScale(0.7 / teamScale)
         imageClass:setRotation3D(cc.Vertex3F(0, 180, 0))
         imageClass:setPosition(teamNumBg:getPositionX() + teamNumBg:getContentSize().width / 2 + 5, teamNumBg:getPositionY() + 6)
@@ -2314,7 +2473,8 @@ function NewFormationIconView:updateNpcTeamInformation(state)
         teamNumBg:setTag(NewFormationIconView.kTagTeamNumberBg)
         self._layerItemBody:addChild(teamNumBg, 5)
 
-        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+        local className = TeamUtils:getNpcClassName(teamTableData)
+        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. className .. ".png", 1)
         imageClass:setScale(0.7 / teamScale)
         imageClass:setRotation3D(cc.Vertex3F(0, 180, 0))
         imageClass:setPosition(teamNumBg:getPositionX() + teamNumBg:getContentSize().width / 2 + 5, teamNumBg:getPositionY() + 6)
@@ -2391,7 +2551,8 @@ function NewFormationIconView:updateElementalTeamInformation(state)
         teamNumBg:setTag(NewFormationIconView.kTagTeamNumberBg)
         self._layerItemBody:addChild(teamNumBg, 5)
 
-        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+        local className = TeamUtils:getNpcClassName(teamTableData)
+        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. className .. ".png", 1)
         imageClass:setScale(0.7 / teamScale)
         imageClass:setRotation3D(cc.Vertex3F(0, 180, 0))
         imageClass:setPosition(teamNumBg:getPositionX() + teamNumBg:getContentSize().width / 2 + 5, teamNumBg:getPositionY() + 6)
@@ -2468,7 +2629,8 @@ function NewFormationIconView:updateWeaponTeamInformation(state)
         teamNumBg:setTag(NewFormationIconView.kTagTeamNumberBg)
         self._layerItemBody:addChild(teamNumBg, 5)
 
-        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+        local className = TeamUtils:getClassIconNameByTeamD(teamData, "classlabel", teamTableData, true)
+        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. className .. ".png", 1)
         imageClass:setScale(0.7 / teamScale)
         imageClass:setRotation3D(cc.Vertex3F(0, 180, 0))
         imageClass:setPosition(teamNumBg:getPositionX() + teamNumBg:getContentSize().width / 2 + 5, teamNumBg:getPositionY() + 6)
@@ -2498,6 +2660,7 @@ function NewFormationIconView:updateCustomTeamInformation(state)
     --print("NewFormationIconView:updateCustomTeamInformation")
     state = state or self._iconState
     local teamTableData = nil
+    local className = nil
     if self._formationType == self._formationModel.kFormationTypeHeroDuel then
         teamTableData = clone(tab:Team(self._iconId))
         local heroDuelId = self._heroDuelModel:getWeekNum()
@@ -2511,13 +2674,15 @@ function NewFormationIconView:updateCustomTeamInformation(state)
                 teamTableData.sl[i] = heroDuelTableData.teamskill[i]
             end
         end
-
+        className = TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel")
         if awakingData then
             teamTableData.ast = 3
             teamTableData.aLvl = awakingData.aLvl
+            className = className .. "_awake"
         end
     else
         teamTableData = tab:Npc(self._iconId)
+        className = TeamUtils:getNpcClassName(teamTableData)
     end
     if not teamTableData then print("invalid team icon id", self._iconId) end
     local quality = self._teamModel:getTeamQualityByStage(teamTableData.stage)
@@ -2534,13 +2699,13 @@ function NewFormationIconView:updateCustomTeamInformation(state)
 
         local imageClass = self._layerItemImage:getChildByTag(NewFormationIconView.kTagTeamClass)
         if not imageClass then
-            imageClass = ccui.ImageView:create(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+            imageClass = ccui.ImageView:create(IconUtils.iconPath .. className .. ".png", 1)
             imageClass:setScale(0.7)
             imageClass:setPosition(13, 92)
             imageClass:setTag(NewFormationIconView.kTagTeamClass)
             self._layerItemImage:addChild(imageClass, 20)
         else
-            imageClass:loadTexture(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+            imageClass:loadTexture(IconUtils.iconPath .. className .. ".png", 1)
         end
         imageClass = self._layerItemImage:getChildByTag(NewFormationIconView.kTagTeamClass)
 
@@ -2575,7 +2740,7 @@ function NewFormationIconView:updateCustomTeamInformation(state)
         teamNumBg:setTag(NewFormationIconView.kTagTeamNumberBg)
         self._layerItemBody:addChild(teamNumBg, 5)
 
-        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. className .. ".png", 1)
         imageClass:setScale(0.7 / teamScale)
         imageClass:setPosition(teamNumBg:getPositionX() - teamNumBg:getContentSize().width / 2 - 5, teamNumBg:getPositionY() + 6)
         imageClass:setTag(NewFormationIconView.kTagTeamClass)
@@ -2639,7 +2804,8 @@ function NewFormationIconView:updateCrossPKTeamInformation(state)
         teamNumBg:setTag(NewFormationIconView.kTagTeamNumberBg)
         self._layerItemBody:addChild(teamNumBg, 5)
 
-        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+        local className = TeamUtils:getClassIconNameByTeamD(teamData, "classlabel", teamTableData, true)
+        local imageClass = ccui.ImageView:create(IconUtils.iconPath .. className .. ".png", 1)
         imageClass:setScale(0.7 / teamScale)
         imageClass:setRotation3D(cc.Vertex3F(0, 180, 0))
         imageClass:setPosition(teamNumBg:getPositionX() + teamNumBg:getContentSize().width / 2 + 5, teamNumBg:getPositionY() + 6)

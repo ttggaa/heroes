@@ -700,7 +700,7 @@ function TrainingRankDialog:createRoleHead(data,headNode,scaleNum)
 	local scale = scaleNum and scaleNum or 0.8
 	if avatarName == 0 or not avatarName then avatarName = 1203 end	
 	local lvl = data.lvl
-	local icon = IconUtils:createHeadIconById({avatar = avatarName,tp = 3 ,level = lvl,avatarFrame = data["avatarFrame"]})
+	local icon = IconUtils:createHeadIconById({avatar = avatarName,tp = 3 ,level = lvl,avatarFrame = data["avatarFrame"], plvl = data.plvl})
 	icon:setName("avatarIcon")
 	icon:setAnchorPoint(cc.p(0.5,0.5))
 	icon:setScale(scale)

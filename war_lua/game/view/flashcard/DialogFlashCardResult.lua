@@ -14,6 +14,7 @@ local discountTen   = tab:Setting("G_DISCOUNT_TENTIMES_DRAW").value
 
 local toolSingle    = tab:Setting("G_DRAWCOST_TOOL_SINGLE").value[3]
 local toolTen       = tab:Setting("G_DRAWCOST_TOOL_TENTIMES").value[3]
+local tool100       = 100
 local gemSingle     = tab:Setting("G_DRAWCOST_GEM_SINGLE").value[3]
 local gemTen        = tab:Setting("G_DRAWCOST_GEM_TENTIMES").value[3]
 local gemFreeCD     = tab:Setting("G_FREECD_DRAW_GEM_SINGLE").value -- 转换成秒数
@@ -45,6 +46,13 @@ function DialogFlashCardResult:onInit()
     -- self._scrollView = self:getUI("bg.scrollView")
     self._bg = self:getUI("bg")
     self._bg1 = self:getUI("bg.bg1")
+    self._scrollView = self:getUI("bg.scrollView")
+    self._bg1:setTouchEnabled(true)
+    self._scrollView:setTouchEnabled(true)
+    self._bg:setTouchEnabled(true)
+    self._bg1:setSwallowTouches(false)
+    self._scrollView:setSwallowTouches(false)
+
     -- self._scrollView:setClippingType(1)
     self.bgWidth,self.bgHeight = self._bg:getContentSize().width,self._bg:getContentSize().height
     self._okBtn = self:getUI("bg.closeBtn")
@@ -54,7 +62,12 @@ function DialogFlashCardResult:onInit()
     -- 动画相关
     self._itemNames = {}
     self._touchLab = self:getUI("bg.touchLab")
-    self._touchLab:setOpacity(0)
+    if self.buyNum ~= 100 then
+        self._touchLab:setOpacity(0)
+    else
+        self._touchLab:setOpacity(0)
+        self._touchLab:setString("点击任意位置快速查看结果")
+    end
 
     self._bg1:setOpacity(0)
     local children1 = self._bg1:getChildren()
@@ -69,6 +82,7 @@ function DialogFlashCardResult:onInit()
     -- item 容器
     self._itemTable = {}
     -- -- 兵团转换的兵团背景光效
+    self._showChange = self.buyNum ~= 100  -- 100连抽不显示兵团卡牌
     self._isChangeMc = {}
 
     -- 再来！！！！
@@ -77,7 +91,7 @@ function DialogFlashCardResult:onInit()
     -- 再来十次panel
     self._tenAginBtn = self:getUI("bg.tenAginBtn")
     self._tenBtn = self:getUI("bg.tenAginBtn.tenAginBtn")
-
+    self._tenBtn:setTitleText("再来" .. self.buyNum .. "次")
     -- self._timeLabel = self:getUI("bg.onceAginBtn.timeLabel")
     --更新倒计时
     -- self:reflashTimeLabel()
@@ -147,7 +161,7 @@ function DialogFlashCardResult:animBegin(callback)
                     v:runAction(cc.FadeIn:create(0.2))
                 end
             end
-            if self.buyNum == 10 then
+            if self.buyNum > 1 then
                 local mcWupintexiao = mcMgr:createViewMC("wupintexiao_flashcardanim", true, false, function (_, sender)
                     -- sender:removeFromParent()
                 end,RGBA8888)
@@ -166,6 +180,7 @@ local expBottle = {
 }
 -- 接收自定义消息
 function DialogFlashCardResult:reflashUI(data)
+    self._touchLab:setVisible(self.buyNum == 100 and not self._isAgain) 
     local gifts = data.awards or data
     self._callbackAwards = gifts or self._callbackAwards
     -- dump(gifts)
@@ -179,26 +194,37 @@ function DialogFlashCardResult:reflashUI(data)
         gifts = {}
         table.insert(gifts,data.awards or data)
     end
-    local blank = 25
-    local colNum = 5
-    local itemHeight,itemWidth = 110,96
-    
-    local maxHeight = (itemHeight+blank) * math.ceil( #gifts / colNum)
-    local x = 3
-    local y = 0--maxHeight - itemHeight
 
-    local offsetX,offsetY = 0,0
-    if #gifts <= colNum then
-        offsetX = (self.bgWidth-#gifts*(itemWidth+blank))/2+itemWidth/2-10
-        offsetY = self.bgHeight/2-30 -- itemHeight/2+30
-        -- offsetY = self.bgHeight/2 - maxHeight/2 + itemHeight/2
-    else
-        offsetX = (self.bgWidth-colNum*(itemWidth+blank))/2+itemWidth/2
-        -- offsetY = self.bgHeight/2-itemHeight+30
-        offsetY = self.bgHeight/2 + maxHeight/2 -  itemHeight + 15
+    local maxHeight = self._scrollView:getContentSize().height
+    -- self._:removeAllChildren()
+    local colMax = 5
+    local itemHeight,itemWidth = 140,127
+    local maxScrollHeight = itemHeight * math.ceil( #gifts / colMax) + 25
+    if maxScrollHeight <= maxHeight then
+        maxScrollHeight = maxHeight
     end
-    x = offsetX+20
-    y = y+offsetY+3--itemHeight/2
+    self._scrollView:setInnerContainerSize(cc.size(1136,maxScrollHeight))
+
+    local x = 0
+    local y = itemHeight - 60
+
+    -- print("gifts===",#gifts)
+    local offsetX,offsetY = 0,0
+    local row = math.ceil( #gifts / colMax)
+    local col = #gifts
+    if col > colMax then
+        col = colMax
+    end
+    offsetX = (1136 - (col-1)*itemWidth)*0.5 -- (self.bgWidth-(col-1)*itemWidth)*0.5
+    --    矫正 - (row - 2) * 15  2行 +15 2行不加
+    offsetY = maxScrollHeight/2 + row*itemHeight/2 - itemHeight/2 + 30
+    if row == 1 then
+        offsetY = maxScrollHeight/2 + 30
+    end
+
+    x = x+offsetX-itemWidth
+    y = y+offsetY-5
+
     -- 轮次添加物品特效
     local createItemDeque
     local xFactor = 1
@@ -211,9 +237,17 @@ function DialogFlashCardResult:reflashUI(data)
         local itemId = itemData.typeId
         -- 如果是再次购买，不加动画，兵团转碎片不加展示卡片效果
         local callFunc = function()   end
+        if self.buyNum == 100 and index == 1 and not self._bgHaveEvent then
+            self._bgHaveEvent = true
+            self:registerClickEventByName("bg", function()
+                print("============快速展示结果===============")
+                self._isAgain = true 
+                -- self._scrollView:getInnerContainer():setPositionY(0)
+            end)
+        end
         if not self._isAgain then
             callFunc = function( )                
-                if itemData.isChange then
+                if itemData.isChange and self._showChange then
                     local mcSplash = mcMgr:createViewMC("shanguang_flashcardanim", true, false, function (_, sender)
                         sender:gotoAndPlay(80)
                     end)
@@ -237,18 +271,26 @@ function DialogFlashCardResult:reflashUI(data)
                 end 
             end       
         end
-        self:createItem(itemData, x, y, index-1,callFunc,small)
-         x = x + xFactor*(itemWidth + blank)
-        if index % colNum == 0 then 
-            x =  offsetX+20
-            -- x = x - xFactor*(itemWidth + blank)
-            -- xFactor = -1
-            y = y - blank - itemHeight - 24 --name高度
+        x = x + itemWidth
+        if index % colMax == 1 then 
+            x =  offsetX
+            y = y - itemHeight
+        end
+        if not self._isAgain and index > 10 and index % colMax == 1 then -- 多一行就 滚屏
+            local offsetY = -(maxScrollHeight - 5 - 2*itemHeight)+(math.ceil((index-10)/5))*itemHeight
+            local container = self._scrollView:getInnerContainer()
+            container:runAction(cc.Sequence:create(
+                cc.EaseOut:create(cc.MoveTo:create(0.2,cc.p(0,offsetY)),0.7),
+                cc.CallFunc:create(function( )
+                    self:createItem(itemData, x, y, index-1,callFunc,small)
+                end)
+            ))
+        else
+            self:createItem(itemData, x, y, index-1,callFunc,small)
         end
         if self._isAgain then
             createNextItemFunc(index+1,0.8)
         end
-
     end
 
     local bg1Height = 200
@@ -278,6 +320,9 @@ function DialogFlashCardResult:reflashUI(data)
                     self._bg1:runAction(cc.Sequence:create(cc.ScaleTo:create(0.05,1,1.05),cc.ScaleTo:create(0.1,1,1)))
                     ScheduleMgr:unregSchedule(sizeSchedule)
                     self:addDecorateCorner()
+                    if self.buyNum == 100 then
+                        self._touchLab:runAction(cc.FadeIn:create(0.2))
+                    end
                     
                 end
             end)
@@ -352,13 +397,13 @@ function DialogFlashCardResult:createItem( data,x,y,index,callfunc,scale )
         itemName:enableOutline(cc.c4b(0,0,0,255),1)
         itemName:setAnchorPoint(cc.p(0.5,1))
         itemName:setPosition(cc.p(x,y)) --cc.pAdd(cc.p(x,y),cc.p(item:getContentSize().width/2,-4)))
-        self._bg:addChild(itemName,2)
+        self._scrollView:addChild(itemName,2)
         itemName:setVisible(false)
         table.insert(self._itemNames,itemName)
     end
 
     table.insert(self._itemTable,item)
-    self._bg:addChild(item,2)
+    self._scrollView:addChild(item,2)
 
     item:setOpacity(0)
     local children = item:getChildren()
@@ -376,8 +421,11 @@ function DialogFlashCardResult:createItem( data,x,y,index,callfunc,scale )
     if bgMc then
         bgMc:setVisible(false)
     end
-    
-    ScheduleMgr:delayCall(100, self, function( )
+    local delayT = 100
+    if self._isAgain then 
+        delayT = 0
+    end
+    ScheduleMgr:delayCall(delayT, self, function( )
         if not itemData or not data or not item then return end
         -- 加背景光效
         local bgMcName 
@@ -396,7 +444,7 @@ function DialogFlashCardResult:createItem( data,x,y,index,callfunc,scale )
             mc:setPlaySpeed(0.5)
             -- mc:setScale(0.8)
             -- mc:setName("bgMc")
-            self._bg:addChild(mc,9)
+            self._scrollView:addChild(mc,9)
         end
         if data.isChange then    
             -- local sp = cc.Sprite:createWithSpriteFrameName("light_flashcard.png")
@@ -410,7 +458,7 @@ function DialogFlashCardResult:createItem( data,x,y,index,callfunc,scale )
             end,RGBA8888) 
             mc:setPosition(x,y+50)      
             mc:setScale(1.1)
-            self._bg:addChild(mc) 
+            self._scrollView:addChild(mc) 
             
 
             table.insert(self._isChangeMc,mc)
@@ -465,12 +513,13 @@ function DialogFlashCardResult:createItem( data,x,y,index,callfunc,scale )
                 if tolua.isnull(self._touchLab) or tolua.isnull(self._tenAginBtn) then return end
                 -- print("----delayCall800800800800800--------------------------")
                 -- 按钮出现
-                if 10 == self.buyNum then
+                if 1 < self.buyNum then
                     self._tenAginBtn:setVisible(true)
                     self._tenAginBtn:runAction(cc.FadeIn:create(0.1)) 
 
                     self._backBtn:setVisible(true)
-                    self._backBtn:runAction(cc.FadeIn:create(0.1))                     
+                    self._backBtn:runAction(cc.FadeIn:create(0.1))
+                    self._touchLab:setVisible(false)                  
                 else
                     self._touchLab:setVisible(true) 
                     self._touchLab:runAction(cc.FadeIn:create(0.2))
@@ -482,10 +531,11 @@ function DialogFlashCardResult:createItem( data,x,y,index,callfunc,scale )
                 if tolua.isnull(self._touchLab) or tolua.isnull(self._tenAginBtn) then return end
                
                 -- 按钮可点击
-                if 10 == self.buyNum then
+                if 1 < self.buyNum then
                     self._tenBtn:setTouchEnabled(true)
                     self._tenAginBtn:setTouchEnabled(true)
                     self._backBtn:setTouchEnabled(true)
+
                 else
                     -- self._onceAginBtn:setTouchEnabled(true)
                     self:registerClickEventByName("closePanel", function()                       
@@ -509,8 +559,8 @@ function DialogFlashCardResult:createItem( data,x,y,index,callfunc,scale )
                             UIUtils:reloadLuaFile("flashcard.DialogFlashCardResult")
                         end
                     end)
-
                     self:registerClickEventByName("bg", function()
+                        print("================bg=================")
                         if self._hadClose == false then
                             self._hadClose = true
                             if self.callback and type(self.callback) == "function" then
@@ -686,13 +736,17 @@ function DialogFlashCardResult:initTenAginBtn()
     else
         self._costImg:loadTexture("flashcard_choukaSilverKey.png",1)
         local _,toolHaveNum = self._modelMgr:getModel("ItemModel"):getItemsById(3001)
-        if toolHaveNum < toolTen then
-
+        local costNum = toolTen
+        if self.buyNum == 100 then
+            costNum = tool100
+        end
+        if toolHaveNum < costNum then
             self._costValue:setColor(cc.c4b(255, 23, 23, 255))
         else
             self._costValue:setColor(cc.c4b(255, 255, 255, 255))
         end
-        self._costValue:setString(toolHaveNum .. "/" .. toolTen)
+
+        self._costValue:setString(toolHaveNum .. "/" .. costNum)
     end
 end
 --[[
@@ -734,16 +788,15 @@ function DialogFlashCardResult:buyTenAginFunc( ... )
 
     if rightCostType == self._costType then
         -- 再来十次回调 限时兵团用
-        if self._showType and self._showType == "limitTeam" then
-            self:buyItemByOther(self._genNum10,10)
-        else
-            local cost = gemTen*discountTen
-            -- self._buyNum = 10
-            self:buyItemByGem(cost,10)
-        end
+        local cost = gemTen*discountTen
+        -- self._buyNum = 10
+        self:buyItemByGem(cost,self.buyNum)
     else
         local cost = toolTen        
-        self:buyItemByTool(cost,10)
+        if self.buyNum == 100 then
+            cost = tool100
+        end
+        self:buyItemByTool(cost,self.buyNum)
     end
 end
 
@@ -899,44 +952,6 @@ function DialogFlashCardResult:buyItemByGem(cost,num)
     end
 end
 
---限时兵团十连抽
-function DialogFlashCardResult:buyItemByOther(cost,num)
-   local sysTLConfig = tab.limitTeamConfig
-    local curGem = self._modelMgr:getModel("UserModel"):getData()[rightCostType] or 0
-    if curGem < sysTLConfig["cost10"]["num"] then
-        self._viewMgr:showTip("钻石不足")
-        self._backBtn:setTouchEnabled(true)
-        self._onceAginBtn:setTouchEnabled(true)
-        self._tenAginBtn:setTouchEnabled(true)
-        self._tenBtn:setTouchEnabled(true) 
-    else
-        self._backBtn:runAction(cc.FadeOut:create(0.1))
-        self._tenAginBtn:runAction(cc.FadeOut:create(0.1))
-        self._serverMgr:sendMsg("LimitTeamsServer", "limitTeamLottery", {num = 10}, true, {}, function(result, errorCode)
-            audioMgr:playSound("Draw")
-        
-            for k,v in pairs(self._itemTable) do
-                v:removeFromParent()
-            end
-            for k,v in pairs(self._itemNames) do
-                v:removeFromParent()
-            end
-            for k,v in pairs(self._isChangeMc) do
-                v:removeFromParent()
-            end
-            self._itemTable = {}
-            self._itemNames = {}
-            self._isChangeMc = {}
-
-            ScheduleMgr:delayCall(800, self, function( )
-                self._isAgain = true
-                self:reflashUI(result.reward)
-                self:initTenAginBtn()
-            end)
-        end)
-    end
-end
-
 --[[
 -- 更新倒计时
 function DialogFlashCardResult:reflashTimeLabel()
@@ -1082,7 +1097,7 @@ function DialogFlashCardResult:showItemAgin(data)
     end
 
     -- self:reflashTimeLabel()
-
+    dump(data,"data==>",5)
     self._isAgain = true
     self:reflashUI(data)
 

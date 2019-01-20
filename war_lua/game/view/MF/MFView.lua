@@ -3,7 +3,7 @@
 -- Date: 2016-04-20 15:53:31
 --
 local MFView = class("MFView",BaseView)
-local CITYNUM = 6
+local CITYNUM = 7
 function MFView:ctor(params)
     MFView.super.ctor(self)
 end
@@ -61,6 +61,39 @@ function MFView:onInit()
         [7] = false,
         [8] = false,
     }
+	
+	local openLevel = tab:SystemOpen("Alchemy")[1]
+	local showLevel = tab:SystemOpen("Alchemy")[2]
+	local openTip = tab:SystemOpen("Alchemy")[3]
+	local myLvl = self._userModel:getPlayerLevel()
+	local alchemyDaoyu = self:getUI("bg.scrollView.layer.daoyu10")
+	if myLvl<showLevel then
+		alchemyDaoyu:setVisible(false)
+	else
+		alchemyDaoyu:setVisible(true)
+		alchemyDaoyu:getChildByName("timeBg"):setVisible(false)
+		alchemyDaoyu:getChildByFullName("timeBg.timerLab"):enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
+		alchemyDaoyu.daoyu = self:createDaoyu(tab.mfOpen[10]["cityCo"][1], tab.mfOpen[10]["cityCo"][2], 10)
+		self:setButton(alchemyDaoyu, function()
+			if myLvl<openLevel then
+				self._viewMgr:showTip(lang(openTip))
+				return
+			end
+			self._viewMgr:lock(-1)
+			local beijing = mcMgr:createViewMC("yunqiehuan_mfqiehuanyun", false, true)
+			beijing:setAnchorPoint(cc.p(0.5,0.5))
+			beijing:setPosition(cc.p(MAX_SCREEN_WIDTH*0.5, MAX_SCREEN_HEIGHT*0.5))
+			self:addChild(beijing)
+			beijing:addCallbackAtFrame(15, function(_, sender)
+				self._serverMgr:sendMsg("AlchemyServer", "getInfo", {}, true, {}, function(result)
+					self._viewMgr:unlock()
+					self._viewMgr:showView("MF.MFAlchemyView", {callback = function()
+						self:reflashAlchemyTip()
+					end})
+				end)
+			end)
+		end)
+	end
 
     local invade = self:getUI("bg.scrollView.layer.daoyu9")
     local qiangduotubiao = mcMgr:createViewMC("qiangduotubiao_bangzhucaihong", true, false)
@@ -80,7 +113,6 @@ function MFView:onInit()
             return 
         end
         self:getRival()
-        -- self._viewMgr:showView("MF.MFInvadeView")
     end)
 
     local closeBtn = self:getUI("closeBtn")
@@ -1197,12 +1229,78 @@ function MFView:onBeforeAdd(callback, errorCallback)
         end
     end
     self:getMFInfo()
+	self:getAlchemyInfo()
+end
+
+function MFView:getAlchemyInfo()
+	local openLevel = tab:SystemOpen("Alchemy")[1]
+	local myLvl = self._userModel:getPlayerLevel()
+	if myLvl>=openLevel then
+		self._serverMgr:sendMsg("AlchemyServer", "getInfo", {}, true, {}, function(alchemyResult)
+			self:reflashAlchemyTip()
+		end)
+	end
+end
+
+function MFView:reflashAlchemyTip()
+	local alchemyModel = self._modelMgr:getModel("AlchemyModel")
+	local alchemyDaoyu = self:getUI("bg.scrollView.layer.daoyu10")
+	local daoyuSize = alchemyDaoyu:getContentSize()
+	if alchemyDaoyu.daoyu then
+		local mc = alchemyDaoyu:getChildByName("mc")
+		if mc then
+			mc:removeFromParent()
+		end
+		local libData = alchemyModel:getLibData()
+		local nowProId, proStartTime = alchemyModel:getNowProFormulaId()
+		local nowTime = self._userModel:getCurServerTime()
+		local timeBg = alchemyDaoyu:getChildByName("timeBg")
+		local timeLab = timeBg:getChildByName("timerLab")
+		timeLab:stopAllActions()
+		timeBg:setVisible(false)
+		if table.nums(libData)>0 then
+			mc = mcMgr:createViewMC("stop2_bangzhucaihong", true, false)
+			mc:setPosition(cc.p(daoyuSize.width/2+50, daoyuSize.height/2-30))
+		elseif nowProId and nowProId~=0 then
+			--生产中状态
+			mc = mcMgr:createViewMC("shalou_mfhanghaifengweitexiao", true, false)
+			mc:setPosition(cc.p(daoyuSize.width/2-30, daoyuSize.height/4))
+			timeBg:setPosition(cc.p(daoyuSize.width/2-30 + timeBg:getContentSize().width/2, daoyuSize.height/4))
+			timeBg:setVisible(true)
+			local needTime = tab.alchemyPlan[nowProId].costTime
+			timeLab:setString(TimeUtils.getStringTimeForInt(needTime- (nowTime - proStartTime)))
+			timeBg:getChildByName("timeBar"):setScaleX((nowTime-proStartTime)/needTime)
+			timeLab:runAction(cc.RepeatForever:create(
+				cc.Sequence:create(
+					cc.CallFunc:create(function()
+						local nowTempTime = self._userModel:getCurServerTime()
+						if nowTempTime-proStartTime<=needTime then
+							timeLab:setString(TimeUtils.getStringTimeForInt(needTime - (nowTempTime - proStartTime)))
+							timeBg:getChildByName("timeBar"):setScaleX((nowTempTime-proStartTime)/needTime)
+						elseif nowTempTime-proStartTime-needTime>=-1 then
+							self._serverMgr:sendMsg("AlchemyServer", "getInfo", {}, true, {}, function(result)
+								self:reflashAlchemyTip()
+							end)
+							timeLab:stopAllActions()
+						end
+					end),
+					cc.DelayTime:create(1)
+				)
+			))
+		else
+			--待生产
+			mc = mcMgr:createViewMC("tanhao_bangzhucaihong", true, false)
+			mc:setPosition(cc.p(daoyuSize.width/2+30, daoyuSize.height/2))
+		end
+		mc:setName("mc")
+		alchemyDaoyu:addChild(mc, 100)
+	end
 end
 
 function MFView:getMFInfo()
     self._serverMgr:sendMsg("MFServer", "getMFInfo", {}, true, {}, function (result)
         dump(result, "result ===", 10)
-        self:getMFInfoFinish(result)
+		self:getMFInfoFinish(result)
     end)
 end
 
@@ -1321,7 +1419,7 @@ function MFView:setHanghaiBg()
     local mc2 = mcMgr:createViewMC("xuanwo_mfhanghaifengweitexiao", true, false)
     mc2:setName("xuanwo") 
     mc2:setScale(1)
-    mc2:setPosition(677, 610)
+    mc2:setPosition(547, 610)
     layer:addChild(mc2, -1)
 
     -- 背景
@@ -1373,17 +1471,26 @@ function MFView:createDaoyu(x, y, index)
     daoyu:setAnchorPoint(cc.p(0.5, 0.5))
     daoyu:setPosition(cc.p(x, y))
     daoyu:setVisible(false)
-    daoyu:setScale(2)
+    daoyu:setScale(index==10 and 1 or 2)
     daoyu:setName("daoyu")
     layer:addChild(daoyu, -1)
-
-    local mc3 = mcMgr:createViewMC("haidao" .. index .."_mfhanghaifengweitexiao", true, false)
-    mc3:setName("anim2")
-    mc3:setScale(1)
-    mc3:setPosition(x, y)
-    mc3:setPlaySpeed(0.5)
-    layer:addChild(mc3, -1)
-    return daoyu
+	
+	if index~=10 then
+		local mc3 = mcMgr:createViewMC("haidao" .. index .."_mfhanghaifengweitexiao", true, false)
+		mc3:setName("anim2")
+		mc3:setScale(1)
+		mc3:setPosition(x, y)
+		mc3:setPlaySpeed(0.5)
+		layer:addChild(mc3, -1)
+	else
+		local mc3 = mcMgr:createViewMC("lianjingongfangrukou_lianjingongfangrukou", true, false)
+		mc3:setName("anim2")
+		mc3:setScale(1)
+		mc3:setPosition(x+2, y+2)
+		mc3:setPlaySpeed(0.5)
+		layer:addChild(mc3, -1)
+	end
+	return daoyu
 end
 
 function MFView:createCloud(inView, cloudPos, index)
@@ -1421,6 +1528,7 @@ end
 
 -- 入侵数据
 function MFView:getRival()
+	self._viewMgr:lock(-1)
     self._serverMgr:sendMsg("MFServer", "getRival", {}, true, {}, function (result)
         local beijing = mcMgr:createViewMC("yunqiehuan_mfqiehuanyun", false, true)
         beijing:setAnchorPoint(cc.p(0.5,0.5))
@@ -1428,6 +1536,7 @@ function MFView:getRival()
         self:addChild(beijing)
 
         beijing:addCallbackAtFrame(15, function(_, sender)
+			self._viewMgr:unlock()
             self._viewMgr:showView("MF.MFInvadeView", result)
         end)
     end)

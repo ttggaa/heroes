@@ -12,7 +12,6 @@ local tc = cc.Director:getInstance():getTextureCache()
 local httpManager = HttpManager:getInstance()
 
 local EFF_DEBUG = false
-
 function AppExit()
     APP_EXIT = true
     local scene = cc.Director:getInstance():getRunningScene()
@@ -187,6 +186,17 @@ function LoginView:onInit()
     self._cgBtn = self:getUI("bg.cgBtn")
     self._kfBtn = self:getUI("bg.kfBtn")
     self._noticeBtn = self:getUI("bg.noticeBtn")
+
+    self._selectBox = self:getUI("bg.selectBox")
+    self._walleUpTitle = self:getUI("bg.center.serverBtn.walleUpDes")
+    self._walleUpTitle:setVisible(false)
+    self._boxTable = {
+                [1] = {node = self:getUI("bg.selectBox.selectBtn"):clone(),upValue = "",desc = "没有升级序列",isShow = false},
+                [2] = {node = self:getUI("bg.selectBox.selectBtn"):clone(),upValue = "gvg",desc = "gvg",isShow = true},
+                [3] = {node = self:getUI("bg.selectBox.selectBtn"):clone(),upValue = "celebrity",desc = "celebrity",isShow = true},
+                [4] = {node = self:getUI("bg.selectBox.selectBtn"):clone(),upValue = "tiyan",desc = "tiyan",isShow = true},
+            } 
+    self._selectIndex = 0
 
     if IS_APPLE_EXAMINE then
         self._kfBtn:setVisible(false)
@@ -482,8 +492,12 @@ function LoginView:onInit()
     -- self:registerClickEvent(self._copyRight, function ()  
         
     -- end)
-    
-    trycall("initEff", self.initEff, self)
+    if OS_IS_WINDOWS then
+        self:initWallUpUI()
+    end
+    -- trycall("initEff", self.initEff, self)
+    trycall("initCelebrationEffect", self.initCelebrationEffect, self)
+
 
     -- 开发中功能
     local devBtn = self:getUI("bg.devBtn")
@@ -517,6 +531,288 @@ function LoginView:disableLoginBtns()
             self._login7:setEnabled(true)
         end
     end)
+end
+
+function LoginView:initCelebrationEffect()
+    if OS_IS_WINDOWS then
+        self._accNode = cc.Layer:create()
+        self:addChild(self._accNode)
+        local dispatcher = cc.Director:getInstance():getEventDispatcher()
+        local listener = cc.EventListenerTouchOneByOne:create()
+        listener:registerScriptHandler(function(touch, event)
+            return true
+        end, cc.Handler.EVENT_TOUCH_BEGAN)
+        local maxXOffset = 50
+        local maxYOffset = maxXOffset * (MAX_SCREEN_HEIGHT / MAX_SCREEN_WIDTH)
+        listener:registerScriptHandler(function(touch, event)
+            local x = (touch:getLocation().x - MAX_SCREEN_WIDTH * 0.5) / MAX_SCREEN_WIDTH * 1
+            local y = (-touch:getLocation().y) / MAX_SCREEN_HEIGHT * 1
+            local yy = y 
+            if yy > -0.5 then
+                yy = -0.5
+            end
+            yy = yy + 0.75
+            local xx = x
+            if xx > 0.6 then xx = 0.6 end
+            if xx < -0.6 then xx = -0.6 end
+            self._acceleDx1 = MAX_SCREEN_WIDTH * 0.5 - xx / 0.6 * maxXOffset
+            self._acceleDy1 = MAX_SCREEN_HEIGHT * 0.5 - yy * maxYOffset * 2
+            self._acceleDx2 = MAX_SCREEN_WIDTH * 0.5 - xx / 0.6 * maxXOffset * 0.3
+            self._acceleDy2 = MAX_SCREEN_HEIGHT * 0.5 - yy * maxYOffset * 0.6
+            self._acceleDx3 = MAX_SCREEN_WIDTH * 0.5 - xx / 0.6 * maxXOffset * 0.6
+            self._acceleDy3 = MAX_SCREEN_HEIGHT * 0.5 - yy * maxYOffset * 1.2
+
+        end, cc.Handler.EVENT_TOUCH_MOVED)
+        dispatcher:addEventListenerWithSceneGraphPriority(listener, self._accNode)
+    end
+
+    self._widget:setVisible(false)
+
+    local w, h = self._logo:getContentSize().width * 0.5, self._logo:getContentSize().height * 0.5
+    local x, y
+
+    x = w - 1
+    y = h - 1
+    local mc1 = mcMgr:createViewMC("logo3_logo", true, false, function (_, mc)
+        mc:stop()
+    end)
+    mc1:setPosition(0, 20)
+    local clipNode = cc.ClippingNode:create()
+    clipNode:setPosition(x, y)
+    local mask = cc.Sprite:createWithSpriteFrameName("login_mask1.png")
+    mask:setScale(0.72)
+    -- mask:setOpacity(200)
+    -- mask:setPosition(x, y)
+    clipNode:setStencil(mask)
+    clipNode:setAlphaThreshold(0.5)
+    clipNode:addChild(mc1)
+    self._logo:addChild(clipNode)
+
+    x = w
+    y = h
+    local mc2 = mcMgr:createViewMC("logo2_logo", true, false)
+    mc2:setScale(0.9)
+    mc2:setPosition(x, y)
+    self._logo:addChild(mc2)
+
+    x = w - 2
+    y = h
+    local mc3 = mcMgr:createViewMC("logo1_logo", true, false)
+    mc3:setPosition(0, 20)
+    local clipNode = cc.ClippingNode:create()
+    clipNode:setPosition(x + 1, y + 1)
+    local mask = cc.Sprite:createWithSpriteFrameName("login_mask3.png")
+    mask:setScale(0.98)
+    -- mask:setOpacity(200)
+    -- mask:setPosition(x, y)
+    clipNode:setStencil(mask)
+    clipNode:setAlphaThreshold(0.5)
+    clipNode:addChild(mc3)
+    -- clipNode:setScale(0.72)
+    self._logo:addChild(clipNode)
+
+    self._effUpdateId = ScheduleMgr:regSchedule(5000, self, function(self, dt)
+        mc1:gotoAndPlay(1)
+    end)
+
+    tc:addImage("asset/spine/qianjingkulou1.png")
+    tc:addImage("asset/spine/qianjingkulou2.png")
+    tc:addImage("asset/spine/yuanjingfashi.png")
+    tc:addImage("asset/spine/yuanjingfeilong.png")
+    tc:addImage("asset/spine/yuanjingkulouqun.png")
+    tc:addImage("asset/spine/yuanjingqishi.png")
+    tc:addImage("asset/spine/zhongjingsishen.png")
+    self._spineLayer = cc.Node:create()
+    self:addChild(self._spineLayer, -10)
+    self._spineLayer:setScale(self.__viewBg:getScaleX())
+    self._spineLayer:setPosition(self.__viewBg:getPosition())
+
+    self._spineLayer2 = cc.Node:create()
+    self:addChild(self._spineLayer2, -9)
+    self._spineLayer2:setScale(self.__viewBg:getScaleX())
+    self._spineLayer2:setPosition(self.__viewBg:getPosition())
+
+    self._spineLayer3 = cc.Node:create()
+    self:addChild(self._spineLayer3, -8)
+    self._spineLayer3:setScale(self.__viewBg:getScaleX())
+    self._spineLayer3:setPosition(self.__viewBg:getPosition())
+
+    -- 截静态图专用开关
+    local pause = EFF_DEBUG
+
+    -- 人物动画
+    local xx, yy = 481, 288
+
+    spineMgr:createSpine("qianjingkulou1", function (spine)
+        if self._spineLayer2 == nil then return end
+        spine:setSkin("default")
+        spine:setAnimation(0, "qianjingkulou1", true)
+        spine:setPosition(870 - xx, -45 - yy)
+        spine:setLocalZOrder(3)
+        self._spineLayer2:addChild(spine)
+        spine:initUpdate()
+        if pause then spine:animPause() end
+    end)
+
+    spineMgr:createSpine("qianjingkulou2", function (spine)
+        if self._spineLayer2 == nil then return end
+        spine:setSkin("default")
+        spine:setAnimation(0, "qianjingkulou2", true)
+        spine:setPosition(180 - xx, -35 - yy)
+        spine:setLocalZOrder(4)
+        self._spineLayer2:addChild(spine)
+        spine:initUpdate()
+        if pause then spine:animPause() end
+    end)
+    spineMgr:createSpine("yuanjingfashi", function (spine)
+        if self._spineLayer == nil then return end
+        spine:setSkin("default")
+        spine:setAnimation(0, "yuanjingfashi", true)
+        spine:setPosition(842 - xx, 362 - yy)
+        spine:setLocalZOrder(1)
+        self._spineLayer:addChild(spine)
+        spine:initUpdate()
+        if pause then spine:animPause() end
+    end)
+
+    spineMgr:createSpine("yuanjingfeilong", function (spine)
+        if self._spineLayer == nil then return end
+        spine:setSkin("default")
+        spine:setAnimation(0, "yuanjingfeilong", true)
+        spine:setPosition(376 - xx, 467 - yy)
+        spine:setLocalZOrder(1)
+        self._spineLayer:addChild(spine)
+        spine:initUpdate()
+        if pause then spine:animPause() end
+    end)
+
+    spineMgr:createSpine("yuanjingkulouqun", function (spine)
+        if self._spineLayer == nil then return end
+        spine:setSkin("default")
+        spine:setAnimation(0, "yuanjingkulouqun", true)
+        spine:setPosition(494 - xx, -65 - yy)
+        spine:setLocalZOrder(3)
+        self._spineLayer:addChild(spine)
+        spine:initUpdate()
+        if pause then spine:animPause() end
+    end)
+
+    spineMgr:createSpine("yuanjingqishi", function (spine)
+        if self._spineLayer == nil then return end
+        spine:setSkin("default")
+        spine:setAnimation(0, "yuanjingqishi", true)
+        spine:setPosition(187 - xx, 120 - yy)
+        spine:setLocalZOrder(5)
+        self._spineLayer:addChild(spine)
+        spine:initUpdate()
+        if pause then spine:animPause() end
+    end)
+    
+    spineMgr:createSpine("zhongjingsishen", function (spine)
+        if self._spineLayer2 == nil then return end
+        spine:setSkin("default")
+        spine:setAnimation(0, "zhongjingsishen", true)
+        spine:setPosition(516 - xx, 137 - yy)
+        spine:setLocalZOrder(2)
+        self._spineLayer2:addChild(spine)
+        spine:initUpdate()
+        if pause then spine:animPause() end
+    end)
+
+    -- local mc1 = mcMgr:createViewMC("piaodai_zhounianqingdenglu", true, false)
+    -- if pause then mc1:stop() end
+    -- mc1:setScale(1)
+    -- mc1:setPosition(457 - xx, 300 - yy)
+    -- self._spineLayer2:addChild(mc1, 5)
+
+    local mc1 = mcMgr:createViewMC("qianjing_muyuandenglu", true, false)
+    if pause then mc1:stop() end
+    mc1:setScale(1)
+    mc1:setPosition(500 - xx, 269 - yy)
+    self._spineLayer3:addChild(mc1, 10)
+
+    local mc1 = mcMgr:createViewMC("zhongjing_muyuandenglu", true, false)
+    if pause then mc1:stop() end
+    mc1:setScale(1)
+    mc1:setPlaySpeed(0.8,true)
+    mc1:setPosition(506 - xx, 310 - yy)
+    self._spineLayer2:addChild(mc1, 2)
+
+    local mc1 = mcMgr:createViewMC("yuanjing_muyuandenglu", true, false)
+    if pause then mc1:stop() end
+    mc1:setScale(1)
+    mc1:setPosition(516 - xx, 295 - yy)
+    self._spineLayer:addChild(mc1, 4)
+
+    -- 重力感应
+    local x = 1022 * (1136 / 1022)
+    local scale = ((x + 120) / x) * self.__viewBg:getScaleX()
+    self.__viewBg:setScale(scale)
+
+    local maxXOffset = 50
+    local maxYOffset = maxXOffset * (MAX_SCREEN_HEIGHT / MAX_SCREEN_WIDTH)
+
+    self.__viewBg:setPosition(MAX_SCREEN_WIDTH * 0.5, MAX_SCREEN_HEIGHT * 0.5)
+
+    local listerner  = cc.EventListenerAcceleration:create(function (event,x,y,z,timestamp)
+        local yy = y 
+        if yy > -0.5 then
+            yy = -0.5
+        end
+        yy = yy + 0.75
+        local xx = x
+        if xx > 0.6 then xx = 0.6 end
+        if xx < -0.6 then xx = -0.6 end
+        self._acceleDx1 = MAX_SCREEN_WIDTH * 0.5 - xx / 0.6 * maxXOffset
+        self._acceleDy1 = MAX_SCREEN_HEIGHT * 0.5 - yy * maxYOffset * 2
+        self._acceleDx2 = MAX_SCREEN_WIDTH * 0.5 - xx / 0.6 * maxXOffset * 0.3
+        self._acceleDy2 = MAX_SCREEN_HEIGHT * 0.5 - yy * maxYOffset * 0.6
+        self._acceleDx3 = MAX_SCREEN_WIDTH * 0.5 - xx / 0.6 * maxXOffset * 0.6
+        self._acceleDy3 = MAX_SCREEN_HEIGHT * 0.5 - yy * maxYOffset * 1.2
+    end)
+    local speed = 0.005
+    local function ___updata()
+        if self._acceleDx1 == nil then return end
+        local x1 = self.__viewBg:getPositionX()
+        local y1 = self.__viewBg:getPositionY()
+        local x2 = self._spineLayer:getPositionX()
+        local y2 = self._spineLayer:getPositionY()
+        local x3 = self._spineLayer2:getPositionX()
+        local y3 = self._spineLayer2:getPositionY()
+
+        x1 = x1 + (self._acceleDx1 - x1) * speed
+        y1 = y1 + (self._acceleDy1 - y1) * speed
+        x2 = x2 + (self._acceleDx2 - x2) * speed
+        y2 = y2 + (self._acceleDy2 - y2) * speed
+        x3 = x3 + (self._acceleDx3 - x3) * speed
+        y3 = y3 + (self._acceleDy3 - y3) * speed
+        self.__viewBg:setPosition(x1, y1)
+        self._spineLayer:setPosition(x2, y2)
+        self._spineLayer2:setPosition(x3, y3)
+        if speed < 0.25 then
+            speed = speed + 0.005
+        end
+    end
+    self._acceleUpdateId = ScheduleMgr:regSchedule(1, self, function(self, dt)
+        ___updata()
+    end)
+    if GameStatic.loginAccelerometer then
+        cc.Device:setAccelerometerEnabled(true)
+    end
+    local dispatcher = cc.Director:getInstance():getEventDispatcher()
+    local layer = cc.Layer:create()
+    layer:setAccelerometerEnabled(true)
+    self:addChild(layer)
+    dispatcher:addEventListenerWithSceneGraphPriority(listerner, layer)
+    self._acceleLayer = layer
+
+    self._logo:setCascadeOpacityEnabled(true, true)
+    self._logo:setOpacity(0)
+    self._logo:runAction(cc.Sequence:create(cc.DelayTime:create(0.3), cc.CallFunc:create(function ()
+        if not pause then
+            self._widget:setVisible(true)
+        end
+    end), cc.FadeIn:create(0.3)))
 end
 
 function LoginView:initEff()
@@ -601,9 +897,6 @@ function LoginView:initEff()
         mc1:gotoAndPlay(1)
     end)
 
-    tc:addImage("asset/spine/dengluheilong.png")
-    tc:addImage("asset/spine/dengluqishi.png")
-    tc:addImage("asset/spine/denglusenglv.png")
     self._spineLayer = cc.Node:create()
     self:addChild(self._spineLayer, -9)
     self._spineLayer:setScale(self.__viewBg:getScaleX())
@@ -625,61 +918,20 @@ function LoginView:initEff()
     -- 人物动画
     local xx, yy = 481, 288
 
-    spineMgr:createSpine("dengluheilong", function (spine)
-        if self._spineLayer == nil then return end
-        spine:setScale(0.9)
-        spine:setSkin("default")
-        spine:setAnimation(0, "heilong", true)
-        spine:setPosition(300 - xx, 0 - yy)
-        spine:setLocalZOrder(3)
-        self._spineLayer:addChild(spine)
-        spine:initUpdate()
-        if pause then spine:animPause() end
-    end)
 
-    spineMgr:createSpine("dengluqishi", function (spine)
-        if self._spineLayer == nil then return end
-        spine:setScale(0.9)
-        spine:setSkin("default")
-        spine:setAnimation(0, "qishi", true)
-        spine:setPosition(750 - xx, 70 - yy)
-        spine:setLocalZOrder(5)
-        self._spineLayer:addChild(spine)
-        spine:initUpdate()
-        if pause then spine:animPause() end
-    end)
-
-    spineMgr:createSpine("denglusenglv", function (spine)
-        if self._spineLayer == nil then return end
-        spine:setScale(1)
-        spine:setSkin("default")
-        spine:setAnimation(0, "senglv", true)
-        spine:setPosition(880 - xx, -40 - yy)
-        spine:setLocalZOrder(7)
-        self._spineLayer:addChild(spine)
-        spine:initUpdate()
-        if pause then spine:animPause() end
-    end)
-
-    local mc1 = mcMgr:createViewMC("huoyan_dixiachenglogin", true, false)
-    if pause then mc1:stop() end
-    mc1:setScale(1)
-    mc1:setPosition(457 - xx, 300 - yy)
-    self._spineLayer:addChild(mc1, 4)
-
-    local mc1 = mcMgr:createViewMC("changjingqian_dixiachenglogin", true, false)
+    local mc1 = mcMgr:createViewMC("haikoudenglu1_gangkoudenglu", true, false)
     if pause then mc1:stop() end
     mc1:setScale(1)
     mc1:setPosition(475 - xx, 285 - yy)
     self._spineLayer:addChild(mc1, 6)
 
-    local mc1 = mcMgr:createViewMC("qiangbing_dixiachenglogin", true, false)
+    local mc1 = mcMgr:createViewMC("haikoudenglu2_gangkoudenglu", true, false)
     if pause then mc1:stop() end
     mc1:setScale(1)
     mc1:setPosition(475 - xx, 285 - yy)
     self._spineLayer3:addChild(mc1, 1)
 
-    local mc1 = mcMgr:createViewMC("huoxing_dixiachenglogin", true, false)
+    local mc1 = mcMgr:createViewMC("haikoudenglu3_gangkoudenglu", true, false)
     if pause then mc1:stop() end
     mc1:setScale(1)
     mc1:setPosition(475 - xx, 285 - yy)
@@ -1174,7 +1426,7 @@ function LoginView:getServerList(accountInfo)
     print("globalurl: ", loginUrl)
     self._loginUrl = httpManager:sendMsg(loginUrl, nil, param, 
     function(inData)
-        dump(inData)
+        -- dump(inData)
         if self._viewMgr then
             if inData ~= nil and inData.result ~= nil and inData.result.sec_info ~= nil then 
                 self._is_white = inData.result.is_white
@@ -1659,11 +1911,14 @@ function LoginView:login()
     if configMgr:getValue("UPGRADE_PATH") ~= "" then 
         walleUpgrade = configMgr:getValue("UPGRADE_PATH")
     end
-    
+    if OS_IS_WINDOWS then
+        local walleUpValue = SystemUtils.loadGlobalLocalData("WALLE_UP_STRING_TEMP")
+        if walleUpValue and string.len(walleUpValue) > 0 then
+            walleUpgrade = walleUpValue
+        end
+    end
     -- walleUpgrade = "gvg"
     -- walleUpgrade = "celebrity"
-
-
     self._viewMgr:lock(2000)
     self._serverMgr:setVer(walleVersion)
     self._serverMgr:setUpgrade(walleUpgrade)
@@ -1950,6 +2205,8 @@ function LoginView:enterGame(newAccount)
         {3, {"ChatServer", "getMessage", nil, {type="pri"} }},
         {3, {"ChatServer", "getMessage", nil, {type="guild"} }},
         {3, {"ChatServer", "getMessage", nil, {type="all"} }},
+        {3, {"ChatServer", "getMessage", nil, {type="cgodwar"} }},
+        {3, {"ChatServer", "getMessage", nil, {type="crosschat"} }},
         {3, {"GameFriendServer", "getGameFriendList", "GameFriend"}},
         {3, {"GameFriendServer", "getApplyList", "GameFriend"}},
         {3, {"CloudyCityServer", "getCloudyCityInfo", "CloudCity"}},        
@@ -1961,6 +2218,11 @@ function LoginView:enterGame(newAccount)
         {3, {"HandbookServer", "getAllTaskInfo", "Handbook"}},
         {3, {"ExtraServer", "getSiegeInfo", nil}},
         {3, {"RecallServer", "getRecallInfo", "FriendShop"}},
+        {3, {"StakeServer", "getStakeInfo", "Stake"}},  -- 木桩
+        {3, {"PurgatoryServer", "getPurInfo", "Purgatory"}},  -- 无尽炼狱
+        {3, {"CrossArenaServer", "enterCrossArena", "CrossArena"}},  -- 荣耀竞技场
+        {3, {"RaceDrawServer", "getDrawCardInfo","RaceDraw"}},              -- 阵营抽卡
+        {3, {"ParagonTalentServer", "getPTalentInfo", "ParagonTalent"}},  -- 巅峰天赋
     }
     if isJieRi then
         loadingList[#loadingList + 1] = {2, {"asset/anim/donghuaflaimage.plist", "asset/anim/donghuaflaimage.png"}}
@@ -2022,6 +2284,64 @@ function LoginView:enterGame(newAccount)
         sfResMgr:clear(true)
         mcMgr:clear(true)
     end)
+end
+
+--选择升级序列面板
+function LoginView:changeWallUpUIState()
+    if OS_IS_WINDOWS then
+        self._selectBox:setVisible(GameStatic.showWalleUpdate)
+    end
+end
+
+function LoginView:setWalleDesTips()
+    local walleUpValue = SystemUtils.loadGlobalLocalData("WALLE_UP_STRING_TEMP")
+    local walleUpStr = "升级序列："
+    if self._selectIndex == 0 then
+        if walleUpValue and string.len(walleUpValue) > 0 then
+            walleUpStr = walleUpStr .. walleUpValue
+        else
+            walleUpStr = walleUpStr .. "无"
+        end
+    else
+        local desStr = self._boxTable[self._selectIndex].upValue
+        if desStr and string.len(desStr) > 0 then
+            walleUpStr = walleUpStr .. desStr
+        else
+            walleUpStr = walleUpStr .. "无"
+        end
+        SystemUtils.saveGlobalLocalData("WALLE_UP_STRING_TEMP",desStr)
+    end
+    self._walleUpTitle:setString(walleUpStr)
+end
+
+function LoginView:setSelectBtnStatus(selectIndex)
+    for k , v in pairs(self._boxTable) do
+        self._boxTable[k].node:setSelected(tonumber(k) == tonumber(selectIndex))
+    end
+end
+
+function LoginView:initWallUpUI()
+    self._walleUpTitle:setVisible(OS_IS_WINDOWS)
+    self:setWalleDesTips(self._boxTable)
+    local btnPosY = self:getUI("bg.selectBox.selectBtn"):getPositionY()
+    for k , v in pairs(self._boxTable) do
+        self._boxTable[k].node:setSelected(false)
+        self._boxTable[k].node:setVisible(true)
+        self._boxTable[k].node:getChildByFullName("desc"):setString(v["desc"])
+        self._selectBox:addChild(self._boxTable[k].node)
+        self._boxTable[k].node:setPositionY(btnPosY - (k - 1)*40)
+        self._boxTable[k].node:addEventListener(function (_, state)
+            if not self._boxTable[k].node:isSelected() then
+                self._boxTable[k].node:setSelected(true)
+                return
+            end
+            if state == 0 then
+                self:setSelectBtnStatus(k)
+            end
+            self._selectIndex = k
+            self:setWalleDesTips()
+        end)
+    end
 end
 
 function LoginView:onError()

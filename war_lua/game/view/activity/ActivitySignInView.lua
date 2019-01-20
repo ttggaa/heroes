@@ -22,9 +22,7 @@ function ActivitySignInView:onInit()
     self._signModel = self._modelMgr:getModel("SignModel")
     self._signModel:setSignDateTip() 
     self:registerClickEventByName("bg.closeBtn", function()
-        if OS_IS_WINDOWS then
-            UIUtils:reloadLuaFile("activity.ActivitySignInView")
-        end
+        UIUtils:reloadLuaFile("activity.ActivitySignInView")
         if self._callback then
             self._callback()
         end
@@ -36,21 +34,35 @@ function ActivitySignInView:onInit()
     self._des3 = self:getUI("bg.possess.timesNumBg.des3")
     self._num1 = self:getUI("bg.possess.timesNumBg.num1")
     self._num2 = self:getUI("bg.possess.timesNumBg.num2")
-    self._buqianNum = self:getUI("bg.bg.buqianNum")
+    self._buqianNum = self:getUI("bg.buqianNum")
 
  
-    self._des1:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
+    self._des1:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)   
     self._des2:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
     self._des3:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
     self._num1:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
     self._num2:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
 
-    -- 左侧英雄立汇
-    self:setHeroLiHui()
+    --shop
+    local shopBtn = self:getUI("bg.shopBtn")
+    if not GameStatic.is_show_signShop then
+        shopBtn:setVisible(false)
+    end
+    
+    self:registerClickEvent(shopBtn, function()
+        local isOpen = SystemUtils["enableSignShop"]()
+        if not isOpen then
+            local tip = UIUtils:getNotOPenTip("SignShop")
+            self._viewMgr:showTip(tip)
+            return
+        end
+
+        self._viewMgr:showDialog("activity.sign.AcSignShopView", {}, true)
+        end)
 
     -- -- 背景
-    -- local bg = self:getUI("bg")
-    -- bg:loadTexture("asset/bg/bg_sign.png")
+    local roleImg = self:getUI("bg.roleImg")
+    roleImg:loadTexture("asset/bg/global_reward2_img.png")
 
     for i=1,5 do
         local dayNum = self:getUI("bg.possess.dayNumBg" .. i .. ".dayNum")
@@ -474,8 +486,6 @@ function ActivitySignInView:reflashUI()
             local curServerTime = self._modelMgr:getModel("UserModel"):getCurServerTime()
             local minTime = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(curServerTime,"%Y-%m-%d 05:00:01"))
             self._month:setString(tonumber(tempMonth))
-            self:setHeroLiHui()
-            -- self._month:loadTexture("activitySignImg_num" .. tonumber(tempMonth) .. ".png",1)
             if curServerTime >= minTime then
                 self._lastTime = self._todayTime
                 self._first = false
@@ -583,9 +593,6 @@ function ActivitySignInView:updateSignIn()
         self:updateSignInCell(monthDay, flag)
     end
 
-    -- print("oldindex=====", oldindex, self._monthDays)
-    -- print("oldindex1=====", oldindex1, self._monthDays1)
-
     if oldindex == self._monthDays then
         monthFunc(oldindex)
     else
@@ -593,31 +600,6 @@ function ActivitySignInView:updateSignIn()
         monthFunc(self._monthDays)
     end
     monthFunc(self._monthDays1)
-
-    -- if oldindex1 == self._monthDays1 then
-    --     monthFunc(oldindex1)
-    -- else
-    --     monthFunc(oldindex1)
-    -- end
-
-    -- if oldindex == self._monthDays then
-    --     local flag = true
-    --     if math.fmod(oldindex, 5) == 0 then
-    --         flag = true
-    --     end
-    --     self:updateSignInCell(oldindex, flag)
-    -- else
-    --     local flag = true
-    --     if math.fmod(oldindex, 5) == 0 then
-    --         flag = true
-    --     end
-    --     self:updateSignInCell(oldindex, flag)
-
-    --     if math.fmod(self._monthDays, 5) == 0 then
-    --         flag = true
-    --     end
-    --     self:updateSignInCell(self._monthDays, flag)
-    -- end
 
     self:setPossess()
 end 
@@ -645,25 +627,26 @@ function ActivitySignInView:setItemVisible(inView, flag)
 end
 
 function ActivitySignInView:updateSignInCell(index, heroSao)
-    -- self._vipDouble = false
     local saoguang = false
     local kelingqu = false
     local itemCell = self._itemCell[index]
     local day = tonumber(string.format("%s%.2d", self._yearMonth,index))
     local tabSign = tab:Sign(tonumber(day))
 
+    if tabSign and tabSign["reward"] and tabSign["reward"][1] == "signCoin" then
+        heroSao = false
+    end
+
     local maxSignNum = self._monthDays
     if self._monthDays1 > self._monthDays then
         maxSignNum = self._monthDays1
     end
-    -- print("======", self._monthDays, self._monthDays1, maxSignNum, index)
     if maxSignNum < index and heroSao == true then
         saoguang = true
     end
     if not itemCell then
         return
     elseif index > self._dayNum and itemCell then
-        -- itemCell:setVisible(false)
         self:setItemVisible(itemCell, false)
         return
     elseif index > self._dayNum then
@@ -680,37 +663,19 @@ function ActivitySignInView:updateSignInCell(index, heroSao)
 
     local itemId = 0
     if tabSign.reward[1] == "hero" then
-        -- itemId = tabSign.reward[2]
-        -- itemCell.itemIcon = itemCell.itemBg:getChildByName("itemIcon")
-        -- local sysHeroData = tab:Hero(itemId)
-        -- if itemCell.itemIcon then
-        --     IconUtils:updateHeroIconByView(itemCell.itemIcon, {sysHeroData = sysHeroData})
-        -- else
-        --     itemCell.itemIcon =IconUtils:createHeroIconById({sysHeroData = sysHeroData})
-        --     itemCell.itemIcon:setName("itemIcon")
-        --     itemCell.itemIcon:setAnchorPoint(cc.p(0,0))
-        --     itemCell.itemIcon:setScale(0.8)
-        --     itemCell.itemIcon:setPosition(cc.p(-10,-8))
-        --     itemCell.itemBg:addChild(itemCell.itemIcon)
-        --     itemCell.itemIcon:getChildByName("starBg"):setVisible(false)
-        --     -- itemCell.itemIcon:getChildByName("star1"):setVisible(false)
-        --     -- for i=1,6 do
-        --     --     if itemCell.itemIcon:getChildByName("star" .. i) then
-        --     --         itemCell.itemIcon:getChildByName("star" .. i):setPositionY(itemCell.itemIcon:getChildByName("star" .. i):getPositionY() + 5)
-        --     --     end
-        --     -- end
-        -- end
+      
     else
         local num = tabSign.reward[3]
         if tabSign.reward[1] == "gold" then
             itemId = IconUtils.iconIdMap.gold
         elseif tabSign.reward[1] == "gem" then
             itemId = IconUtils.iconIdMap.gem 
-        else -- if tabSign.reward[1] == "tool" then
+        elseif tabSign.reward[1] == "signCoin" then
+            itemId = IconUtils.iconIdMap.signCoin 
+        else
             itemId = tabSign.reward[2]
         end
 
-        -- itemCell.itemIcon = itemCell.itemBg:getChildByName("itemIcon")
         if itemCell.itemIcon then
             IconUtils:updateItemIconByView(itemCell.itemIcon, {itemId = itemId, num = num,effect = true,eventStyle = 1, swallowTouches = true})
         else
@@ -721,14 +686,10 @@ function ActivitySignInView:updateSignInCell(index, heroSao)
             
             itemCell.itemIcon:setPosition(-4,-2)
             itemCell.itemBg:addChild(itemCell.itemIcon)
-            
-            -- itemCell.itemIcon:setPosition(cc.p(itemCell.itemBg.posX-42,itemCell.itemBg.posY-45))
-            -- self._scrollView:addChild(itemCell.itemIcon, 5)
         end
     end
 
     local signFunc = function(signSd, teflag, itemCell)
-        print("====signSdself._signState=======", signSd)
         if signSd == 1 then
             itemCell.rewardIconBg:setVisible(false)
             itemCell.rewardIcon:setVisible(false)
@@ -742,9 +703,7 @@ function ActivitySignInView:updateSignInCell(index, heroSao)
                     vipDouble = true
                 end
             end
-            -- local vip = signData.vipReward[tostring(index)]
             self:registerClickEvent(itemCell.itemIcon, function()
-                -- print("qiandaoqiandao=============", vipDouble)
                 self:signIn(teflag, vipDouble)
             end) 
             if teflag == true then
@@ -828,8 +787,6 @@ function ActivitySignInView:updateSignInCell(index, heroSao)
         end
     end
 
-    -- print("====signSdnState=======", self._signState, self._signState1)
-
     if self._monthDays == index then
         signFunc(self._signState, false, itemCell)
     elseif self._monthDays1 == index and self._isRet ~= 3 then
@@ -843,7 +800,7 @@ function ActivitySignInView:updateSignInCell(index, heroSao)
         itemCell.rewardIcon:setVisible(true)
         itemCell.rewardIconBg:setVisible(true)
         itemCell.carryRewardIcon:setVisible(false)
-    else -- if heroSao == true then
+    else
         kelingqu = false
         itemCell.signBg:loadTexture(signBgImg, 1)
         itemCell.rewardIconBg:setVisible(false)
@@ -853,18 +810,13 @@ function ActivitySignInView:updateSignInCell(index, heroSao)
 
     if tabSign.vip then
         itemCell.labBg:setVisible(true)
-        -- itemCell.vipLab:setVisible(true)
         itemCell.vipValue:setVisible(true)
-        -- itemCell.double:setVisible(true)
         self._labIndex[index] = true
         itemCell.vipValue:setString( "V" .. tabSign.vip)
     end
 
-
     itemCell.itemIcon:setSwallowTouches(true)
-    -- itemCell.itemEffect = itemCell.itemBg:getChildByName("itemEffect")
-    -- itemCell.spLight = itemCell.itemBg:getChildByName("spLight")
-    -- print("saoguang==========", saoguang)
+ 
     if saoguang == true then
         if itemCell.spLight then
             itemCell.spLight:setVisible(true)
@@ -1150,84 +1102,6 @@ function ActivitySignInView:getAsyncRes()
         {"asset/ui/activitysign.plist", "asset/ui/activitysign.png"},
         {"asset/ui/activitysign1.plist", "asset/ui/activitysign1.png"},
     }
-end
-
-function ActivitySignInView:setHeroLiHui()
-    -- 12 个英雄位置
-    local rolePos = {
-        [60001] = {scale = 1.25, pos = {409,292}, roleName = "crusade_Adelaide"},
-        [60101] = {scale = 1.0, pos = {330,292}, flip = 0, roleName = "crusade_Mullich"},
-        [60701] = {scale = 0.8, pos = {330,340}, flip = 0, roleName = "crusade_Luna"},
-        [60901] = {scale = 1, pos = {380,340}, flip = 0, roleName = "crusade_Zydar"},
-        [60702] = {scale = 1, pos = {360,340}, flip = 1, roleName = "crusade_Monere"},
-        [61401] = {scale = 1, pos = {400,340}, flip = 0, roleName = "crusade_Jeddite"},
-        [61402] = {scale = 1, pos = {408,300}, flip = 1, roleName = "crusade_Sephinroth"},
-        [61301] = {scale = 0.9, pos = {350,310}, flip = 0, roleName = "crusade_Mutare"},
-        [60703] = {scale = 0.9, pos = {350,350}, flip = 1, roleName = "crusade_Erdamon"},
-        [61502] = {scale = 0.95, pos = {425,337}, flip = 1, roleName = "crusade_Korbac"},
-        [60704] = {scale = 1, pos = {400,337}, flip = 0, roleName = "crusade_Fiur"},
-        [60202] = {scale = 1, pos = {365,340}, flip = 1, roleName = "crusade_Ylthin"},
-    }
-    local tMonth, _ = self:getTodayMonth()
-    local indexId = tMonth .. "03"
-    local signCountTab = tab:SignCount(tonumber(indexId))
-    local heroId = signCountTab.content[1][2]
-
-    local tempMonth = heroId or 60001
-    local heroRole = rolePos[tempMonth] 
-    if not heroRole then
-        local heroTab = tab:Hero(tempMonth)
-        if heroTab and heroTab.signPos then
-            local signPos = heroTab.signPos or {350,350,0.9,1}
-            heroRole = {}
-            heroRole.scale = signPos[3] or 1
-            heroRole.pos = {signPos[1] or 0, signPos[2] or 0}
-            heroRole.flip = signPos[4] or 1
-            heroRole.roleName = heroTab.crusadeRes or "crusade_Erdamon"
-        else
-            self._viewMgr:showTip("找邢涛配表，不配，hero表没有signPos, heroId" .. tempMonth)
-        end
-    end
-
-    local lihuiIcon = self:getUI("bg.lihuiIconBg.roleBg.lihuiIcon")
-    lihuiIcon:loadTexture("asset/uiother/hero/" .. heroRole["roleName"] .. ".png")
-    lihuiIcon:setScale(heroRole["scale"])
-    if heroRole["flip"] == 1 then
-        lihuiIcon:setFlippedX(false)
-    end
-    lihuiIcon:setPosition(heroRole["pos"][1],heroRole["pos"][2])
-
-    local heroLab = self:getUI("bg.lihuiIconBg.heroLab")
-    -- local buchong1 = self:getUI("bg.lihuiIconBg.buchong1")
-    -- local buchong2 = self:getUI("bg.lihuiIconBg.buchong2")
-
-    -- if buchong1 then
-    --     if rolePos[tempMonth]["bu1"] then
-    --         buchong1:loadTexture("acSign_" .. rolePos[tempMonth]["roleName"] .. "_bc1.png", 1)
-    --         buchong1:setAnchorPoint(cc.p(0.5,0.5))
-    --         buchong1:setVisible(true)
-    --         buchong1:setScale(rolePos[tempMonth]["scale"])
-    --         buchong1:setPosition(cc.p(rolePos[tempMonth]["bu1"][1],rolePos[tempMonth]["bu1"][2]))
-    --     else 
-    --         buchong1:setVisible(false)
-    --     end
-    -- end
-
-    -- if buchong2 then
-    --     if rolePos[tempMonth]["bu2"] then
-    --         buchong2:loadTexture("acSign_" .. rolePos[tempMonth]["roleName"] .. "_bc2.png", 1)
-    --         buchong2:setAnchorPoint(cc.p(0.5,0.5))
-    --         buchong2:setVisible(true)
-    --         buchong2:setScale(rolePos[tempMonth]["scale"])
-    --         buchong2:setPosition(cc.p(rolePos[tempMonth]["bu2"][1],rolePos[tempMonth]["bu2"][2]))
-    --     else 
-    --         buchong2:setVisible(false)
-    --     end
-    -- end
-
-    if heroLab then
-        heroLab:loadTexture("acSign_" .. heroRole["roleName"] .. ".png", 1)
-    end
 end
 
 -- 获取缺勤天数

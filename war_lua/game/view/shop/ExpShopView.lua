@@ -14,6 +14,7 @@ function ExpShopView:ctor(param)
     self._itemTable = {}
     self._callBack = param.callBack
     SystemUtils.saveAccountLocalData("EXP_SHOP_IN",true)
+    self._goodsNum = 8
 end
 -- 初始化UI后会调用, 有需要请覆盖
 function ExpShopView:onInit()
@@ -86,12 +87,29 @@ function ExpShopView:onInit()
     -- end)
 
     -- 
-    self:updateTimeLab()
-    if not self._resumetimer then
-        self._resumetimer = ScheduleMgr:regSchedule(1000, self, function( )
-            self:updateTimeLab()
-        end)
-    end
+    -- self:updateTimeLab()
+    -- if not self._resumetimer then
+    --     self._resumetimer = ScheduleMgr:regSchedule(1000, self, function( )
+    --         self:updateTimeLab()
+    --     end)
+    -- end
+
+    self._downArrow = mcMgr:createViewMC("youjiantou_teamnatureanim", true, false)
+    self._downArrow:setPosition(self._mainBg:getContentSize().width*0.5,60)
+    self._downArrow:setRotation(90)
+    self._downArrow:setVisible(false)
+    self._mainBg:addChild(self._downArrow,1)
+
+    self._scrollView:addEventListener(function(sender, eventType)
+        if self._goodsNum <= 8 then
+            return
+        end
+        if eventType == 1 then
+            self._downArrow:setVisible(false)
+        elseif eventType == 4 then         
+            self._downArrow:setVisible(true)
+        end
+    end)
 end
 
 function ExpShopView:onDestroy( )
@@ -122,17 +140,21 @@ function ExpShopView:getGoodsData( tp )
     -- if true then return end
     local goodsData
     local shopData = self._shopModel:getShopGoods("exp") or {}
-    dump(shopData,"shopDatashopData",10)
+    --- shopData. lastBuyTimes 可购买次数
+    -- dump(shopData,"getGoodsData",10)
     goodsData = {}
     local shopTableName = "shopExp"
     local shopD = clone(tab[shopTableName])
     -- dump(shopD,"shopD....")
     for k,gridD in pairs(shopD) do
+        if k > table.nums(shopData) then
+            break
+        end
         local itemId = gridD.itemid
         gridD.itemId = itemId
         gridD.num = gridD.award[3]
         gridD.shopBuyType = "exp"
-        gridD.canBuyTimes = gridD.buyTimes
+        gridD.buyTimes = gridD.buyTimes
         goodsData[tonumber(gridD.grid[1])] = gridD
     end
     -- dump(shopData,"shopD)))))")
@@ -140,20 +162,21 @@ function ExpShopView:getGoodsData( tp )
     for pos,data in pairs(shopData) do
         pos = tonumber(pos)
         if goodsData[pos] then
-            goodsData[pos].canBuyTimes = data.buyTimes or 0
-            goodsData[pos].lastBuyTime = data.lastBuyTimes 
+            goodsData[pos].canBuyTimes = data.lastBuyTimes
+            -- goodsData[pos].lastBuyTime = data.lastBuyTimes 
             -- local recover = goodsData[pos].recoverNeed
             -- local add = math.floor((nowTime-data.lastBuyTimes)/recover)
-            if data.buyTimes then
-                goodsData[pos].canBuyTimes = math.min(data.buyTimes,goodsData[pos].buyTimes)
-            else
-                goodsData[pos].canBuyTimes = nil
-            end
+            -- if data.buyTimes then
+            --     goodsData[pos].canBuyTimes = math.min(data.buyTimes,goodsData[pos].buyTimes)
+            -- else
+            --     goodsData[pos].canBuyTimes = nil
+            -- end
             
             -- dump(goodsData[pos],"pos..." .. pos)
         end
     end
-    
+    self._goodsNum = #goodsData
+    -- dump(goodsData,"shopDatashopData",10)
     return goodsData
 end
 
@@ -166,7 +189,7 @@ function ExpShopView:reflashShopInfo()
     self._refreshTimeLab1:setString(fans)
 
     local goodsData = self:getGoodsData()
-    dump(goodsData,"商店详情",10)
+    -- dump(goodsData,"商店详情",10)
     if not goodsData then 
         return 
     end
@@ -182,6 +205,7 @@ function ExpShopView:reflashShopInfo()
     else
         self._scrollView:setInnerContainerSize(cc.size(self.scrollViewW,boardHeight))
     end
+    self.scrollViewH = boardHeight
     -- local boardWidth = math.ceil(#goodsData/2)*itemSizeX
     -- if boardWidth > self.scrollViewW then
     --     self._scrollView:setInnerContainerSize(cc.size(boardWidth+20,self.scrollViewH))
@@ -191,13 +215,12 @@ function ExpShopView:reflashShopInfo()
     local goodsCount = math.max(8,row*col)
     -- self:lock()
     local goodsIdx = 1
-    -- dump(goodsData)
     local curRank = self._modelMgr:getModel("GodWarModel"):getCurZone() or 0
     for i=1,goodsCount do
         -- x = math.floor((i-1)/row)*itemSizeX+offsetX
         -- y = self.scrollViewH/2 - (i-1)%row*itemSizeY+offsetY
         x = (i-1)%col*itemSizeX+offsetX
-        y = self.scrollViewH/2 - math.floor((i-1)/col)*itemSizeY+offsetY
+        y = self.scrollViewH - math.ceil(i/col)*itemSizeY+offsetY
         -- local limitRank = tab.shopGodWar[i].rank or 128
         -- print("============", limitRank, curRank)
         -- if not self._nextOpenIdx and curRank < limitRank then
@@ -283,10 +306,11 @@ function ExpShopView:createItem(index, data,x,y)
     itemId = tonumber(itemId)
     local toolD = tab:Tool(itemId)
     local canTouch
-    if not data.canBuyTimes then
-        canTouch = true
-    else
+
+    if data.buyTimes then
         canTouch = data.canBuyTimes ~= 0
+    else
+        canTouch = true
     end
      
     --加图标
@@ -419,6 +443,7 @@ function ExpShopView:createItem(index, data,x,y)
     local canBuyCountLab = item:getChildByName("canBuyCount")
     local timeLab = item:getChildByName("timeLab")
     local canBuyLab = item:getChildByName("canBuyLab")
+    canBuyLab:setFontSize(18)
     if not self._timeLabs[index] then
         timeLab.preUpTime = data.lastBuyTime or 0
         timeLab.recover = data.recover
@@ -426,59 +451,71 @@ function ExpShopView:createItem(index, data,x,y)
         self._timeLabs[index] = timeLab
     end
 
-    if not data.canBuyTimes then
+    local soldOut = item:getChildByFullName("soldOut")
+    soldOut:setVisible(false)
+
+    if data.canBuyTimes == 0 and (not data.buyTimes) then
         canBuyLab:setVisible(false)
         timeLab:setVisible(false)
         canBuyCountLab:setVisible(false)
-    elseif data.canBuyTimes == data.buyTimes then 
+    else
         canBuyLab:setVisible(true)
-        canBuyLab:setString("兑换次数:".. data.buyTimes .. "/" .. data.buyTimes)
+        canBuyLab:setString("兑换次数:".. data.canBuyTimes .. "/" .. data.buyTimes)
         -- canBuyLab:setColor(cc.c3b(240, 240, 0))
         -- canBuyLab:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor,2)
 
         timeLab:setVisible(false)
         timeLab.updating = false -- 状态是否更新
         canBuyCountLab:setVisible(false)
-    else
-        canBuyLab:setVisible(false)
-        timeLab:setVisible(true)
-        timeLab.preUpTime = data.lastBuyTime or 0
-        timeLab.updating = true
-        -- timeLab:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor,2)
-        canBuyCountLab:setVisible(true)
-        -- canBuyCountLab:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor,2)
+
         if data.canBuyTimes == 0 then
-            canBuyCountLab:setColor(cc.c3b(255, 23, 23))
-            canBuyCountLab:setString("0/" .. data.buyTimes)
+            soldOut:setVisible(true)
+            canBuyLab:setVisible(false)
+            canBuyLab:setColor(cc.c3b(255, 23, 23))
+            self:setNodeColor(item,cc.c4b(128, 128, 128,255))
         else
-            canBuyCountLab:setString(data.canBuyTimes .. "/" .. data.buyTimes)
-            canBuyCountLab:setColor(UIUtils.colorTable.ccUIBaseTextColor1)
+            canBuyLab:setColor(UIUtils.colorTable.ccUIBaseTextColor1)
         end
-        self:updateTimeLab()
+    -- else
+    --     canBuyLab:setVisible(false)
+    --     timeLab:setVisible(true)
+    --     timeLab.preUpTime = data.lastBuyTime or 0
+    --     timeLab.updating = true
+    --     -- timeLab:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor,2)
+    --     canBuyCountLab:setVisible(true)
+    --     -- canBuyCountLab:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor,2)
+    --     if data.canBuyTimes == 0 then
+    --         canBuyCountLab:setColor(cc.c3b(255, 23, 23))
+    --         canBuyCountLab:setString("0/" .. data.buyTimes)
+    --     else
+    --         canBuyCountLab:setString(data.canBuyTimes .. "/" .. data.buyTimes)
+    --         canBuyCountLab:setColor(UIUtils.colorTable.ccUIBaseTextColor1)
+    --     end
+    --     self:updateTimeLab()
     end
 end
 
-function ExpShopView:updateTimeLab( )
-    local nowTime = self._modelMgr:getModel("UserModel"):getCurServerTime()
-    for index,timeLab in pairs(self._timeLabs) do
-        if timeLab.updating then
-            local deltTime = timeLab.recover - (nowTime - timeLab.preUpTime)%timeLab.recover
-            if deltTime <= 1 then
-                -- self:reflashUI()
-                if timeLab.data then
-                    dump(timeLab.data)
-                    local add = math.floor((nowTime- timeLab.data.lastBuyTime)/timeLab.recover)
-                    local buyTimes = self._shopModel:getShopGoods("exp")[tostring(timeLab.data.id)].buyTimes
-                    timeLab.data.canBuyTimes = buyTimes + add
-                    self:createItem(index,timeLab.data)
-                end
-            else
-                -- print(index,"idx,updating?",deltTime,timeLab.updating,"timeLab.preUpTime",timeLab.preUpTime)
-                timeLab:setString(string.format("%02d:%02d:%02d",math.floor(deltTime/3600),math.floor(deltTime%3600/60),deltTime%60))
-            end
-        end
-    end
-end
+-- function ExpShopView:updateTimeLab( )
+--     local nowTime = self._modelMgr:getModel("UserModel"):getCurServerTime()
+--     for index,timeLab in pairs(self._timeLabs) do
+--         if timeLab.updating then
+--             local deltTime = timeLab.recover - (nowTime - timeLab.preUpTime)%timeLab.recover
+--             if deltTime <= 1 then
+--                 -- self:reflashUI()
+--                 if timeLab.data then
+--                     dump(timeLab.data)
+--                     local add = math.floor((nowTime- timeLab.data.lastBuyTime)/timeLab.recover)
+--                     local buyTimes = self._shopModel:getShopGoods("exp")[tostring(timeLab.data.id)].buyTimes
+--                     timeLab.data.canBuyTimes = buyTimes + add
+--                     self:createItem(index,timeLab.data)
+--                 end
+--             else
+--                 -- print(index,"idx,updating?",deltTime,timeLab.updating,"timeLab.preUpTime",timeLab.preUpTime)
+--                 timeLab:setString(string.format("%02d:%02d:%02d",math.floor(deltTime/3600),math.floor(deltTime%3600/60),deltTime%60))
+--             end
+--         end
+--     end
+-- end
 
 local sentMsgCount = 2
 -- 创建空格子
@@ -491,7 +528,7 @@ function ExpShopView:createGrid(x,y,pos,data )
     item:setScaleY(0.99)
     item:setAnchorPoint(0,0)
     item:setPosition(x+4,y+4)
-    self._scrollView:addChild(item)
+    self._scrollView:addChild(item,1000)
     if not data then
         return
     end

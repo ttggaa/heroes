@@ -40,7 +40,6 @@ function GuildDetailDialog:onInit()
 end
 
 function GuildDetailDialog:reflashUI(data)
-    dump(data)
     if data == nil then
         return
     end
@@ -98,5 +97,21 @@ function GuildDetailDialog:reflashUI(data)
     end
     allianceScore:setScale(0.6)
 
-end 
+	self:onInitQuitEvaluateData(allianceD)
+end
+
+function GuildDetailDialog:onInitQuitEvaluateData(allianceData)
+	local quitCountLab = self:getUI("bg.quitCountLab")
+	local totalCount = allianceData.quitNum or 0
+	quitCountLab:setString(string.format("%s人", totalCount))
+	
+	local quitData = allianceData.quitJudge or {}
+	for i=1, 4 do
+		local reasonRoot = self:getUI("bg.quitReason"..i)
+		local countLab = reasonRoot:getChildByName("countLab")
+		local count = quitData[tostring(i)] or 0
+		countLab:setString(string.format("%s人", count))
+	end
+end
+
 return GuildDetailDialog

@@ -15,6 +15,8 @@ local titleNames = {
     "位面", --7
     "征战", --8
     "王国", --9
+    "跨服", --10
+    "荣耀", --11
 }
 local leftTitleNames = {
     "神秘",
@@ -26,6 +28,8 @@ local leftTitleNames = {
     "位面",
     "征战",
     "王国",
+    "跨服",
+    "荣耀",
 }
 local shortTitleNames = {
     "神秘",
@@ -37,6 +41,8 @@ local shortTitleNames = {
     "位面",
     "征战",
     "王国",
+    "跨服",
+    "荣耀",
 }
 -- local titleImgs = {
 --     "globalTitleUI_shop1.png",
@@ -55,7 +61,10 @@ local tabSys = {
     "ElementShop",
     "CityBattle",
     "CrossPK",
+    "CrossGodWar",
+    "CrossArena",   --"honorArena"
 }
+
 local tabImg = {
     selected = "globalBtnUI4_page1_p.png",
     normal = "globalBtnUI4_page1_n.png",
@@ -71,6 +80,8 @@ local shopIdx = {
     "element",
     "citybattle",
     "cp",
+    "crossFight",
+    "honorArena",
 }
 
 local shopTableIdx = {
@@ -81,6 +92,10 @@ local shopTableIdx = {
     "shopGuild",
     "shopLeague",
     "shopElement",
+    "shopCrossFight",  ---不知道做什么
+    "shopCrossFight",  ---不知道做什么
+    "shopCrossFight",  --跨服诸神使用
+    "honorArenaShop",  --荣耀竞技场
 }
 -- 是否需要创建特殊layer
 local tabFunc = {
@@ -102,7 +117,7 @@ local tabFunc = {
         userReflashFunc="reflashShopUserData",
     }
 }
-local tabNum = 9
+local tabNum = 11
 -- local tabNames = {"bg.mainBg.smBtn","bg.mainBg.jjBtn","bg.mainBg.yzBtn","bg.mainBg.bwBtn"} cocostudio里的按钮
 -- listenModel ....
 local ShopView = class("ShopView",BaseView)
@@ -260,6 +275,7 @@ function ShopView:onInit()
     if self._idx > 7 then
         ScheduleMgr:delayCall(0, self, function( )
             self._btnScrollView:getInnerContainer():setPositionY(0)
+            self._btnDownArrow:setVisible(false)
         end)           
     end
     -- [[ 板子动画
@@ -546,8 +562,11 @@ function ShopView:reorderTabs( )
             if self._modelMgr:getModel("LeagueModel"):isMondayRest() then
                 isOpen = false
             end
+        elseif a.sortKey == "CrossGodWar" then
+            isOpen = self._modelMgr:getModel("CrossGodWarModel"):isShopOpen()
+            isOpen = GameStatic.is_open_crossGodWar ~= false and isOpen or false
         end
-        if not isOpen then
+        if not isOpen then 
             aOpen = 0
             a:setBright(false)
             -- a:setEnabled(false)
@@ -576,6 +595,9 @@ function ShopView:reorderTabs( )
             if self._modelMgr:getModel("LeagueModel"):isMondayRest() then
                 isOpen = false
             end
+        elseif b.sortKey == "CrossGodWar" then
+            isOpen = self._modelMgr:getModel("CrossGodWarModel"):isShopOpen()
+            isOpen = GameStatic.is_open_crossGodWar ~= false and isOpen or false
         end
         if not isOpen then
             bOpen = 0
@@ -618,6 +640,8 @@ function ShopView:setNavigation()
             [7] = {"PlaneCoin","Gold","Gem"},
             [8] = {"cbCoin","Gold","Gem"},
             [9] = {"cpCoin","Gold","Gem"},
+            [10] = {"crossGodWarCoin","Fans","Gem"},
+            [11] = {"honorCertificate","Gold","Gem"},
         }
     end
     self._viewMgr:showNavigation("global.UserInfoView",{types = self._naviTypes[self._idx],titleTxt = leftTitleNames[self._idx]})
@@ -662,14 +686,26 @@ function ShopView:touchTab( idx,notRefresh )
             self._tabItems[idx]:setEnabled(true)
             return
         end
+    elseif idx == 10 then
+        local userModel = self._modelMgr:getModel("UserModel")
+        isOpen = self._modelMgr:getModel("CrossGodWarModel"):isShopOpen()
+        isOpen = GameStatic.is_open_crossGodWar ~= false and isOpen or false
+        if not isOpen then
+            self._viewMgr:showTip("跨服诸神未开启")
+            return
+        end
     else
         isOpen,_,openLevel = SystemUtils["enable"..tabSys[idx]]()
         openLevel = openLevel .. "级"
     end
     if not isOpen then
-        local systemOpenTip = tab.systemOpen[tabSys[idx]][3]
+        local _,_,_,systemOpenTip = SystemUtils["enable"..tabSys[idx]]()
         if not systemOpenTip then
-            self._viewMgr:showTip(tab.systemOpen[tabSys[idx]][1] .. "级开启")
+            if tab.systemOpen[tabSys[idx]] then
+                self._viewMgr:showTip(tab.systemOpen[tabSys[idx]][1] .. "级开启")
+            else
+                self._viewMgr:showTip("暂未开启")
+            end
         else
             self._viewMgr:showTip(lang(systemOpenTip))
         end
@@ -883,12 +919,14 @@ function ShopView:reflashUI(data)
 end
 -- 按类型返回商店数据
 function ShopView:getGoodsData( tp )
+    print("xxxx",tp)
     if tabFunc[self._idx] then return end
     local goodsData
     local shopData = self._shopModel:getShopGoods(shopIdx[tp])
     if shopData ~= nil then
         goodsData = {}
         local shopTableName = shopTableIdx[tp]
+
         for pos,data in pairs(shopData) do
             local shopD
             if tab[shopTableName] then
@@ -904,6 +942,23 @@ function ShopView:getGoodsData( tp )
             --     shopD.buyTimes = 0
             -- end
             shopD.itemId = data.item
+
+            if self._idx == 10 then
+                if shopD.item[1] ~= "tool" 
+                    and shopD.item[1] ~= "hero" 
+                    and shopD.item[1] ~= "team" 
+                    and shopD.item[1] ~= "avatarFrame" 
+                    and shopD.item[1] ~= "avatar" 
+                    and shopD.item[1] ~= "hSkin" 
+                    and shopD.item[1] ~= "siegeProp"
+                then
+                    shopD.itemId = IconUtils.iconIdMap[shopD.item[1]]
+                else
+                    shopD.itemId = shopD.item[2]
+                end
+                shopD.num = shopD.item[3]
+            end
+
             local buyTimes = data.buy
             -- for k1,v1 in pairs(itemInfo) do
             --     shopD.itemId = k1--or shopD.itemId[1]
@@ -1069,10 +1124,20 @@ function ShopView:reflashShopInfo()
             goodsData = guildData
         end
     end
+    local cGodWarData = {}
+    if self._idx == 10 then
+        for pos = 1,8 do
+            for id,data in pairs(tab.shopCrossFight) do
+                if data.position == pos and (not goodsData[pos]) then
+                    cGodWarData[pos] = clone(data)
+                end
+            end
+        end
+    end
     self._nextOpenIdx = #goodsData+1
     if self._idx == 4 then
         for i=1,goodsCount do
-            if not self:detectOpenPos(i) then
+            if not self:detectOpenPos(i) and goodsData[i] then
                 self._nextOpenIdx = i
                 break
             end
@@ -1087,7 +1152,7 @@ function ShopView:reflashShopInfo()
         
         if self._idx == 4 then
             local isOpen = self:detectOpenPos(i)
-            if isOpen then           
+            if isOpen and goodsData[i] then           
                 self:createItem( i,goodsData[i],x,y)
             elseif goodsData[i] then
                 self:createTreasureGrid(i,x,y,goodsData[i])
@@ -1102,6 +1167,9 @@ function ShopView:reflashShopInfo()
             else
                 self:createGrid(x,y,i)
             end
+        elseif self._idx == 10 then
+            dump(cGodWarData[i])
+            self:createCrossGodWarGrid(i,x,y,cGodWarData[i])
         else
             self:createGrid(x,y,i)
         end
@@ -1405,6 +1473,117 @@ function ShopView:createItem(index, data,x,y)
         item:addChild(subTitleImg,999)
     end
 
+end
+
+-- 创建联盟未开启格子
+function ShopView:createCrossGodWarGrid(index,x,y,data)
+    if self._grids[index] and not tolua.isnull(self._grids[index]) then
+        self._grids[index]:removeFromParent()
+    end
+    if not tolua.isnull(self._items[index]) then
+        self._items[index]:setVisible(false)
+    end
+    local item = ccui.ImageView:create()
+    self._grids[index] = item
+    item:setScaleAnim(true)
+    item:loadTexture("globalPanelUI7_cellBg1.png",1)
+    item:setContentSize(cc.size(190, 200))
+    item:setScale9Enabled(true)
+    --CCScale9Sprite:createWithSpriteFrameName(spriteFrameName, capInsets)
+    -- item:ignoreContentAdaptWithSize(false)
+    -- item:setCapInsets(cc.rect(60,50,10,10))
+    -- item:setScale(180/item:getContentSize().width,172/item:getContentSize().height)
+    local offsetx,offsety = -2,2
+    local shopGridFrame = ccui.ImageView:create()
+    shopGridFrame:loadTexture("globalImageUI4_squality1.png", 1)
+    shopGridFrame:setName("shopGridFrame")
+    shopGridFrame:setContentSize(98, 98)
+    shopGridFrame:setAnchorPoint(0.5,0.5)
+    shopGridFrame:setPosition(102+offsetx,105+offsety)
+    shopGridFrame:setScale(85/shopGridFrame:getContentSize().width)
+    item:addChild(shopGridFrame,2)
+    local shopGridBg = ccui.ImageView:create()
+    shopGridBg:loadTexture("globalImageUI4_itemBg1.png", 1)
+    shopGridBg:setName("shopGridBg")
+    shopGridBg:setContentSize(100, 100)
+    shopGridBg:setAnchorPoint(0.5,0.5)
+    shopGridBg:setPosition(102+offsetx,105+offsety)
+    shopGridBg:setScale(80/shopGridBg:getContentSize().width)
+    item:addChild(shopGridBg,1)
+
+    -- 加装饰条
+    local decorateImg = self._item:getChildByFullName("bottomDecorate")
+    if decorateImg then
+        local decImg = decorateImg:clone()
+        item:addChild(decImg,0)
+        decImg:setPosition(95,33)
+    end
+    if data.item[1] ~= "tool" 
+        and data.item[1] ~= "hero" 
+        and data.item[1] ~= "team" 
+        and data.item[1] ~= "avatarFrame" 
+        and data.item[1] ~= "avatar" 
+        and data.item[1] ~= "hSkin" 
+        and data.item[1] ~= "siegeProp"
+    then
+        data.itemId = IconUtils.iconIdMap[data.item[1]]
+    else
+        data.itemId = data.item[2]
+    end
+    data.num = data.item[3]
+
+    local itemId = tonumber(data.itemId)
+    if not itemId then
+        itemId = IconUtils.iconIdMap[data.itemId]
+    end
+    local toolD = tab:Tool(itemId)
+
+    local icon = IconUtils:createItemIconById({itemId = itemId,itemData = toolD,effect=true,num = nil,eventStyle = 0})
+    icon:setContentSize(100, 100)
+    icon:setScale(0.9)
+    icon:setPosition(item:getContentSize().width/2-40,item:getContentSize().height/2-38)
+    item:addChild(icon,2)
+
+    local lock = ccui.ImageView:create()
+    lock:loadTexture("globalImageUI5_treasureLock.png",1)
+    lock:setName("lock")
+    lock:setPosition(item:getContentSize().width/2,item:getContentSize().height/2+2)
+    -- lock:setScale(0.85)
+    item:addChild(lock,3)
+    self._scrollView:addChild(item)
+    item:setAnchorPoint(0.5,0.5)
+    item:setPosition(x,y)
+
+    local title = ccui.Text:create()
+    title:setFontName(UIUtils.ttfName)
+    title:setAnchorPoint(0.5,0.5)
+    title:setFontSize(20)
+    title:setFontName(UIUtils.ttfName)
+
+    title:setString(lang(toolD.name) or "没有名字")
+    title:setColor(UIUtils.colorTable["ccUIBaseTextColor2"])
+
+    title:setName("stage")
+    title:setPosition(item:getContentSize().width/2,item:getContentSize().height-25)
+    item:addChild(title,99)
+
+    local rtxStr = "[color = 865c30] [-]"
+    local limit = data.rankLimit
+    if limit then
+        rtxStr = "[color = 3c3c3c,fontSize = 18]前" .. limit .. "名开启[-]"--"[color = 865c30,fontSize = 22]级开启[-]"
+    end
+
+    local rtx = RichTextFactory:create(rtxStr,200,40)
+    rtx:formatText()
+    rtx:setName("rtx")
+    local w = rtx:getInnerSize().width
+    local h = rtx:getInnerSize().height
+    rtx:setPosition(item:getContentSize().width/2+1,20+h/2)
+    -- rtx:setScale(0.8)
+    item:addChild(rtx)
+    UIUtils:alignRichText(rtx)
+    -- 置灰显示
+    self:setNodeColor(item,cc.c4b(182, 182, 182,255))
 end
 
 -- 创建联盟未开启格子
@@ -1797,7 +1976,7 @@ function ShopView:sendReFreshShopMsg( shopName )
             return 
         end
     end
-
+    
     self._refreshAnim = true
     -- ScheduleMgr:delayCall(1500, self, function( )
     --     self._refreshAnim = nil
@@ -1809,6 +1988,22 @@ function ShopView:sendReFreshShopMsg( shopName )
     times = times+1
     if times > #tab.reflashCost then
         times = #tab.reflashCost
+    end
+    if shopName == "honorArena" then
+        local vipData = tab.vip[vip] or {}
+        local vipLimt = vipData.refreshShopHa
+        if vipLimt and times and times > vipLimt then
+            if vip < #tab.vip then
+                -- self._viewMgr:showTip(lang("REFRESH_TREASURE_SHOP"))
+                DialogUtils.showNeedCharge({desc = lang("REFRESH_TREASURE_SHOP"),callback1=function( )
+                    local viewMgr = ViewManager:getInstance()
+                    viewMgr:showView("vip.VipView", {})
+                end})
+            else
+                self._viewMgr:showTip(lang("REFRESH_TREASURE_SHOP_MAX"))
+            end
+            return 
+        end
     end
     local privilgeNum = self._modelMgr:getModel("PrivilegesModel"):getAbilityEffect(PrivilegeUtils.privileg_ID.PRIVILEGENAME_10)
     local hadUse = self._modelMgr:getModel("PlayerTodayModel"):getData().day11 or 0
@@ -1830,6 +2025,8 @@ function ShopView:sendReFreshShopMsg( shopName )
                 self._viewMgr:showTip("联盟币不足")
             elseif costType == "planeCoin" then
                 self._viewMgr:showTip(lang("TIPS_AWARDS_05"))
+            elseif costType == "honorCertificate" then
+                self._viewMgr:showTip("荣耀之证不足")
             else
                 self._viewMgr:showTip(lang("TIP_GLOBAL_LACK_" .. string.upper(costType)) or "缺少资源")
             end

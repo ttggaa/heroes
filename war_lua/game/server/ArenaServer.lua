@@ -207,4 +207,19 @@ function ArenaServer:onSweepEnemy( result, error )
 	self:callback(result)
 end
 
+function ArenaServer:onOneKeySwapEnemy( result, error )
+	if error ~= 0 then 
+		return
+	end
+	self._arenaModel:updateArena(result.d.arena)
+	result.d.arena = nil
+	self._modelMgr:getModel("ItemModel"):updateItems(result.d.items)
+	result.d.items = nil
+	local rewards = result.d.rewards
+	result.d.rewards = nil
+	self._modelMgr:getModel("UserModel"):updateUserData(result.d)
+	result.d.rewards = rewards
+	self:callback(result)
+end
+
 return ArenaServer

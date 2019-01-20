@@ -624,7 +624,7 @@ function TreasureExchangePreview:createMenuItem(data, idx)
         self._comOffsetX = offsetX
 
         if self._comOffsetX ~= self._comTableView:getContentOffset().x then
-            local maxDistance = -5000 -- 偏移最大值容错 增加宝物需要改数值现在支持13个
+            local maxDistance = -6700 -- 偏移最大值容错 增加宝物需要改数值现在支持16个    -- +600
             self._comTableView:setContentOffsetInDuration(cc.p(math.max(offsetX,maxDistance), 0), 0.3)
         end
 

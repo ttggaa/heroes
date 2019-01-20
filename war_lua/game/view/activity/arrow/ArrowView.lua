@@ -21,6 +21,7 @@ function ArrowView:ctor()
 	math.randomseed(tostring(os.time()):reverse():sub(1, 6))  --随机种子
 	self._arrowList = {}	--箭列表
 	self._monsterList = {} 	--怪物列表
+	self._bossList = {}     --boss列表
 
 	self._mul = 111 					--防改内存参数[选择箭数,]  箭数/血量/能量值
 	self._monsterIndex = 0  			--随机怪物生成的id
@@ -35,6 +36,9 @@ function ArrowView:ctor()
 	self._constTargetSpeed = MAX_SCREEN_WIDTH  * GameStatic.normalAnimInterval / 14   	--怪物速度 		--420 7s
 	self._constArrowSpeed = MAX_SCREEN_HEIGHT * GameStatic.normalAnimInterval 			--箭速度2 		--60  0.5s
 	self._constSArrowSpeed = MAX_SCREEN_HEIGHT * 3 * GameStatic.normalAnimInterval 		--激光箭速度 	--120 0.12s
+
+	self._isScheduleStop = false    	--是否暂停怪物动画
+	self._isBossState = false   		--boss出现，是否清屏s
 end
 
 -- function ArrowView:getBgName()
@@ -44,6 +48,9 @@ end
 function ArrowView:onInit()
 	self._musicLast = audioMgr:getMusicFileName()
 	audioMgr:playMusic("HappyGame", true)
+
+	self:getUI("bg.bossTip.tips.Label_21"):enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
+	self:getUI("bg.bossTip.tips.Label_23"):enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
 	--联盟科技增益
 	local guildModel = self._modelMgr:getModel("GuildModel")
 	self._hurtNum, self._energyNum = guildModel:getArrowGainLv()
@@ -62,8 +69,13 @@ function ArrowView:onInit()
     bgImg:setPosition(0, 0)
     self._gameBg:addChild(bgImg)
 
-	--场景动画
-	local aimLayer = mcMgr:createViewMC("fengwei_shejianjinglingfengwei", true, false)
+    --场景动画
+    local aimLayer = mcMgr:createViewMC("fenwei2_shejianjinglingfenwei", true, false)
+	aimLayer:setScale(needScale)
+	aimLayer:setPosition(0, 0)
+	self._gameBg:addChild(aimLayer)
+
+	local aimLayer = mcMgr:createViewMC("fenwei_shejianjinglingfenwei", true, false)
 	aimLayer:setScale(needScale)
 	aimLayer:setPosition(0, 0)
 	self._gameBg:addChild(aimLayer)
@@ -84,7 +96,20 @@ function ArrowView:onInit()
 	self._closeBtn = self:getUI("bg.closeBtn")
 	self:registerClickEventByName("bg.closeBtn", function()
 		self:syncArrowData(function()
-			self:close()
+			if self._isBossState then
+				self._viewMgr:showDialog("global.GlobalSelectDialog",
+			        {   desc = lang("ARROW_TIP_6"),
+			            button1 = "确定",
+			            button2 = "取消", 
+			            callback1 = function ()
+			               self:createBossReward()    --结算奖励
+			            end,
+			            callback2 = function() end})
+				
+			else
+				self:close()
+			end
+			
 			end)
 		end)
 
@@ -157,6 +182,11 @@ function ArrowView:onInit()
 			end)
 		end)
 
+	local bossTip = self:getUI("bg.bossTip")
+	if not GameStatic.is_show_arrowBoss then
+		bossTip:setVisible(false)
+	end
+
 	self._rewards = {}
 	local _reward1 = self:getUI("bg.rewards.box1")
 	local _reward2 = self:getUI("bg.rewards.box2")
@@ -182,8 +212,19 @@ function ArrowView:onInit()
 		end
 
 		self:registerClickEvent(self._rewards[i]._clickNode, function(sender)
-			self._viewMgr:showDialog("activity.arrow.ArrowRewardView", {data = self._data, callback = function()
-				self:getRewards()
+			if self._isBossState == true then
+				self._viewMgr:showTip(lang("ARROW_TIP_5"))
+				return
+			end
+			
+			self._isScheduleStop = true
+			self._viewMgr:showDialog("activity.arrow.ArrowRewardView", {data = self._data, 
+				callback = function()
+					self:getRewards()
+					self._isScheduleStop = false
+				end,
+				callback2 = function()
+					self._isScheduleStop = false
 				end}, true)
 		end)
 	end
@@ -220,6 +261,7 @@ function ArrowView:onInit()
 
         	UIUtils:reloadLuaFile("activity.arrow.ArrowView")
 			UIUtils:reloadLuaFile("activity.arrow.ArrowConst")
+			UIUtils:reloadLuaFile("activity.arrow.ArrowRewardView")
         end
     end)
     self._frameTime = 1 / GameStatic.normalAnimInterval
@@ -438,6 +480,10 @@ end
 ---- 创建怪物
 function ArrowView:createTarget()
 	-- if #self._monsterList > 4 then return end
+	if self._isBossState == true then     --boss清屏
+		return
+	end
+
 	local disTime = self._isFreeze == true and 1.8 or 3   --出怪速度
 	self._curTime = self._curTime and self._curTime + 1 or 0
 	
@@ -477,9 +523,10 @@ function ArrowView:createTarget()
 	widget._blood = monsterData["hp"] + self._mul 	--血量
 	widget._specialArrNum = {}         	--被激光箭射中列表{{区域，箭数}，{区域，箭数}，{}}
 	widget._commonArrNum = {}         	--被普通箭射中列表{{箭数，区域}，{箭数，区域}，{}}
-	widget._speed = speed
-	widget._cWidget = {}
+	widget._speed = speed   			--移动速度
+	widget._cWidget = {}   				--怪身上的碰撞检测点
 	widget._shootArw = {}  				--怪物身上挂的箭，用于限制箭和怪的碰撞检测次数
+	widget._monsterAnim = {}            --怪动画
     self._stage:addChild(widget)
 
     local wMoster = ccui.Layout:create()
@@ -497,7 +544,7 @@ function ArrowView:createTarget()
 	monster:setPosition(wMoster:getContentSize().width /2, wMoster:getContentSize().height)
 	wMoster:addChild(monster)
 
-	widget.monsterAnim = monster
+	table.insert(widget._monsterAnim, monster)
 	table.insert(self._monsterList, widget)
 
 	self:refreshMonsterBlood(widget)  --血条
@@ -507,7 +554,7 @@ function ArrowView:createTarget()
     for i=1, #cAreas do
 	    local cWidget = ccui.Layout:create()
 	    cWidget:setAnchorPoint(cc.p(0.5, 0.5))
-	    cWidget:setBackGroundColorOpacity(0)
+	    cWidget:setBackGroundColorOpacity(ArrowConst.SHOOT_AREAR_OPACITY)
 	    cWidget:setBackGroundColorType(1)
 	    cWidget:setBackGroundColor(cc.c3b(200, 100, 0))
 	    cWidget:setContentSize(cAreas[i][1], cAreas[i][2])
@@ -717,7 +764,7 @@ function ArrowView:createArrow(data)
 	end
     local cWidget = ccui.Layout:create()
     cWidget:setAnchorPoint(cc.p(0, 0))  
-    cWidget:setBackGroundColorOpacity(0)
+    cWidget:setBackGroundColorOpacity(ArrowConst.SHOOT_AREAR_OPACITY)
     cWidget:setBackGroundColorType(1)
     cWidget:setBackGroundColor(cc.c3b(200, 100, 0))
     cWidget:setContentSize(cWidth, cHeight)
@@ -732,19 +779,24 @@ function ArrowView:scheduleUpdate()
 	--购买箭时暂停界面
 	if self._isScheduleStop == true then
 		for i,v in ipairs(self._monsterList) do
-			v.monsterAnim:stop()
+			for p,q in ipairs(v["_monsterAnim"]) do
+				q:stop()
+			end
 		end
 		return
 	else
 		for i,v in ipairs(self._monsterList) do
-			if not v.monsterAnim:isPlaying() then
-				v.monsterAnim:play()
+			for p,q in ipairs(v["_monsterAnim"]) do
+				if not q:isPlaying() then
+					q:play()
+				end
 			end
 		end
 	end
 	self:createTarget()
 	self:conllisionCheck()
 	self:scheduleCheck()
+	self:refreshBossState()
 end
 
 --[[ function  定时器每帧处理
@@ -835,118 +887,206 @@ function ArrowView:conllisionCheck()
 	-- 碰撞检测
 	for _arr=#self._arrowList, 1, -1 do
 		local arrowC = self._arrowList[_arr]
-		local isShoot = false
-		local shootList = {}  --死列表
+		
+		if self._isBossState == true then
+			self:conllisionBossCheck(arrowC, _arr)
+		else
+			self:conllisionMosterCheck(arrowC, _arr)
+		end
+	end
+end
 
-		for _tar=#self._monsterList, 1, -1 do
-			local monsterC = self._monsterList[_tar] 
-			--射中
-			local isCollion, hurtIndex, hurtFactor = self:checkIsCollision(monsterC, arrowC)
-			if isCollion == true and monsterC._shootArw[tostring(arrowC._index)] == nil then
-				monsterC._shootArw[tostring(arrowC._index)] = 1
-				arrowC._shootMonsters[monsterC._index] = 1
-				self:refreshDoubleHit(true)   --连击数+1
-				isShoot = true
+function ArrowView:conllisionMosterCheck(arrowC, _arr)
+	local isShoot = false
+	local shootList = {}  --死列表
 
-				--射中特效名 / 射中箭数记录 / 血量 / 射中时间
-				local shootAnimName
-				if arrowC._type/self._mul == ArrowConst.ARROW_TYPE.SPECIAL then
-					audioMgr:playSound("Arrow_wuxian_minghzong")
-					shootAnimName = "shouji2_nengliangtiao"
-					if monsterC._specialArrNum[hurtIndex] == nil then
-						monsterC._specialArrNum[hurtIndex] = 1 * self._mul
-					else
-						monsterC._specialArrNum[hurtIndex] = monsterC._specialArrNum[hurtIndex] + 1 * self._mul
-					end
-					monsterC._blood = monsterC._blood - (tab:Setting("G_ARROW_HURT_2").value * hurtFactor) * (1 + self._hurtNum)
-					self._superShootT = self._userModel:getCurServerTime()
+	--普通怪检测
+	for _tar=#self._monsterList, 1, -1 do
+		local monsterC = self._monsterList[_tar] 
+		--射中
+		local isCollion, hurtIndex, hurtFactor = self:checkIsCollision(monsterC, arrowC)
+		if isCollion == true and monsterC._shootArw[tostring(arrowC._index)] == nil then
+			monsterC._shootArw[tostring(arrowC._index)] = 1
+			arrowC._shootMonsters[monsterC._index] = 1
+			self:refreshDoubleHit(true)   --连击数+1
+			isShoot = true
+
+			--射中特效名 / 射中箭数记录 / 血量 / 射中时间
+			local shootAnimName
+			if arrowC._type/self._mul == ArrowConst.ARROW_TYPE.SPECIAL then
+				audioMgr:playSound("Arrow_wuxian_minghzong")
+				shootAnimName = "shouji2_nengliangtiao"
+				if monsterC._specialArrNum[hurtIndex] == nil then
+					monsterC._specialArrNum[hurtIndex] = 1 * self._mul
 				else
-					audioMgr:playSound("Arrow_mingzhong")
-					self._arrowModel:setSyncStatis(2, arrowC._num)  	--同步数据
-					if hurtIndex == self._mul then
-						self._arrowModel:setSyncStatis(3, arrowC._num)  --爆头同步数据
-					end
-					
-					if hurtIndex == self._mul then
-						shootAnimName = "shouji2_nengliangtiao"
-					else
-						shootAnimName = "shouji_nengliangtiao"
-					end
-					table.insert(monsterC._commonArrNum, {arrowC._num + 1, hurtIndex})
-					local hurtTb = tab:Setting("G_ARROW_HURT").value
-					for i=1,#hurtTb do
-						if hurtTb[i][1] == (arrowC._num + 1) / self._mul then
-							monsterC._blood = monsterC._blood - (hurtTb[i][2] * hurtFactor) * (1 + self._hurtNum)
-							break
-						end
-					end
+					monsterC._specialArrNum[hurtIndex] = monsterC._specialArrNum[hurtIndex] + 1 * self._mul
 				end
-
-				UIUtils:shakeWindow(nil, self._closeBtn)  --震屏
-
-				--射中特效
-				local point1 = monsterC._cWidget[hurtIndex/self._mul]:convertToWorldSpace(cc.p(0, 0))
-    			pointM1 = self._stage:convertToNodeSpace(point1)
-				local shootAnim = mcMgr:createViewMC(shootAnimName, false, true)
-				shootAnim:setPosition(pointM1)
-				self._stage:addChild(shootAnim)
-
-				--爆头特效
+				monsterC._blood = monsterC._blood - (tab:Setting("G_ARROW_HURT_2").value * hurtFactor) * (1 + self._hurtNum)
+				self._superShootT = self._userModel:getCurServerTime()
+			else
+				audioMgr:playSound("Arrow_mingzhong")
+				self._arrowModel:setSyncStatis(2, arrowC._num)  	--同步数据
 				if hurtIndex == self._mul then
-					local baotouAnim = mcMgr:createViewMC("hit_shejianui", false, true)
-					baotouAnim:setPosition(pointM1.x, pointM1.y + 50)
-					self._stage:addChild(baotouAnim)
+					self._arrowModel:setSyncStatis(3, arrowC._num)  --爆头同步数据
 				end
 				
-				if monsterC._blood > self._mul then
-					--血量
-					self:refreshMonsterBlood(monsterC)
+				if hurtIndex == self._mul then
+					shootAnimName = "shouji2_nengliangtiao"
 				else
-					--射死
-					--激光箭数据结构处理
-					local superList = {}
-					for _k,_v in pairs(monsterC._specialArrNum) do
-						table.insert(superList, {_v, _k})
+					shootAnimName = "shouji_nengliangtiao"
+				end
+				table.insert(monsterC._commonArrNum, {arrowC._num + 1, hurtIndex})
+				local hurtTb = tab:Setting("G_ARROW_HURT").value
+				for i=1,#hurtTb do
+					if hurtTb[i][1] == (arrowC._num + 1) / self._mul then
+						monsterC._blood = monsterC._blood - (hurtTb[i][2] * hurtFactor) * (1 + self._hurtNum)
+						break
 					end
-
-					self._data["arrow"]["mStatis"][tostring(monsterC._id)] = self._data["arrow"]["mStatis"][tostring(monsterC._id)] + 1
-
-					local exchangeTime = self._enterForeTime - self._enterBackTime
-					table.insert(shootList, {monsterC._id, monsterC._commonArrNum, superList, self._superShootT, self._superStartT, exchangeTime})
-					local dieAnim = mcMgr:createViewMC(tab.arrow[monsterC._id]["dieart"], false, true)
-					dieAnim:setPosition(monsterC:getPosition())
-					self._stage:addChild(dieAnim)
-					if monsterC._appearType == "left" then
-				    	dieAnim:setScaleX(-1)
-				    end
-
-					monsterC:removeFromParentAndCleanup()
-					table.remove(self._monsterList, _tar)
 				end
 			end
-		end
 
-		if isShoot == true then  --一箭可能中多个，所以在遍历完之后再处理射中列表
-			--箭移除
-			if arrowC._type/self._mul ~= ArrowConst.ARROW_TYPE.SPECIAL then   
-				arrowC:removeFromParentAndCleanup()
-				table.remove(self._arrowList, _arr)
+			UIUtils:shakeWindow(nil, self._closeBtn)  --震屏
+
+			--射中特效
+			local point1 = monsterC._cWidget[hurtIndex/self._mul]:convertToWorldSpace(cc.p(0, 0))
+			pointM1 = self._stage:convertToNodeSpace(point1)
+			local shootAnim = mcMgr:createViewMC(shootAnimName, false, true)
+			shootAnim:setPosition(pointM1)
+			self._stage:addChild(shootAnim)
+
+			--爆头特效
+			if hurtIndex == self._mul then
+				local baotouAnim = mcMgr:createViewMC("hit_shejianui", false, true)
+				baotouAnim:setPosition(pointM1.x, pointM1.y + 50)
+				self._stage:addChild(baotouAnim)
 			end
-
-			if next(shootList) ~= nil then
-				for i=1,#shootList do
-					self._arrowModel:setSyncDieList(shootList[i])
-					local awardId = tab.arrow[shootList[i][1]].award
-					self._arrowModel:handleShootDieMonsters(awardId, shootList[i][1])
-					self:refreshUI()
+			
+			if monsterC._blood > self._mul then
+				--血量
+				self:refreshMonsterBlood(monsterC)
+			else
+				--射死
+				--激光箭数据结构处理
+				local superList = {}
+				for _k,_v in pairs(monsterC._specialArrNum) do
+					table.insert(superList, {_v, _k})
 				end
-				
-				-- self._serverMgr:sendMsg("ArrowServer", "arrowShootingMonsters", {monsters = json.encode(shootList)}, true, {}, function (result)
-				-- 	-- dump(result, "arrow")
-				-- 	self:refreshUI()  --奖励
-				-- end)
+
+				self._data["arrow"]["mStatis"][tostring(monsterC._id)] = self._data["arrow"]["mStatis"][tostring(monsterC._id)] + 1
+
+				local exchangeTime = self._enterForeTime - self._enterBackTime
+				table.insert(shootList, {monsterC._id, monsterC._commonArrNum, superList, self._superShootT, self._superStartT, exchangeTime})
+				local dieAnim = mcMgr:createViewMC(tab.arrow[monsterC._id]["dieart"], false, true)
+				dieAnim:setPosition(monsterC:getPosition())
+				self._stage:addChild(dieAnim)
+				if monsterC._appearType == "left" then
+			    	dieAnim:setScaleX(-1)
+			    end
+
+				monsterC:removeFromParentAndCleanup()
+				table.remove(self._monsterList, _tar)
 			end
 		end
+	end
+
+	if isShoot == true then  --一箭可能中多个，所以在遍历完之后再处理射中列表
+		--箭移除
+		if arrowC._type/self._mul ~= ArrowConst.ARROW_TYPE.SPECIAL then   
+			arrowC:removeFromParentAndCleanup()
+			table.remove(self._arrowList, _arr)
+		end
+
+		if next(shootList) ~= nil then
+			for i=1,#shootList do
+				self._arrowModel:setSyncDieList(shootList[i])
+				local awardId = tab.arrow[shootList[i][1]].award
+				self._arrowModel:handleShootDieMonsters(awardId, shootList[i][1])
+				self:refreshUI()
+			end
+			
+			-- self._serverMgr:sendMsg("ArrowServer", "arrowShootingMonsters", {monsters = json.encode(shootList)}, true, {}, function (result)
+			-- 	-- dump(result, "arrow")
+			-- 	self:refreshUI()  --奖励
+			-- end)
+		end
+	end
+end
+
+function ArrowView:conllisionBossCheck(arrowC, _arr)
+	if self._boss == nil then
+		return
+	end
+
+	local isShoot = false
+	local shootList = {}  --射中列表
+	local bloodMax = tab.setting["BOSS_BLOOD"].value
+
+	for _tar=#self._bossList, 1, -1 do
+		if self._boss["isDie"] == true then
+			break
+		end
+
+		local monsterC = self._bossList[_tar]
+		--射中
+		local isCollion, cWidgetId, hurtIndex, hurtFactor = self:checkIsCollision(monsterC, arrowC)
+		if isCollion == true and monsterC._shootArw[tostring(arrowC._index)] == nil then
+			monsterC._shootArw[tostring(arrowC._index)] = 1
+			arrowC._shootMonsters[monsterC._index] = 1
+			self:refreshDoubleHit(true)   --连击数+1
+			isShoot = true
+
+			audioMgr:playSound("Arrow_mingzhong")
+			self._arrowModel:setSyncStatis(2, arrowC._num)  	--同步数据
+
+			table.insert(shootList, {arrowC._num + 1, hurtIndex})
+		
+			local hurtTb = tab:Setting("G_ARROW_HURT").value
+			for i=1,#hurtTb do
+				if hurtTb[i][1] == (arrowC._num + 1) / self._mul then
+					self._boss._blood = self._boss._blood - (hurtTb[i][2] * hurtFactor) * (1 + self._hurtNum)
+					break
+				end
+			end
+
+			UIUtils:shakeWindow(nil, self._closeBtn)  --震屏
+
+			--射中特效
+			local point1 = monsterC._cWidget[cWidgetId/self._mul]:convertToWorldSpace(cc.p(0, 0))
+			pointM1 = self._stage:convertToNodeSpace(point1)
+			pointM1.x = pointM1.x + monsterC._cWidget[cWidgetId/self._mul]:getContentSize().width * 0.5
+			pointM1.y = pointM1.y + monsterC._cWidget[cWidgetId/self._mul]:getContentSize().height * 0.5
+			local shootAnim = mcMgr:createViewMC("atk1_shejianjinglingfenwei", false, true)
+			shootAnim:setPosition(pointM1)
+			self._stage:addChild(shootAnim)
+
+			if self._boss._blood > self._mul then
+				self:refreshBossBlood()
+			else
+				self._boss["isDie"] = true
+			end
+		end
+	end
+
+	--boss血量剩一半 出现boss头
+	if bloodMax / 2 > (self._boss._blood - self._mul) and not self._boss._isHeadShow then
+		self:createBossHeadAnim()
+	end
+	
+	if isShoot == true then  --一箭可能中多个，所以在遍历完之后再处理射中列表
+		--箭移除
+		arrowC:removeFromParentAndCleanup()
+		table.remove(self._arrowList, _arr)
+
+		if next(shootList) ~= nil then
+			for i,v in ipairs(shootList) do
+				self._arrowModel:setSyncBossList(v)
+			end
+			
+		end
+	end
+
+	if self._boss["isDie"] == true then
+		self:createBossReward()
 	end
 end
 
@@ -993,23 +1133,38 @@ function ArrowView:checkIsCollision(monster, arrow)
 
     --monster
     for i=1, #monster._cWidget do
-    	local point1 = monster._cWidget[i]:convertToWorldSpaceAR(cc.p(0, 0))
-	    pointM = self._stage:convertToNodeSpace(point1)
-	    local mSize = monster._cWidget[i]:getContentSize()
-	    local ma = {_x = pointM.x - mSize.width/2, 	_y = pointM.y + mSize.height/2}
-	    local mb = {_x = pointM.x + mSize.width/2,  _y = pointM.y + mSize.height/2}
-	    local mc = {_x = pointM.x + mSize.width/2,  _y = pointM.y - mSize.height/2}
-	    local md = {_x = pointM.x - mSize.width/2, 	_y = pointM.y - mSize.height/2}
-	    local segMTb = {{ma, mb}, {mb, mc}, {mc, md}, {md, ma}}
+    	repeat
+    		if monster._isClaw then    --boss触角区域是否是当前展示的图片的碰撞区域
+    			local showImg = monster._showImg or 1
+    			local curImg = monster._cWidget[i]._imgType
+    			if showImg ~= curImg then
+    				break
+    			end
+    		end
+	    	local point1 = monster._cWidget[i]:convertToWorldSpaceAR(cc.p(0, 0))
+		    pointM = self._stage:convertToNodeSpace(point1)
+		    local mSize = monster._cWidget[i]:getContentSize()
+		    local ma = {_x = pointM.x - mSize.width/2, 	_y = pointM.y + mSize.height/2}
+		    local mb = {_x = pointM.x + mSize.width/2,  _y = pointM.y + mSize.height/2}
+		    local mc = {_x = pointM.x + mSize.width/2,  _y = pointM.y - mSize.height/2}
+		    local md = {_x = pointM.x - mSize.width/2, 	_y = pointM.y - mSize.height/2}
+		    local segMTb = {{ma, mb}, {mb, mc}, {mc, md}, {md, ma}}
 
-	   	--判断两线段是否相交
-	   	for p,aTb in ipairs(segATb) do
-			for k,mTb in ipairs(segMTb) do
-				if isIntersect(segATb[p], segMTb[k]) and isIntersect(segMTb[k], segATb[p]) then
-					return true, i * self._mul, monster._cWidget[i]._hurt   --true/false, 射中区域, 本次伤害值
-		   		end
+		   	--判断两线段是否相交
+		   	for p,aTb in ipairs(segATb) do
+				for k,mTb in ipairs(segMTb) do
+					if isIntersect(segATb[p], segMTb[k]) and isIntersect(segMTb[k], segATb[p]) then
+						if self._isBossState == true then   --boss大招
+							 --true/false, 射中区域id, 爪子id, 本次伤害值
+							return true, i * self._mul, monster._index * self._mul, monster._cWidget[i]._hurt  
+						else
+							--true/false, 射中区域, 本次伤害值
+							return true, i * self._mul, monster._cWidget[i]._hurt   
+						end
+			   		end
+				end
 			end
-		end
+		until true
     end
 
     return false
@@ -1095,6 +1250,16 @@ function ArrowView:refreshUI()
 	--能量槽
 	if self._isFreeze == false then
 		self:refreshEnergyBar()
+	end
+
+	local bossNum = self._data["arrow"]["bossNum"] or 0
+	local tipNum = self:getUI("bg.bossTip.tips.tipNum")
+	tipNum:setString(bossNum)
+	tipNum:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
+	if bossNum <= 0 then
+		tipNum:setColor(UIUtils.colorTable.ccUIBaseColor6)
+	else
+		tipNum:setColor(UIUtils.colorTable.ccUIBaseColor2)
 	end
 end
 
@@ -1193,9 +1358,18 @@ function ArrowView:startSuperState()
 		self._superBtn:addChild(superAnim1)
 	end
 
+	if self._isBossState then
+		self._superBtn:setTouchEnabled(false)
+		self._superBtn:setVisible(false)
+	end
+
 	--点击事件
 	self:registerClickEvent(self._superBtn, function() 
 		self._superBtn:setTouchEnabled(false)
+
+		local bossBtn = self:getUI("bg.bossTip.bossBtn")
+		bossBtn:setTouchEnabled(false)
+
 		audioMgr:playSound("Arrow_wuxian_kaishi")
 		if self._superBtn._anim1 then
 			self._superBtn._anim1:removeFromParent()
@@ -1300,6 +1474,9 @@ function ArrowView:stopSuperState()
 		self._superBtn:removeFromParent()
 		self._superBtn = nil
 	end
+
+	local bossBtn = self:getUI("bg.bossTip.bossBtn")
+	bossBtn:setTouchEnabled(true)
 	
 	self._stage:setLocalZOrder(-1)
 	-- self._energyBar:setLocalZOrder(14)
@@ -1767,9 +1944,6 @@ function ArrowView:refreshDoubleHit(isDouble)
 				posX = 50
 			end
 
-			-- animName = "unbelievable_shejianlianji"
-			-- posX = 50
-
 			if self._doubleHit._aimNode ~= nil then
 				self._doubleHit._aimNode:removeFromParent(true)
 				self._doubleHit._aimNode = nil
@@ -1787,31 +1961,407 @@ function ArrowView:refreshDoubleHit(isDouble)
 	end
 end
 
+
+function ArrowView:refreshBossState()
+	--每帧刷新bossNum数量
+	local lastNum = self._data["arrow"]["bossNum"] or 0
+	local curNum = self._arrowModel:refreshBossNum()
+	if lastNum ~= curNum then
+		self:refreshUI()
+	end
+
+	if self._isBossState == true then
+		return
+	end
+
+	local curTime = self._userModel:getCurServerTime()
+	local upBossTime = self._data["arrow"]["upBossTime"] or 0
+	local bossNum = self._data["arrow"]["bossNum"] or 0
+
+	--点击事件
+	local bossBtn = self:getUI("bg.bossTip.bossBtn")
+	self:registerClickEvent(bossBtn, function() 
+		if bossNum <= 0 then
+			self._viewMgr:showTip("次数不足")
+			return
+		end
+		
+		self._arrowModel:startBossState()   	--更新次数
+		self._arrowModel:setIsBossEnd(false)  	--设置boss状态
+		self:refreshUI()
+
+		bossBtn:setTouchEnabled(false)
+		audioMgr:playSound("Arrow_wuxian_kaishi")
+
+		if self._superBtn then
+			self._superBtn:setTouchEnabled(false)
+			self._superBtn:setVisible(false)
+		end
+
+		self._isBossState = true
+		for i=#self._arrowList, 1, -1 do
+			self._arrowList[i]:removeFromParent(true)
+			self._arrowList[i] = nil
+			table.remove(self._arrowList, i)
+		end
+
+		for i=#self._monsterList, 1, -1 do
+			self._monsterList[i]:removeFromParent(true)
+			self._monsterList[i] = nil
+			table.remove(self._monsterList, i)
+		end
+
+		self._enterBossAnim = mcMgr:createViewMC("born2_shejianjinglingfenwei", false, true, function()
+			self:createBossAnim()
+			self._enterBossAnim = nil
+			end)
+		self._enterBossAnim:setPosition(MAX_SCREEN_WIDTH*0.5, MAX_SCREEN_HEIGHT*0.5)
+		self._stage:addChild(self._enterBossAnim)
+		
+	end)
+end
+
+function ArrowView:createBossAnim()
+	local sysTrail = ArrowConst.BOSS_ANIM
+	local sysAct = tab.octopusAct
+	local sysSetting = tab.setting
+
+	--boss节点
+	if self._boss then
+		self._boss:removeFromParent(true)
+		self._boss = nil
+	end
+
+	if not self._isBossState then
+		return
+	end
+	
+	self._boss = ccui.Layout:create()
+    self._boss:setAnchorPoint(cc.p(0.5, 0.5))
+    self._boss:setPosition(MAX_SCREEN_WIDTH * 0.5, MAX_SCREEN_HEIGHT * 0.5)
+    self._stage:addChild(self._boss)
+
+    self._boss._blood = sysSetting["BOSS_BLOOD"].value + self._mul
+    self._boss._time = sysSetting["BOSS_EXIST_TIME"].value
+
+    local timeDes1 = cc.Label:createWithTTF("倒计时:", UIUtils.ttfName, 18)
+	timeDes1:setPosition(self._boss:getContentSize().width * 0.5 - 40, 177)
+	timeDes1:setColor(UIUtils.colorTable.ccUIBaseColor2)
+	timeDes1:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
+	self._boss.timeDes1 = timeDes1
+	self._boss:addChild(timeDes1)
+
+    local timeDes = cc.Label:createWithTTF(TimeUtils.getTimeString(self._boss._time), UIUtils.ttfName, 18)
+    timeDes:setAnchorPoint(cc.p(0, 0.5))
+	timeDes:setPosition(self._boss:getContentSize().width * 0.5, 177)
+	timeDes:setColor(UIUtils.colorTable.ccUIBaseColor2)
+	timeDes:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
+	self._boss.timeDes = timeDes
+	self._boss:addChild(timeDes)
+
+    self._boss:runAction(cc.RepeatForever:create(
+    	cc.Sequence:create(
+    		cc.DelayTime:create(1),
+    		cc.CallFunc:create(function()
+    			self._boss._time = self._boss._time - 1
+    			
+    			if self._boss._time <= 5 then
+    				self._boss._timeTip2:setString("后BOSS撤退")
+    				self._boss._timeTip1:setString("00:0" .. self._boss._time)
+
+    				self._boss.timeDes:setString("")
+    				self._boss.timeDes1:setString("")
+    			else
+    				self._boss.timeDes:setString(TimeUtils.getTimeString(math.max(0, self._boss._time)))
+    				self._boss._timeTip1:setString("")
+    				self._boss._timeTip2:setString("")
+    			end
+    			if self._boss._time <= 0 then
+    				self:createBossReward()    --结算奖励
+    			end
+    			end)
+    		)))
+
+    --单个爪子动画
+    local imgInfo = {{1, 1}, {5, -1}, {1, 1}, {4, -1}}  --下标/水平翻转
+
+	local function createClawlAnim(inNum)    
+		local clawNode = ccui.Layout:create()
+	    clawNode:setBackGroundColorOpacity(0)
+	    clawNode:setBackGroundColorType(1)
+	    clawNode:setBackGroundColor(cc.c3b(200, 200, 0))
+	    clawNode:setContentSize(100, 100)
+
+	    clawNode._cWidget = {}       --boss的碰撞区域(6张图所有区域)
+	    clawNode._isClaw = true      --是否对象是爪子
+	    clawNode._showImg = imgInfo[inNum - 1][1]     --当前展示的图片下标
+	    clawNode._index = inNum      --爪子整体下标
+	    clawNode._shootArw = {}  	 --怪物身上挂的箭，用于限制箭和怪的碰撞检测次数
+	    table.insert(self._bossList, clawNode)
+
+	    local imgList = {}
+		for i=1, 6 do
+			local actData = sysAct[i]
+
+			--触角图
+			local img = cc.Sprite:createWithSpriteFrameName("arrow_BossImg" .. i .. ".png")
+			img:setPosition(0, img:getContentSize().height * 0.5)
+			clawNode:addChild(img)
+
+			--碰撞区域
+			for m, n in ipairs(actData["posi"]) do
+				local cWidget = ccui.Layout:create()
+			    cWidget:setBackGroundColorOpacity(ArrowConst.SHOOT_AREAR_OPACITY)
+			    cWidget:setBackGroundColorType(1)
+			    cWidget:setBackGroundColor(cc.c3b(100, 100, 0))
+			    cWidget:setContentSize(cc.size(n[1], n[2]))
+			    cWidget:setPosition(n[3], n[4])
+			    img:addChild(cWidget)
+
+			    cWidget._imgType = i      								 --区域属于哪张图
+			    cWidget._hurt = sysSetting["BOSS_HIT"]["value"][inNum]   --区域伤害系数
+			    table.insert(clawNode._cWidget, cWidget)
+			end
+
+			-- img:setFlipX(imgInfo[inNum - 1][2] == -1)
+			img:setScaleX( imgInfo[inNum - 1][2] == -1 and -1 or 1 )
+			img:setVisible(false)
+			table.insert(imgList, img)
+		end
+
+		clawNode:runAction(cc.RepeatForever:create(cc.Sequence:create(
+			cc.CallFunc:create(function()
+				local lastImg = clawNode._showImg
+				if not lastImg then
+					lastImg = 1
+					curImg = 1
+				elseif lastImg == 6 then
+					curImg = 1
+				else
+					curImg = lastImg + 1
+				end
+
+				imgList[lastImg]:setVisible(false)
+				imgList[curImg]:setVisible(true)
+				clawNode._showImg = curImg
+				end),
+			cc.DelayTime:create(0.2)
+		)))
+
+		return clawNode
+	end
+	
+	--四个触角
+	for i=2, 5 do
+		local claw = createClawlAnim(i)
+		claw:setPosition(sysTrail[i-1][2], sysTrail[i-1][3])
+		claw:setScale(sysTrail[i-1][1])
+		self._boss:addChild(claw)
+
+		if OS_IS_WINDOWS then
+			local curValue = cc.Label:createWithTTF(i, UIUtils.ttfName, 24)
+			curValue:setPosition(claw:getContentSize().width * 0.5, claw:getContentSize().height * 0.5)
+			curValue:setColor(UIUtils.colorTable.ccUIBaseColor4)
+			curValue:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
+			claw:addChild(curValue)
+		end
+		
+		claw:runAction(cc.RepeatForever:create(
+			cc.Sequence:create(
+				cc.MoveTo:create(2, cc.p(sysTrail[i-1][4], sysTrail[i-1][5])),
+				cc.MoveTo:create(2, cc.p(sysTrail[i-1][2], sysTrail[i-1][3]))
+				)))
+	end
+
+	--进度条
+	self:refreshBossBlood()
+end
+
+function ArrowView:createBossHeadAnim()
+	if not self._boss or self._boss._isHeadShow then
+	end
+
+	self._boss._isHeadShow = true   --是否头已出现
+	--章鱼头
+    local headAnim = mcMgr:createViewMC("born_shejianjinglingfenwei", false, false)
+	headAnim:setPosition(0, 0)
+	self._boss:addChild(headAnim)
+
+	headAnim._cWidget = {}
+	headAnim._index = 1
+    headAnim._shootArw = {}  	 --怪物身上挂的箭，用于限制箭和怪的碰撞检测次数
+	table.insert(self._bossList, headAnim)
+
+	local headWidget = ccui.Layout:create()
+    headWidget:setBackGroundColorOpacity(ArrowConst.SHOOT_AREAR_OPACITY)
+    headWidget:setBackGroundColorType(1)
+    headWidget:setBackGroundColor(cc.c3b(100, 100, 0))
+    headWidget:setAnchorPoint(cc.p(0.5, 0.5))
+    headWidget:setContentSize(cc.size(147, 156))
+    headWidget:setPosition(0, 0)
+    headAnim:addChild(headWidget)
+
+    headWidget._hurt = tab.setting["BOSS_HIT"]["value"][1]
+    table.insert(headAnim._cWidget, headWidget)
+end
+
+---- 血量
+function ArrowView:refreshBossBlood()
+	if self._boss == nil then
+		return
+	end
+
+	local percent = ((self._boss._blood - self._mul) / tab.setting["BOSS_BLOOD"].value) * 100 + self._mul
+	local bloodBar = self._boss:getChildByName("bloodBar")
+	if bloodBar ~= nil then
+		bloodBar:setVisible(true)
+		bloodBar:getChildByName("bar"):setPercentage(percent - self._mul)
+		return
+	end
+
+	local widget = ccui.Layout:create()
+    widget:setAnchorPoint(cc.p(0.5, 0.5))
+    widget:setBackGroundColorOpacity(0)
+    widget:setBackGroundColorType(1)
+    widget:setBackGroundColor(cc.c3b(100, 100, 0))
+    widget:setContentSize(cc.size(479, 36))
+    widget:setPosition(self._boss:getContentSize().width/2, self._boss:getContentSize().height + 150)
+    widget:setName("bloodBar")
+    self._boss:addChild(widget)
+
+	local bg = cc.Scale9Sprite:createWithSpriteFrameName("globalImageUI1_arrowBar2.png")
+    bg:setCapInsets(cc.rect(42, 17, 1, 1)) 
+	bg:setContentSize(cc.size(479, 36))
+    bg:setPosition(widget:getContentSize().width/2, widget:getContentSize().height * 0.5)
+    widget:addChild(bg)
+
+	local bg1 = cc.Scale9Sprite:createWithSpriteFrameName("globalImageUI1_arrowBar3.png")
+    bg1:setCapInsets(cc.rect(40, 18, 1, 1)) 
+	bg1:setContentSize(cc.size(479, 36))
+    bg1:setPosition(widget:getContentSize().width/2, widget:getContentSize().height * 0.5)
+    widget:addChild(bg1, 2)
+
+    for i=1, 5 do
+    	local split = cc.Sprite:createWithSpriteFrameName("globalImageUI_tips_split.png")
+	    split:setPosition(80 * i, 18)
+	    widget:addChild(split, 1)
+    end
+
+    local bloodBar = cc.Sprite:createWithSpriteFrameName("globalImageUI1_arrowBar1.png")
+    local progress = cc.ProgressTimer:create(bloodBar)
+    progress:setPosition(widget:getContentSize().width/2, widget:getContentSize().height * 0.5)
+    progress:setType(cc.PROGRESS_TIMER_TYPE_BAR)
+    progress:setMidpoint(cc.p(0, 0.5))
+    progress:setBarChangeRate(cc.p(1, 0))    
+    progress:setPercentage(percent - self._mul)
+    progress:setName("bar")
+    widget:addChild(progress)
+
+    local timeTip1 = cc.Label:createWithTTF("", UIUtils.ttfName, 18)
+	timeTip1:setPosition(widget:getContentSize().width/2 - 25, -16)
+	timeTip1:setColor(UIUtils.colorTable.ccUIBaseColor6)
+	timeTip1:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
+	timeTip1:setAnchorPoint(cc.p(1,0.5))
+	self._boss._timeTip1 = timeTip1
+	widget:addChild(timeTip1)
+
+	local timeTip2 = cc.Label:createWithTTF("", UIUtils.ttfName, 18)
+	timeTip2:setPosition(widget:getContentSize().width/2 + 30, -16)
+	timeTip2:setColor(UIUtils.colorTable.ccUIBaseColor1)
+	timeTip2:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
+	self._boss._timeTip2 = timeTip2
+	widget:addChild(timeTip2)
+end
+
+function ArrowView:createBossReward()
+	self._isBossState = false
+
+	--删除boss入场动画
+	if self._enterBossAnim then
+		self._enterBossAnim:removeFromParent(true)
+		self._enterBossAnim = nil
+	end
+
+	--删除boss
+	for i=#self._bossList, 1, -1 do
+		self._bossList[i]:removeFromParent(true)
+		self._bossList[i] = nil
+		table.remove(self._bossList, i)
+	end
+
+	local sysSetting = tab.setting
+	local rwdId = sysSetting["BOSS_AWARDID"].value
+
+	--播放boss入场动画时，boss并未创建
+	if self._boss then
+		--死亡奖励
+		local rwdNum1 = 0
+		if self._boss["isDie"] then    
+			rwdNum1 = sysSetting["BOSS_DEAD_REWARDNUM"].value
+			self._arrowModel:handleShootBossReward(rwdId, rwdNum1, self._boss["isDie"])
+		end
+
+		--伤害奖励
+		local maxBlood = sysSetting["BOSS_BLOOD"].value
+		local curBlood = math.max(0, self._boss["_blood"] - self._mul)
+		local offNum = sysSetting["BOSS_HURT_REWARD"].value
+		local rwdNum2 = math.modf((maxBlood - curBlood) / offNum)
+		self._arrowModel:handleShootBossReward(rwdId, rwdNum2)
+
+		self._boss:removeFromParent(true)
+		self._boss = nil
+		
+		if rwdNum1 + rwdNum2 > 0 then
+			DialogUtils.showGiftGet( {
+		        gifts = {{type = "arrow", typeId = 3, num = rwdNum1 + rwdNum2}}, 
+		        callback = function() 
+		        end})
+		end
+	end
+
+	self._arrowModel:setIsBossEnd(true)   --boss状态结束
+
+	--大招按钮可点
+	if self._superBtn then
+		self._superBtn:setTouchEnabled(true)
+		self._superBtn:setVisible(true)
+	end
+
+	self:refreshUI()
+end
+
 -- 退界面/进界面/buyBtn/领宝箱/领补给/领送箭/rankBtn
 function ArrowView:syncArrowData(inFunc, errorCallback)
 	local syncData = SystemUtils.loadAccountLocalData("syncArrowData")
 	-- dump(syncData, "sync", 10)
-	if syncData ~= nil and type(syncData) == "table" and syncData["arrowList"] and next(syncData["arrowList"]) ~= nil then
-		syncData["mStatis"][1] = syncData["mStatis"][1] + 1
-		syncData["syncReqId"] = SystemUtils.loadAccountLocalData("SYNC_ARROW_REQUEST_ID") or 1  --上次同步id
-		ServerManager:getInstance():sendMsg("ArrowServer", "syncArrowData", syncData, true, {}, function(result)
-			if result["errorCode"] == nil then   
-				inFunc()
-			else
-				ApiUtils.playcrab_lua_error("ArrowView syncArrowData====="..result["errorCode"], serialize(syncData))
-				if result["errorCode"] == 3833 then  --弱网同步
+	if syncData ~= nil and type(syncData) == "table" then
+		local arrowTemp = syncData["arrowList"] and next(syncData["arrowList"]) ~= nil
+		local bossTemp = syncData["bossData"] and syncData["bossData"][2] and next(syncData["bossData"][2]) ~= nil
+		if arrowTemp or bossTemp then
+			syncData["mStatis"][1] = syncData["mStatis"][1] + 1
+			syncData["syncReqId"] = SystemUtils.loadAccountLocalData("SYNC_ARROW_REQUEST_ID") or 1  --上次同步id
+			ServerManager:getInstance():sendMsg("ArrowServer", "syncArrowData", syncData, true, {}, function(result)
+				if result["errorCode"] == nil then   
 					inFunc()
-					return
-				end
-
-				if errorCallback ~= nil then
-					errorCallback()
 				else
-					self:close()
+					ApiUtils.playcrab_lua_error("ArrowView syncArrowData====="..result["errorCode"], serialize(syncData))
+					if result["errorCode"] == 3833 then  --弱网同步
+						inFunc()
+						return
+					end
+
+					if errorCallback ~= nil then
+						errorCallback()
+					else
+						self:close()
+					end
+					ViewManager:getInstance():showTip("数据异常")
 				end
-				ViewManager:getInstance():showTip("数据异常")
-			end
-		end)
+			end)
+		else
+			inFunc()
+		end
+		
 	else
 		inFunc()
 	end

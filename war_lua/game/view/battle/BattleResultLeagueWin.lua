@@ -79,17 +79,17 @@ function BattleResultLeagueWin:onInit()
     self._goldLabel = self:getUI("bg.bg2.goldLabel")
     self._goldLabel:enableOutline(cc.c4b(48,20,0,255),2)
     self._goldLabel:setScale(1) 
-	
-	self._rank = self:getUI("bg.bg1.rank") 
-	self._upRank = self:getUI("bg.bg1.upRank") 
-	self._upArrow = self:getUI("bg.bg1.upArrow") 
-	self._upArrow:runAction(cc.RepeatForever:create(cc.JumpBy:create(0.8,cc.p(0,0),5,1))) --cc.Sequence:create(cc.JumpBy:create(0.5,cc.p(0,5),5,1),cc.JumpBy:create(0.5,cc.p(0,0),0,1)) ))
-	local leagueInfo = self._result.leagueInfo
+    
+    self._rank = self:getUI("bg.bg1.rank") 
+    self._upRank = self:getUI("bg.bg1.upRank") 
+    self._upArrow = self:getUI("bg.bg1.upArrow") 
+    self._upArrow:runAction(cc.RepeatForever:create(cc.JumpBy:create(0.8,cc.p(0,0),5,1))) --cc.Sequence:create(cc.JumpBy:create(0.5,cc.p(0,5),5,1),cc.JumpBy:create(0.5,cc.p(0,0),0,1)) ))
+    local leagueInfo = self._result.leagueInfo
     dump(leagueInfo,"leagueInfo.......in battle.....")
     if leagueInfo then
-    	local currentPoint = leagueInfo.currentPoint or 0
-    	local prePoint = leagueInfo.prePoint or 0
-    	local preHRank = leagueInfo.preHRank or prePoint or 0
+        local currentPoint = leagueInfo.currentPoint or 0
+        local prePoint = leagueInfo.prePoint or 0
+        local preHRank = leagueInfo.preHRank or prePoint or 0
         local preZone = leagueInfo.preZone 
         local curZone = leagueInfo.currentZone
         self._bg1:setVisible(true)
@@ -99,9 +99,9 @@ function BattleResultLeagueWin:onInit()
         des1:setString(lang("SOCORE_LEAGUE_01"))
         local des2 = self:getUI("bg.bg1.des2")
 
-    	if currentPoint ~= prePoint then
-    		self._rank:setString(currentPoint)
-    		self._upRank:setString(math.abs(currentPoint-prePoint) .. ")")
+        if currentPoint ~= prePoint then
+            self._rank:setString(currentPoint)
+            self._upRank:setString(math.abs(currentPoint-prePoint) .. ")")
             if currentPoint < prePoint then
                 des:setString(lang("LOSE_LEAGUE_01"))
                 des1:setString(lang("SOCORE_LEAGUE_02"))
@@ -115,7 +115,7 @@ function BattleResultLeagueWin:onInit()
         else
             des:setString(lang("EQUAL_LEAGUE_01"))
             des1:setString(lang("SOCORE_LEAGUE_03"))
-    	end
+        end
         if self._result and self._result.isTimeUp then
             des:setString(lang("EQUAL_LEAGUE_01"))
         end
@@ -155,7 +155,7 @@ function BattleResultLeagueWin:onInit()
             self._goldLabel:setString(awardCoin)
         end
         -- if leagueInfo.award then
-        -- 	self._goldLabel:setString(leagueInfo.award.val or "20")
+        --  self._goldLabel:setString(leagueInfo.award.val or "20")
         -- else
         --     self._goldLabel:setVisible(false)
         --     self._title:setVisible(false)
@@ -175,11 +175,11 @@ function BattleResultLeagueWin:onInit()
 
     local children1 = self._bg1:getChildren()
     for k,v in pairs(children1) do
-    	v:setOpacity(0)
+        v:setOpacity(0)
     end
     local children2 = self._bg2:getChildren()
     for k,v in pairs(children2) do
-    	v:setOpacity(0)
+        v:setOpacity(0)
     end
 
     -- self._expLabel:setString("")
@@ -205,7 +205,7 @@ function BattleResultLeagueWin:onInit()
     -- print(self._bestOutID ,"=====================",outputValue)
     -- print(self._lihuiId,"=====================",outputLihuiV)
 
-	self._time = self._battleInfo.time
+    self._time = self._battleInfo.time
 
     self:animBegin()
 end
@@ -225,15 +225,15 @@ function BattleResultLeagueWin:initLabel(node,isGreen)
 end
 
 function BattleResultLeagueWin:onQuit()
-	-- if self._arenaCallback then
-	-- 	print("in arena callbakc....")
-	-- 	self._arenaCallback(self._callback)
+    -- if self._arenaCallback then
+    --  print("in arena callbakc....")
+    --  self._arenaCallback(self._callback)
  --    else
         if self._callback then
             self._callback()
         end
         
-	-- end
+    -- end
 end
 
 function BattleResultLeagueWin:onCount()
@@ -243,7 +243,7 @@ end
 -- local delaytick = {1000, 1500, 380}
 function BattleResultLeagueWin:animBegin()
     audioMgr:stopMusic()
-	audioMgr:playSoundForce("WinBattle")
+    audioMgr:playSoundForce("WinBattle")
 
     local liziAnim = mcMgr:createViewMC("liziguang_commonwin", true, false) 
     liziAnim:setPosition(MAX_SCREEN_WIDTH * 0.5, 135)
@@ -269,13 +269,13 @@ function BattleResultLeagueWin:animBegin()
         local teamModel = self._modelMgr:getModel("TeamModel")
         local tdata,_idx = teamModel:getTeamAndIndexById(lihuiId)
         local isAwaking,_ = TeamUtils:getTeamAwaking(tdata)
-        local teamName, art1, art2, art3 = TeamUtils:getTeamAwakingTab(tdata, tdata.id)
-        if isAwaking then 
-            -- 结算例会单独处理 读配置
-            imgName = teamData.jxart2
-            artUrl = "asset/uiother/team/"..imgName..".png"
-        end
-
+        local teamName, art1, art2, art3 = TeamUtils:getTeamAwakingTab(tdata, self._lihuiId)
+        -- if isAwaking then 
+        --     -- 结算例会单独处理 读配置
+        --     imgName = teamData.jxart2
+        --     artUrl = "asset/uiother/team/"..imgName..".png"
+        -- end
+        artUrl = "asset/uiother/team/".. art2 ..".png"
         if  teamData["jisuan"] then
             local teamX ,teamY = teamData["jisuan"][1], teamData["jisuan"][2]
             local scale = teamData["jisuan"][3] 

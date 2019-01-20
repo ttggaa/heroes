@@ -1286,8 +1286,8 @@ end
 function SdkManager:showJGLauncher()
     if OS_IS_WINDOWS then return end
     if CPP_VERSION <= 213 then return end
-    local k = cc.Director:getInstance():getOpenGLView():getFrameSize().height / MAX_SCREEN_HEIGHT
-    self._luaBridge.callStaticMethod(self._className, "showJGLauncher", {xx = math.floor(16 * k), yy = math.floor(78 * k)})
+    -- local k = cc.Director:getInstance():getOpenGLView():getFrameSize().height / MAX_SCREEN_HEIGHT
+    -- self._luaBridge.callStaticMethod(self._className, "showJGLauncher", {xx = math.floor(16 * k), yy = math.floor(78 * k)})
 end
 
 function SdkManager:hideJGLauncher()

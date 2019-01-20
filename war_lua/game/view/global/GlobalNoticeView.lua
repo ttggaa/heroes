@@ -146,7 +146,7 @@ function GlobalNoticeView:getRichText(inData)
 	--限时神将
 	if inData.bdType and inData.bdType == "limitTeam" then
 		local acOpenInfoTableData = tab.activityopen
-	    if OS_IS_WINDOWS then
+	    if OS_IS_WINDOWS and is_activityOpenDev then
 	        acOpenInfoTableData = tab.activityopen_dev
 	    end
 	    local acId = acOpenInfoTableData[tonumber(inData["acId"])].activity_id

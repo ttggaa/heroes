@@ -83,7 +83,7 @@ function TeamHeroNode:updateHeroNode()
             local pokedexPos = self._pokedexModel:getDataById(pokedexId[i])
             -- dump(pokedexPos, "pokedexPos")
             local pokeNum = self._pokedexModel:getPokedexOnTeamByIdNum(pokedexId[i]) or 0
-            for j=1,5 do
+            for j=1,6 do
                 if pokeNum >= j then
                     pokedexCell["tujian" .. j]:loadTexture("pokeImg_pos" .. pokedexTab.color .. ".png", 1)
                 else
@@ -284,7 +284,7 @@ function TeamHeroNode:createHeroNode()
             self._heroNode[i].pokedexName:setFontSize(24)
             self._heroNode[i].pokedexName:setFontName(UIUtils.ttfName)        
 
-            for j=1,5 do
+            for j=1,6 do
                 self._heroNode[i]["tujian" .. j] = self._heroNode[i]:getChildByFullName("tujian" .. j)
             end
             

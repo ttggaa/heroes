@@ -733,7 +733,12 @@ function HeroModel:getHeroSpellReplaceByData(heroId,heroD)
     return result
 end
 
+
 function HeroModel:isSpellReplaced(heroId, spellId)
+    local starReplaceId = self:isSpellReplacedByStar(heroId, spellId)
+    if starReplaceId then
+        return true,starReplaceId
+    end
     local currentHeroSpecialEffect = self:getHeroSpellReplace(heroId)
     for _, v in ipairs(currentHeroSpecialEffect) do
         if spellId == v[1] then
@@ -741,6 +746,67 @@ function HeroModel:isSpellReplaced(heroId, spellId)
         end
     end 
     return false
+end
+
+--星图专精替换技能
+function HeroModel:isSpellReplacedByStar(heroId, spellId)
+    local hStar = self._userModel:getData()["hStar"]
+    if hStar == nil or next(hStar) == nil then
+        return nil
+    end
+    local starTable = tab.starCharts
+    local starCatenaTable = tab.starChartsCatena
+    local heroMasteryTable = tab.heroMastery
+    local starInfo = nil
+    for _ , v in pairs(starTable) do
+        if tonumber(heroId) == tonumber(v.hero) then
+            starInfo = v
+        end
+    end
+
+    --判断分支是否被激活
+    local catennaOrlock = function (id)
+        for catenId,catenNum in pairs(hStar.scmap or {}) do
+            if tonumber(id) == tonumber(catenId) and tonumber(catenNum) ~= 0 then
+                return true
+            end
+        end
+        return false
+    end
+
+    local getReplaceId = function(masteryId)
+        local skreplace = heroMasteryTable[masteryId]["skreplace"]
+        if skreplace and next(skreplace) then
+            for _ , data in pairs(skreplace) do
+                if tonumber(spellId) == tonumber(data[1]) then
+                    return data[2]
+                end
+            end
+        end
+        return nil
+    end
+
+    if starInfo then
+        --星链激活专精id
+        for _ , id in pairs(starInfo["catena_id"]) do
+            if catennaOrlock(id) then
+                local masteryId = starCatenaTable[id]["heromasteryid"]
+                if masteryId and getReplaceId(masteryId) then
+                    return getReplaceId(masteryId)
+                end
+            end
+        end
+        --星图构成专精
+        for hId , count in pairs(hStar.smap or {}) do
+            if tonumber(hId) == tonumber(heroId) and tonumber(count) ~= 0 then
+                local masteryId = starInfo["heromasteryid"]
+                if masteryId and getReplaceId(masteryId) then
+                    return getReplaceId(masteryId)
+                end
+            end
+        end
+    end
+    return nil
 end
 
 -- 提供给拍排行榜查看他人技能tips
@@ -1152,7 +1218,7 @@ function HeroModel:caculateHeroMasteryAttr( )
             local masteryD = tab.heroMastery[tonumber(id)]
             if masteryD then
                 local morale    = masteryD.morale
-                dump(morale)
+                -- dump(morale)
                 if morale and morale[1] then
                     local attType   = morale[1][1]
                     local attNum    = morale[1][2]*(tonumber(lvl) or 0)

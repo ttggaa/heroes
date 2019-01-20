@@ -222,7 +222,8 @@ function HeroduelRankView:reflashNo1( data )
     local name = self._leftBoard:getChildByFullName("name")
     name:setString(data.name)
     local level = self._leftBoard:getChildByFullName("level")
-    level:setString("等级:" .. (data.level or data.lvl or 0))
+    local inParam = {lvlStr = "Lv." .. (data.level or data.lvl or 0), lvl = data.level or data.lvl, plvl = data.plvl}
+    UIUtils:adjustLevelShow(level, inParam, 1)
     
     --联盟label
     -- local winTimes = (data.i1 or "") .. "胜" .. (data.i2 or "") .. "次"

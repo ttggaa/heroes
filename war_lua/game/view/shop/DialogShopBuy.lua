@@ -71,7 +71,11 @@ function DialogShopBuy:onInit()
         planeCoin = {tipDes = "TIPS_AWARDS_05",img = ""},
         skillBookCoin = {tipDes = "SHOPSKILLBOOK_TIPS1",img = ""},
         friendCoin = {tipDes = "FRIEND_TEXT_TIPS_8",img = ""},
+        cpCoin = {tipDes = "TIP_GLOBAL_LACK_CPCOIN", img = ""},
+		crossGodWarCoin = {tipDes = "crossFight_tips_11", img = ""},
 		cpCoin = {tipDes = "TIP_GLOBAL_LACK_CPCOIN", img = ""},
+        signCoin = {tipDes = "TIP_GLOBAL_LACK_SIGNCOIN", img = ""},
+        honorCertificate = {tipDes = "荣耀之证不足", img = ""}
     }
     self._buyBtn = self:getUI("bg.btn1")
     self:registerClickEventByName("bg.btn1", function()
@@ -117,16 +121,20 @@ function DialogShopBuy:onInit()
                 local param = {indexId = 8}
                 self._viewMgr:showDialog("global.GlobalPromptDialog", param)
             else 
-                print("self._costType========",self._costType)
+                -- print("self._costType========",self._costType)
                 dump(self._typeMap)
-                if self._typeMap[self._costType]["goto"] then
-                    self._typeMap[self._costType]["goto"]()
-                else
-                    local lackTipDes = lang(self._typeMap[self._costType]["tipDes"]) --"缺少足够的联赛币"
-                    if not lackTipDes or lackTipDes == "" then
-                        lackTipDes = self._typeMap[self._costType]["tipDes"]
+                if self._typeMap [self._costType] then
+                    if self._typeMap [self._costType]["goto"] then
+                        self._typeMap[self._costType]["goto"]()
+                    else
+                        local lackTipDes = lang(self._typeMap[self._costType]["tipDes"]) --"缺少足够的联赛币"
+                        if not lackTipDes or lackTipDes == "" then
+                            lackTipDes = self._typeMap[self._costType]["tipDes"]
+                        end
+                        self._viewMgr:showTip(lackTipDes or "")
                     end
-                    self._viewMgr:showTip(lackTipDes or "")
+                else
+                    self._viewMgr:showTip("资源不足")
                 end
             end
         end

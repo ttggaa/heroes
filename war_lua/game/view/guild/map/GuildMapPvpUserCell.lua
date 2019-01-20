@@ -77,14 +77,15 @@ function GuildMapPvpUserCell:reflashUI(inUserId, inIsFriend)  -- 442/119
         self._mapHurtLab:setString("生命 " .. holdUserInfo.mapHurt .. "/100")
     end
 
+    local headP = {avatar = holdUserInfo.avatar,level = holdUserInfo.lvl or 0 , tp = 4,avatarFrame = holdUserInfo["avatarFrame"], plvl = holdUserInfo.plvl}
     if self._avatar == nil then
-        self._avatar = IconUtils:createHeadIconById({avatar = holdUserInfo.avatar,level = holdUserInfo.lvl , tp = 4,avatarFrame = holdUserInfo["avatarFrame"]})   --,tp = 2
+        self._avatar = IconUtils:createHeadIconById(headP)   --,tp = 2
         -- self._avatar:getChildByFullName("iconColor"):loadTexture("globalImageUI6_headBg.png",1)
         self._avatar:setPosition(20, 17)
         self._avatar:setScale(0.8)
         self:addChild(self._avatar)
     else
-        IconUtils:updateHeadIconByView(self._avatar,{avatar = holdUserInfo.avatar,level = holdUserInfo.lvl or "0" ,tp = 4,avatarFrame = holdUserInfo["avatarFrame"]})
+        IconUtils:updateHeadIconByView(self._avatar,headP)
         -- self._avatar:getChildByFullName("iconColor"):loadTexture("globalImageUI6_headBg.png",1)
     end
     if self._attackBtn == nil then

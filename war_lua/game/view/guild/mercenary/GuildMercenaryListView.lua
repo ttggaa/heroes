@@ -193,9 +193,9 @@ function GuildMercenaryListView:createItem(teamCell,index,teamInfo)
     local teamName = teamTableData.name
     local useless1 = nil
     local useless2 = nil
-    if isAwaking then
+    -- if isAwaking then
         teamName, useless1, useless2 = TeamUtils:getTeamAwakingTab(teamData)
-    end
+    -- end
     teamCell.name:setString(lang(teamName))
 
     --战力

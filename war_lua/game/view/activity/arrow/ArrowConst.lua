@@ -33,6 +33,35 @@ ArrowConst.REMOVE_LEFT_POS = -100
 --右侧移除位置
 ArrowConst.REMOVE_RIGHT_POS = MAX_SCREEN_WIDTH + 100 
 
+--射击区域透明度
+if OS_IS_WINDOWS then
+    ArrowConst.SHOOT_AREAR_OPACITY = 100
+else
+    ArrowConst.SHOOT_AREAR_OPACITY = 0
+end
+
+--boss动画调整
+ArrowConst.ARROW_FRIEND = {
+    GAME = "game",
+    PLAT = "plat"
+}
+
+ArrowConst.BOSS_ANIM = {   --缩放值 / 起始x / 起始y / 终点x / 终点y
+    {1.3, -190, -127, -410, -127}, 
+    {1.4, 140, -126, 340, -106}, 
+    {0.9, -185, -210, -310, -210}, 
+    {0.9, 258, -205, 158, -205}
+}
+
+ArrowConst.BOSS_CWIDGET = { --区域{{}，{}，{},...}
+    { {70,115,-25,0}, {110,45,-80,115} }, 
+    { {70,115,-25,0}, {110,45,-80,115} },
+    { {60,160,-20,0}, {40,35,-25,160} },
+    { {60,115,-15,0}, {45,70,5,70} },
+    { {60,115,-15,0}, {45,70,5,70} },
+    { {70,115,-25,0}, {110,45,-80,115} },
+}
+
 ArrowConst.ERROR_CODE = {
     [208]  = "箭矢不足",
     [3801] = "能量槽未满，不能使用激光箭",

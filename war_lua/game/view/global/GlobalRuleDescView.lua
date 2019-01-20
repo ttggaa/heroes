@@ -21,9 +21,16 @@ function GlobalRuleDescView:onInit()
         self:close()
     end)
 end
-
+--des 描述内容
+--titleDes 标头名称
 function GlobalRuleDescView:reflashUI(data)
     local str = data.desc
+    local title = self:getUI("bg.titleBg.title")
+    if data.titleDes then
+        title:setString(data.titleDes)
+    else
+        title:setString("规则说明")
+    end
     if string.find(str, "color=") == nil then
         str = "[color=000000]".. str .."[-]"
     end

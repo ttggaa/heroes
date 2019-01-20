@@ -29,9 +29,11 @@ function HeroDuelMainLayer:ctor(data)
         [1] = "HERODUEL21",
         [2] = "HERODUEL20"
     }
-
+    self._mode = data.mode
+    print(" mode111 ",self._mode)
     -- 开始交锋通信时间戳（用于判断网络延迟状况）
     self._netTimeStamp = nil
+    
 end
 
 function HeroDuelMainLayer:onInit()
@@ -216,6 +218,14 @@ function HeroDuelMainLayer:onInit()
     if self._shareNode then
         self._shareNode:setVisible(false)
     end
+
+    --积分面板 bg更换
+    local bgRecord = self:getUI("bg.bgRecord")
+    local texture = "bg_record_heroDuel.png"
+    if self._mode == 1 then
+        texture = "bg_record_heroDuel1.png"
+    end
+    bgRecord:loadTexture(texture,1)
 end
 
 --分享按钮
@@ -251,6 +261,9 @@ function HeroDuelMainLayer:reflashUI(data)
     end
 
     local rewardData = tab:HeroDuelAward(self._winNum).award
+    if self._mode == 1 then
+        rewardData = tab:HeroDuelAward(self._winNum).award3
+    end
     self:updateRewards(rewardData)
 
     for crossI = 1, #self._crossList do 
@@ -323,6 +336,9 @@ end
 
 function HeroDuelMainLayer:onGiveUp()
     local rewardData = tab:HeroDuelAward(self._winNum).award
+    if self._mode == 1 then
+        rewardData = tab:HeroDuelAward(self._winNum).award3
+    end
     self._viewMgr:showDialog("heroduel.HeroDuelGiveUpView", {data = rewardData, callBack = specialize(self.onGetAward, self)})
 end
 

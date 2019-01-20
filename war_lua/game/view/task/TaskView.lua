@@ -11,6 +11,7 @@ local TaskView = class("TaskView", BaseView)
 
 TaskView.kViewTypePrimaryLine = TaskItemView.kViewTypeItemPrimary
 TaskView.kViewTypeEveryday = TaskItemView.kViewTypeItemEveryday
+TaskView.kViewTypeWeekly = TaskItemView.kViewTypeItemWeekly        --4
 TaskView.kViewTypeAwaking = 1000
 
 TaskView.kStatusCannot = 0
@@ -93,8 +94,10 @@ function TaskView:onInit()
     self._tasks._tableData = tab.task
     self._tasks._tableGrowAwardData = tab.growAward
     self._tasks._tableActiveAwardData = tab.activeAward
+    self._tasks._tableWeeklyAwardData = tab.weekactiveAward
     self._primaryLineDirty = true
     self._everyDayDirty = true
+    self._weeklyDirty = true
     self._awakingDirty = true
 
     self._tableViews = {}
@@ -102,6 +105,7 @@ function TaskView:onInit()
     self._layerTaskList = {}
     self._layerTaskList[TaskView.kViewTypePrimaryLine] = self:getUI("bg.task_bg.layer_task_primary_line.layer_task_list")
     self._layerTaskList[TaskView.kViewTypeEveryday] = self:getUI("bg.task_bg.layer_task_everyday.layer_task_list")
+    self._layerTaskList[TaskView.kViewTypeWeekly] = self:getUI("bg.task_bg.layer_task_weekly.layer_task_list")
 
     self._buttons = {}
     self._buttons[TaskView.kViewTypePrimaryLine] = {}
@@ -115,6 +119,13 @@ function TaskView:onInit()
     --self._buttons[TaskView.kViewTypeEveryday]._btn:setTitleFontName(UIUtils.ttfName)
     -- self._buttons[TaskView.kViewTypeEveryday]._btn:setTitleFontSize(32)
     self._buttons[TaskView.kViewTypeEveryday]._red_tag = self:getUI("bg.task_bg.btn_everyday.task_red_tag")
+
+    self._buttons[TaskView.kViewTypeWeekly] = {}
+    self._buttons[TaskView.kViewTypeWeekly]._btn = self:getUI("bg.task_bg.btn_weekly")
+    --self._buttons[TaskView.kViewTypeWeekly]._btn:setTitleFontName(UIUtils.ttfName)
+    -- self._buttons[TaskView.kViewTypeWeekly]._btn:setTitleFontSize(32)    
+    self._buttons[TaskView.kViewTypeWeekly]._red_tag = self:getUI("bg.task_bg.btn_weekly.task_red_tag")
+
 
     self._buttons[TaskView.kViewTypeAwaking] = {}
     self._buttons[TaskView.kViewTypeAwaking]._btn = self:getUI("bg.task_bg.btn_awaking")
@@ -298,6 +309,56 @@ function TaskView:onInit()
     self._layer_task_everyday._taskRewardLabelValue3 = self:getUI("bg.task_bg.layer_task_everyday.task_active_progress_bar_bg.label_value_3")
     --self._layer_task_everyday._taskRewardLabelValue3:enableOutline(cc.c4b(60, 30, 10, 255), 1)
 
+
+    self._layer_task_weekly = {} 
+    self._layer_task_weekly._layer = self:getUI("bg.task_bg.layer_task_weekly")
+    -- 改为进度条了  之前是一个图片
+    self._layer_task_weekly._progressBar = self:getUI("bg.task_bg.layer_task_weekly.task_active_progress_bar_bg.task_active_progress_bar")    
+    self._layer_task_weekly._progressBar:setZOrder(-1)
+    self._label_refresh = self:getUI("bg.task_bg.layer_task_weekly.label_refresh")
+    self._layer_task_weekly._lableTotalValue = self:getUI("bg.task_bg.layer_task_weekly.image_active_value_bg.label_value")
+    self._layer_task_weekly._lableTotalValue:enableOutline(cc.c4b(60, 30, 10, 255), 1)
+    self._layer_task_weekly._imageActiveValueBg = self:getUI("bg.task_bg.layer_task_weekly.image_active_value_bg")
+
+    self._layer_task_weekly._taskRewards = {}
+    for i=1, 3 do
+        self._layer_task_weekly._taskRewards[i] = {}
+        self._layer_task_weekly._taskRewards[i]._normal = self:getUI("bg.task_bg.layer_task_weekly.task_active_progress_bar_bg.task_reward_" .. i)
+        self:registerClickEvent(self._layer_task_weekly._taskRewards[i]._normal, function ()
+            self:onWeeklyRewardClicked(i, TaskView.kStatusCannot)
+        end)
+        self._layer_task_weekly._taskRewards[i]._selected = self:getUI("bg.task_bg.layer_task_weekly.task_active_progress_bar_bg.task_reward_" .. i .. "_s")
+        self:registerClickEvent(self._layer_task_weekly._taskRewards[i]._selected, function ()
+            self:onWeeklyRewardClicked(i, TaskView.kStatusAvailable)
+        end)
+        
+        self._layer_task_weekly._taskRewards[i]._selectedMC = mcMgr:createViewMC("baoxiangguang1_baoxiang", true)
+        self._layer_task_weekly._taskRewards[i]._selectedMC:setVisible(false)
+        self._layer_task_weekly._taskRewards[i]._selectedMC:setPlaySpeed(1, true)
+        self._layer_task_weekly._taskRewards[i]._selectedMC:setPosition(self._layer_task_weekly._taskRewards[i]._selected:getPosition())
+        self._layer_task_weekly._taskRewards[i]._selected:getParent():addChild(self._layer_task_weekly._taskRewards[i]._selectedMC, 110)
+
+        local mcName = "baoxiang1_baoxiang"
+        if 2 == i then
+            mcName = "baoxiang2_baoxiang"
+        elseif 3 == i then
+            mcName = "baoxiang3_baoxiang"
+        end
+        self._layer_task_weekly._taskRewards[i]._selectedMC1 = mcMgr:createViewMC(mcName, true)
+        self._layer_task_weekly._taskRewards[i]._selectedMC1:setVisible(false)
+        self._layer_task_weekly._taskRewards[i]._selectedMC1:setPlaySpeed(1, true)
+        self._layer_task_weekly._taskRewards[i]._selectedMC1:setPosition(self._layer_task_weekly._taskRewards[i]._selected:getPosition())
+        self._layer_task_weekly._taskRewards[i]._selectedMC:getParent():addChild(self._layer_task_weekly._taskRewards[i]._selectedMC1, 109)
+
+        self._layer_task_weekly._taskRewards[i]._finished = self:getUI("bg.task_bg.layer_task_weekly.task_active_progress_bar_bg.task_reward_" .. i .. "_f")
+        self:registerClickEvent(self._layer_task_weekly._taskRewards[i]._finished, function ()
+            self:onWeeklyRewardClicked(i, TaskView.kStatusAlready)
+        end)
+    end
+    self._layer_task_weekly._taskRewardLabelValue1 = self:getUI("bg.task_bg.layer_task_weekly.task_active_progress_bar_bg.label_value_1")
+    self._layer_task_weekly._taskRewardLabelValue2 = self:getUI("bg.task_bg.layer_task_weekly.task_active_progress_bar_bg.label_value_2")
+    self._layer_task_weekly._taskRewardLabelValue3 = self:getUI("bg.task_bg.layer_task_weekly.task_active_progress_bar_bg.label_value_3")
+
     self._layer_awaking = {}
     self._layer_awaking._layer = self:getUI("bg.task_bg.layer_awaking")
     self._layer_awaking._layerTeam = self:getUI("bg.task_bg.layer_awaking.layer_team")
@@ -386,6 +447,17 @@ function TaskView:onInit()
         end
     )
 
+    UIUtils:setTabChangeAnimEnable(self._buttons[TaskView.kViewTypeWeekly]._btn,-22,
+        function ()
+            if not SystemUtils:enableWeeklyTask() then
+                -- self._viewMgr:showTip(lang("TIP_MEIRIRENWU"))
+                UIUtils:showNotOPenTip("WeeklyTask")
+                return 
+            end
+            self:switchTag(self.kViewTypeWeekly)
+        end
+    )
+
     UIUtils:setTabChangeAnimEnable(self._buttons[TaskView.kViewTypeAwaking]._btn,-17,
         function ()
             --[[
@@ -404,6 +476,19 @@ function TaskView:onInit()
     -- 调整位置居中
     -- self._taskbg = self:getUI("bg.task_bg")
     -- self._taskbg:setPositionY(MAX_SCREEN_HEIGHT-320)
+    self:adjustTaskBtn()
+end
+-- 适配左侧按钮位置 周常任务按钮
+function TaskView:adjustTaskBtn( )
+    if not SystemUtils:enableWeeklyTask() then
+        self._buttons[TaskView.kViewTypeWeekly]._btn:setVisible(false)
+        self._buttons[TaskView.kViewTypeWeekly]._btn:setEnabled(false)
+        self._buttons[TaskView.kViewTypeAwaking]._btn:setPositionY(233)
+    else
+        self._buttons[TaskView.kViewTypeWeekly]._btn:setVisible(true)
+        self._buttons[TaskView.kViewTypeWeekly]._btn:setEnabled(true)
+        self._buttons[TaskView.kViewTypeAwaking]._btn:setPositionY(157)
+    end
 end
 
 function TaskView:onBeforeAdd(callback, errorCallback)
@@ -412,6 +497,7 @@ function TaskView:onBeforeAdd(callback, errorCallback)
     else
         self._primaryLineDirty = true
         self._everyDayDirty = true
+        self._weeklyDirty = true
         self._awakingDirty = true
         self._tasks._data = self:initTaskData()
         local btn = self._buttons[self:getCurrentTag() or 1]._btn
@@ -424,11 +510,14 @@ function TaskView:onBeforeAdd(callback, errorCallback)
 end
 
 function TaskView:onTop()
+    self:adjustTaskBtn()
+
     if self._taskModel:isNeedRequest() then
         ScheduleMgr:delayCall(200, self, self.doRequestData)
     else
         self._primaryLineDirty = true
         self._everyDayDirty = true
+        self._weeklyDirty = true
         self._awakingDirty = true
         self._tasks._data = self:initTaskData()
         self:switchTag(self:getCurrentTag(), true)
@@ -442,6 +531,7 @@ function TaskView:doRequestData(callback, errorCallback)
         self._primaryLineDirty = true
         self._everyDayDirty = true
         self._awakingDirty = true
+        self._weeklyDirty = true
         self._tasks._data = self:initTaskData()
         self:switchTag(self:getCurrentTag(), true)
         if callback then
@@ -474,6 +564,19 @@ function TaskView:getCurrentTag()
         end
     end
 
+    -- 周常红点 enableDailyTask detailTasks
+    if SystemUtils:enableWeeklyTask() then
+        for _, v in ipairs(self._tasks._data.detailTasks) do
+            if 1 == v.status then
+                return self.kViewTypeWeekly
+            end
+        end
+
+        if self._taskModel:hasTaskCanGetByType(TaskItemView.kViewTypeItemWeekly) then
+            return self.kViewTypeWeekly
+        end
+    end
+
     for _, v in ipairs(self._tasks._data.mainTasks) do
         if 1 == v.status then
             return self.kViewTypePrimaryLine
@@ -491,6 +594,11 @@ function TaskView:getCurrentTag()
         return self.kViewTypeEveryday
     end
 
+    -- 周常
+    -- if SystemUtils:enableDailyTask() then
+    --     return self.kViewTypeWeekly
+    -- end
+
     return self.kViewTypePrimaryLine
 end
 
@@ -500,6 +608,7 @@ function TaskView:onModelReflash()
     else
         self._primaryLineDirty = true
         self._everyDayDirty = true
+        self._weeklyDirty = true
         self._awakingDirty = true
         self._tasks._data = self:initTaskData()
         self:switchTag(self:getCurrentTag(), true)
@@ -521,6 +630,7 @@ function TaskView:initTaskData()
     local result = {
         detailTasks = {},
         mainTasks = {},
+        weekTasks = {}
     }
     local taskData = self._taskModel:getData()
     --dump(taskData, "taskData", 10)
@@ -619,8 +729,70 @@ function TaskView:initTaskData()
         end
     end
 
+    local t1, t2, t3 = {}, {}, {}
+    for k, v in pairs(taskData.task.weekTasks) do
+        repeat
+            if tonumber(k) >= 20000 and tonumber(k) <= 20006 then break end
+            if (tonumber(k) == 9631 or tonumber(k) == 9632) and not self:isSiegeOver() then break end
+            if (GameStatic.appleExamine or sdkMgr:isGuest()) and 9629 == tonumber(k) then break end
+            local taskTableData = self._tasks._tableData[tonumber(k)]
+            if not taskTableData then break end
+            local task = v
+            for kk, vv in pairs(taskTableData) do
+                task[kk] = vv
+            end
+            if 1 == task.status then
+                table.insert(t1, task)
+            elseif 0 == task.status then
+                table.insert(t2, task)
+            else
+                table.insert(t3, task)
+            end
+        until true
+    end
+
+    table.sort(t1, function(a, b)
+        if a.rank < b.rank then
+            return true
+        elseif a.rank == b.rank then
+            return a.id < b.id
+        end
+    end)
+
+    table.sort(t2, function(a, b)
+        if a.rank < b.rank then
+            return true
+        elseif a.rank == b.rank then
+            return a.id < b.id
+        end
+    end)
+
+    table.sort(t3, function(a, b)
+        if a.rank < b.rank then
+            return true
+        elseif a.rank == b.rank then
+            return a.id < b.id
+        end
+    end)
+
+    for _, v in ipairs(t1) do
+        table.insert(result.weekTasks, v)
+    end
+
+    for _, v in ipairs(t2) do
+        table.insert(result.weekTasks, v)
+    end
+
+    if #t3 > 0 then
+        table.insert(result.weekTasks, { id = -1 })
+        for _, v in ipairs(t3) do
+            table.insert(result.weekTasks, v)
+        end
+    end
+
     result.active = taskData.active
     result.grow = taskData.grow
+    result.weekAcReward = taskData.weekAcReward
     self._awakingTaskData = self._awakingModel:getAwakingTaskData()
     --dump(result, "init task data result", 10)
     return result
@@ -694,6 +866,31 @@ function TaskView:switchTag(viewType, force)
         end)       
         --txtRender_daily:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor,2)
         --txtRender_daily:setPositionX(85)
+    end
+
+    local btn = self._buttons[TaskView.kViewTypeWeekly]._btn
+    --btn:setTitleText(TaskView.kViewTypeWeekly == viewType and "主线  " or "主线   ")
+    local txtRender_primary = btn:getTitleRenderer()
+    txtRender_primary:disableEffect()
+    if TaskView.kViewTypeWeekly ~= viewType then 
+        btn:setTitleColor(UIUtils.colorTable.ccUITabColor1)
+        btn:setEnabled(TaskView.kViewTypeWeekly ~= viewType)
+        btn:setBright(TaskView.kViewTypeWeekly ~= viewType)
+        btn:setZOrder(-99)
+        --txtRender_primary:disableEffect()
+        --txtRender_primary:setPositionX(65)
+        if ( self._preBtn and self._preBtn == btn) then
+            UIUtils:tabChangeAnim(self._preBtn,nil,true)
+        end
+    else
+        btn:setTitleColor(UIUtils.colorTable.ccUITabColor2)
+        self._preBtn = btn 
+        UIUtils:tabChangeAnim(btn,function( )
+            btn:setEnabled(TaskView.kViewTypeWeekly ~= viewType)
+            btn:setBright(TaskView.kViewTypeWeekly ~= viewType)
+        end)       
+        --txtRender_primary:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor,2)
+        --txtRender_primary:setPositionX(85)
     end
 
     local btn = self._buttons[TaskView.kViewTypeAwaking]._btn 
@@ -961,6 +1158,140 @@ function TaskView:updateEverydayUI()
     end
 end
 
+function TaskView:updateWeeklyUI()
+    if not self._weeklyDirty then return end
+    print("updateWeeklyUI")
+    self._weeklyDirty = false
+
+    --[[
+    --self._layer_task_weekly._scrollView:removeAllChildren()
+    local count = self._layer_task_weekly._scrollView:getChildrenCount()
+    local contentWidth = self._layer_task_weekly._scrollView:getContentSize().width
+    local contentHeight = self._layer_task_weekly._scrollView:getContentSize().height
+    local itemCount = getCount(self._tasks._data.detailTasks)
+    local deltaX, deltaY = 0, 2
+    local iconWidth, iconHeight, finishHeight = 707, 126, 40
+    local innerWidth = contentWidth
+    local innerHeight = 0
+    for _, v in ipairs(self._tasks._data.detailTasks) do
+        if -1 == v.id then
+            innerHeight = innerHeight + (deltaY + finishHeight)
+        else
+            innerHeight = innerHeight + (deltaY + iconHeight)
+        end
+    end
+    innerHeight = innerHeight <= contentHeight and contentHeight or innerHeight
+    self._layer_task_weekly._scrollView:setInnerContainerSize(cc.size(innerWidth, innerHeight))
+    local index = 1
+    local nowY = 0
+    for _, v in ipairs(self._tasks._data.detailTasks) do
+        --local item = self:createLayer("task.TaskItemView", { container = self, viewType = -1 == v.id and TaskItemView.kViewTypeFinished or TaskItemView.kViewTypeItemEveryday, taskData = v })
+        local item = self._layer_task_weekly._scrollView:getChildByTag(1000 + index)
+        if not item then
+            item = self:createLayer("task.TaskItemView", { container = self, viewType = -1 == v.id and TaskItemView.kViewTypeFinished or TaskItemView.kViewTypeItemEveryday, taskData = v })
+            item:setName("everydayItem" .. index)
+            item:setTag(1000 + index)
+            self._layer_task_weekly._scrollView:addChild(item)
+        else
+            item:setVisible(true)
+            item:setContext({ container = self, viewType = -1 == v.id and TaskItemView.kViewTypeFinished or TaskItemView.kViewTypeItemEveryday, taskData = v })
+            item:updateUI()
+        end
+        if -1 == v.id then
+            nowY = nowY + (deltaY + finishHeight)
+        else
+            nowY = nowY + (deltaY + iconHeight)
+        end
+        item:setPosition(deltaX, innerHeight - nowY)
+        index = index + 1
+    end
+    for i = index, count do
+        local item = self._layer_task_weekly._scrollView:getChildByTag(1000 + index)
+        if item then
+            item:setVisible(false)
+        end
+    end
+    ]]
+
+    self:refreshTaskTableView()
+
+    if not self._firstIn then
+        self._firstIn = true
+        if self._superiorType == TaskView.kSuperiorTypePrivileges or
+           self._superiorType == TaskView.kSuperiorTypeAdventure then
+            local found, offset = self:getTaskOffset()
+            --print("_superiorType..offset....", self._superiorType, offset)
+            if found then
+                self._tableViews[self._viewType]:setContentOffset(offset)
+            end
+        end
+    end
+    --[[
+    self._layer_task_weekly._labelActiveValue:setString(tostring((self._tasks._data.active.val or 0)))
+
+    self._layer_task_weekly._lableTotalValue:setString(tostring((self._tasks._data.active.val or 0)))
+    ]]
+    self._layer_task_weekly._lableTotalValue:setString(tostring((self._tasks._data.weekAcReward.val or 0)))
+    -- 设置进度条 
+    local active_value = self._tasks._data.weekAcReward.val or 0
+    local percent = 0
+    if active_value <= 750 then
+        percent = 100 / 750 * active_value
+    else
+        percent = 100
+    end
+    print(active_value,"============percent " .. percent)
+    -- self._layer_task_weekly._progressBar:setPositionX(-590 + positionX ) 
+    self._layer_task_weekly._progressBar:setPercent(percent)
+    self._layer_task_weekly._progressBar:setVisible(percent > 0)
+
+    local activeConfig = {250,500,750}
+    for i = 1, 3 do
+        self._layer_task_weekly["_taskRewardLabelValue" .. i]:setString(activeConfig[i])
+        self._layer_task_weekly._taskRewards[i]._normal:setVisible((self._tasks._data.weekAcReward.val or 0) < activeConfig[i])
+        self._layer_task_weekly._taskRewards[i]._selected:setVisible(0 == (self._tasks._data.weekAcReward["reward" .. i] or 0) and (self._tasks._data.weekAcReward.val or 0) >= activeConfig[i])
+        self._layer_task_weekly._taskRewards[i]._selectedMC:setVisible(0 == (self._tasks._data.weekAcReward["reward" .. i] or 0) and (self._tasks._data.weekAcReward.val or 0) >= activeConfig[i])
+        self._layer_task_weekly._taskRewards[i]._selectedMC1:setVisible(0 == (self._tasks._data.weekAcReward["reward" .. i] or 0) and (self._tasks._data.weekAcReward.val or 0) >= activeConfig[i])
+        self._layer_task_weekly._taskRewards[i]._finished:setVisible((self._tasks._data.weekAcReward["reward" .. i] or 0) > 0 and (self._tasks._data.weekAcReward.val or 0) >= activeConfig[i])
+        --[=[
+        -- 每次循环持久化存储相应的状态
+        if percent == 100 then 
+            SystemUtils.saveAccountLocalData("TaskViewMcActive4",false)
+            SystemUtils.saveAccountLocalData("TaskViewMcFlag4",true)
+            elseif percent >= 50  then
+                SystemUtils.saveAccountLocalData("TaskViewMcActive3",false)
+                SystemUtils.saveAccountLocalData("TaskViewMcFlag3",true)
+                elseif percent >= 25 then
+                    SystemUtils.saveAccountLocalData("TaskViewMcActive2",false)
+                    SystemUtils.saveAccountLocalData("TaskViewMcFlag2",true)
+            --todo
+        end 
+        local flag = SystemUtils.loadAccountLocalData("TaskViewMcFlag" .. i+1)
+        local active = SystemUtils.loadAccountLocalData("TaskViewMcActive" .. i+1)
+
+        if self._layer_task_weekly._taskRewards[i]._selectedMC:isVisible() then
+            --[[
+            self._layer_task_weekly._taskRewards[i]._selectedMC:addEndCallback(function()
+                self._layer_task_weekly._taskRewards[i]._selectedMC1:stop()
+                self._layer_task_weekly._taskRewards[i]._selectedMC1:setVisible(false)
+            end)
+            ]]
+            if active == true  then
+                -- SystemUtils.saveAccountLocalData("TaskViewMcActive1",false)
+                if flag == true then
+                    SystemUtils.saveAccountLocalData("TaskViewMcFlag" .. i+1,false)
+                    --self._layer_task_weekly._taskRewards[i]._selectedMC1:setVisible(true)
+                    --self._layer_task_weekly._taskRewards[i]._selectedMC1:gotoAndPlay(0)
+                else
+                    --self._layer_task_weekly._taskRewards[i]._selectedMC1:stop()
+                    --self._layer_task_weekly._taskRewards[i]._selectedMC1:setVisible(false)  
+                end
+            end
+        end
+        ]=]
+    end
+end
+
 function TaskView:updateAwakingUI()
     if not (self._awakingDirty and self._awakingModel:isAwakingTaskOpened()) then return end
     print("updateAwakingUI")
@@ -1032,6 +1363,7 @@ function TaskView:updateUI(viewType)
 
     self._buttons[TaskView.kViewTypePrimaryLine]._red_tag:setVisible(self._taskModel:hasTaskCanGetByType(TaskItemView.kViewTypeItemPrimary))
     self._buttons[TaskView.kViewTypeEveryday]._red_tag:setVisible(SystemUtils:enableDailyTask() and self._taskModel:hasTaskCanGetByType(TaskItemView.kViewTypeItemEveryday))
+    self._buttons[TaskView.kViewTypeWeekly]._red_tag:setVisible(SystemUtils:enableWeeklyTask() and self._taskModel:hasTaskCanGetByType(TaskItemView.kViewTypeItemWeekly))
     self._buttons[TaskView.kViewTypeAwaking]._btn:setVisible(self._awakingModel:isAwakingTaskOpened())
     local isTaskReach = self._awakingModel:isCurrentAwakingTaskReach()
     self._buttons[TaskView.kViewTypeAwaking]._red_tag:setVisible(isTaskReach)
@@ -1040,16 +1372,26 @@ function TaskView:updateUI(viewType)
         self._task_primary_line._layer:setVisible(true)
         self._layer_task_everyday._layer:setVisible(false)
         self._layer_awaking._layer:setVisible(false)
+        self._layer_task_weekly._layer:setVisible(false)
         self:updatePrimaryLineUI()
     elseif viewType == self.kViewTypeEveryday then
         self._task_primary_line._layer:setVisible(false)
         self._layer_task_everyday._layer:setVisible(true)
         self._layer_awaking._layer:setVisible(false)
+        self._layer_task_weekly._layer:setVisible(false)
         self:updateEverydayUI()
+
+    elseif viewType == self.kViewTypeWeekly then
+        self._task_primary_line._layer:setVisible(false)
+        self._layer_task_everyday._layer:setVisible(false)
+        self._layer_awaking._layer:setVisible(false)
+        self._layer_task_weekly._layer:setVisible(true)
+        self:updateWeeklyUI()
     else
         self._task_primary_line._layer:setVisible(false)
         self._layer_task_everyday._layer:setVisible(false)
         self._layer_awaking._layer:setVisible(true)
+        self._layer_task_weekly._layer:setVisible(false)
         self:updateAwakingUI()
     end
 end
@@ -1070,6 +1412,7 @@ function TaskView:destroyTaskTableView()
 end
 
 function TaskView:createTaskTableView()
+    print("=============self._viewType=====",self._viewType)
     -- if self._tableViews[self._viewType] then return end
     if self._tableViews[self._viewType] == nil then
         local size = cc.size(self._layerTaskList[self._viewType]:getContentSize().width, self._layerTaskList[self._viewType]:getContentSize().height - 20)
@@ -1099,8 +1442,10 @@ function TaskView:taskTableViewCellTouched(tableView, cell)
     local taskData = nil
     if self._viewType == TaskView.kViewTypePrimaryLine then
         taskData = self._tasks._data.mainTasks
-    else
+    elseif self._viewType == TaskView.kViewTypeEveryday then
         taskData = self._tasks._data.detailTasks
+    else
+        taskData = self._tasks._data.weekTasks
     end
     if not taskData then return end
     local index = idx + 1
@@ -1115,8 +1460,10 @@ function TaskView:taskTableViewCellSizeForTable(tableView, idx)
     local taskData = nil
     if self._viewType == TaskView.kViewTypePrimaryLine then
         taskData = self._tasks._data.mainTasks
-    else
+    elseif self._viewType == TaskView.kViewTypeEveryday then
         taskData = self._tasks._data.detailTasks
+    else
+        taskData = self._tasks._data.weekTasks
     end
     if not taskData then return end
     local index = idx + 1
@@ -1132,8 +1479,10 @@ function TaskView:taskTableViewCellAtIndex(tableView, idx)
     local taskData = nil
     if self._viewType == TaskView.kViewTypePrimaryLine then
         taskData = self._tasks._data.mainTasks
-    else
+    elseif self._viewType == TaskView.kViewTypeEveryday then
         taskData = self._tasks._data.detailTasks
+    else
+        taskData = self._tasks._data.weekTasks
     end
     if not taskData then return end
     local index = idx + 1
@@ -1167,6 +1516,11 @@ function TaskView:taskNumberOfCellsInTableView2(tableView)
     return #self._tasks._data.detailTasks
 end
 
+function TaskView:taskNumberOfCellsInTableView4(tableView)
+    if TaskView.kViewTypeWeekly ~= self._viewType then return 0 end
+    return #self._tasks._data.weekTasks
+end
+
 function TaskView:scrollViewDidScroll1(view)
     self:scrollViewDidScroll(view, 1)
 end
@@ -1175,11 +1529,17 @@ function TaskView:scrollViewDidScroll2(view)
     self:scrollViewDidScroll(view, 2)
 end
 
+function TaskView:scrollViewDidScroll4(view)
+    self:scrollViewDidScroll(view, 4)
+end
+
 function TaskView:createLoadingMc(index)
     if index == 1 then
         return self:createLoadingMc1()
-    else
+    elseif index == 2 then
         return self:createLoadingMc2()
+    else
+        return self:createLoadingMc4()
     end
 end
 
@@ -1202,6 +1562,17 @@ function TaskView:createLoadingMc2()
     viewBg:addChild(self._loadingMc2, 100)
     return self._loadingMc2
 end
+
+function TaskView:createLoadingMc4()
+    if self._loadingMc4 then return self._loadingMc4 end
+    -- 添加加载中动画
+    local viewBg = self:getUI("bg.task_bg.layer_task_everyday")
+    self._loadingMc4 = mcMgr:createViewMC("jiazaizhong_rankjiazaizhong", true, false, function (_, sender) end)
+    self._loadingMc4:setPosition(cc.p(viewBg:getContentSize().width * 0.5 - 30, 380))
+    viewBg:addChild(self._loadingMc4, 100)
+    return self._loadingMc4
+end
+
 
 function TaskView:scrollViewDidScroll(view, index)
     local offsetY = view:getContentOffset().y
@@ -1248,6 +1619,12 @@ function TaskView:showRewardDialog(taskData, resultData, serverRewards)
                 local userphysic = self._userModel:getData().physcal
                 self._viewMgr:checkLevelUpReturnMain(resultData.lvl)
                 ViewManager:getInstance():showDialog("global.DialogUserLevelUp", { preLevel = lastLvl, level = resultData.lvl, prePhysic = lastPhysical, physic = resultData.physcal }, true, nil, nil, false)
+            elseif resultData.plvl then
+                local lastPLvl = self._userModel:getLastPLvl()
+                local lastPTalentPoint = self._userModel:getLastPTalentPoint()
+                local plvl = self._userModel:getData().plvl or 1
+                local pTalentPoint = self._userModel:getData().pTalentPoint or lastPTalentPoint
+                ViewManager:getInstance():showDialog("global.DialogUserParagonLevelUp", {oldPlvl = lastPLvl, plvl = plvl, pTalentPoint = (pTalentPoint - lastPTalentPoint)}, true, nil, nil, false)
             end
         end
     end
@@ -1465,6 +1842,92 @@ function TaskView:onEverydayRewardClicked(position, status)
     ]=]
 end
 
+function TaskView:onWeeklyRewardClicked(position, status)
+    local gifts = clone(self._tasks._tableWeeklyAwardData[position].award)
+
+    if TaskView.kStatusCannot == status then
+        local activeConfig = {250, 500, 750}
+        local acAward = self._acAwards[activeConfig[position]]
+        if acAward then
+            for k,v in pairs(acAward) do
+                table.insert(gifts, v)
+            end            
+        end
+        self._everydayRewardDialog = DialogUtils.showGiftGet( { gifts = gifts, viewType = 2, des = "周活跃达到" .. activeConfig[position] .. "可领取"})
+        return 
+    elseif TaskView.kStatusAlready == status then
+        self._viewMgr:showTip(lang("TiPS_YILINGQU"))
+        return 
+    end
+    
+    self._serverMgr:sendMsg("TaskServer", "receiveWeekActiveReward", {id = position}, true, {}, function(data, success)
+        if not success then 
+            self._viewMgr:showTip("很遗憾，领取奖励失败，请配表")
+            return 
+        end
+        self._primaryLineRewardDialog = DialogUtils.showGiftGet( { gifts = data["rewards"], callback = function()
+            self._weeklyDirty = true
+            self:updateUI(self.kViewTypeWeekly)
+        end,notPop = true})
+    end)
+
+    --[=[
+    local giftId = self._tasks._tableWeeklyAwardData[position].award
+    local gifts = tab.toolGift[giftId].giftContain
+    self._everydayRewardDialog = DialogUtils.showGiftGet( { gifts = gifts, viewType = 1, callback = function()
+        if TaskView.kStatusCannot == status then
+            self._viewMgr:showTip("活跃值不够")
+            return 
+        elseif TaskView.kStatusAlready == status then
+            self._viewMgr:showTip("已经领取过该奖励")
+            return 
+        end
+        self._serverMgr:sendMsg("TaskServer", "receiveWeekActiveReward", {id = position}, true, {}, function(success)
+            if self._everydayRewardDialog then
+                self._everydayRewardDialog:close()
+                self._everydayRewardDialog = nil
+            end
+            if not success then 
+                self._viewMgr:showTip("很遗憾，领取奖励失败")
+                return 
+            end
+            self._viewMgr:showTip("恭喜，领取奖励成功")
+            self._everyDayDirty = true
+            self:updateUI(self.kViewTypeEveryday)
+        end)
+    end,})
+    ]=]
+    --[=[
+    local staticConfigTableData = IconUtils.iconIdMap
+    local giftId = self._tasks._tableActiveAwardData[position].award
+    local award = tab.toolGift[giftId].giftContain
+    local gifts = {}
+    for i=1, #award do
+        local itemData = {}
+        if award[i][1] ~= "tool" and staticConfigTableData[award[i][1]] then
+            itemData.goodsId = tonumber(staticConfigTableData[award[i][1]])
+        elseif award[i][1] == "tool" then
+            itemData.goodsId = tonumber(award[i][2])
+        end
+        itemData.num = award[i][3]
+        itemData.isItem = true
+        table.insert(gifts,itemData)
+    end
+
+    DialogUtils.showGiftGet( { gifts = gifts, viewType = 1, callback = function()
+        if showDetails then
+            self._viewMgr:showTip("活跃度不够")
+            return 
+        end
+        self._serverMgr:sendMsg("TaskServer", "receiveWeekActiveReward", {id = position}, true, {}, function(success)
+            if not success then return end
+            self._viewMgr:showTip("恭喜，领取奖励成功")
+            self._primaryLineDirty = true
+            self:updateUI(self.kViewTypePrimaryLine)
+        end)
+    end,})
+    ]=]
+end
 function TaskView:onButtonGoClicked(taskData)
     --print("onButtonGoClicked")
     if self["goView" .. taskData.button] then
@@ -1636,6 +2099,22 @@ function TaskView:goView24()
     end
     self._viewMgr:showView("league.LeagueView")
 end
+
+--军团试炼
+function TaskView:goView25()
+    local lvOpen,isNotWeekend = self._modelMgr:getModel("ProfessionBattleModel"):getOpenState()
+    if not lvOpen then
+        self._viewMgr:showTip(lang("TIP_ArmyTest"))
+        return
+    end
+    if not isNotWeekend then
+        self._viewMgr:showTip(lang("TIP_ArmyTest_Lock"))
+        return
+    end
+    self._serverMgr:sendMsg("ProfessionBattleServer", "getInfo", {}, true, {}, function(result)
+        self._viewMgr:showDialog("pve.ProfessionBattleDialog")
+    end)
+end
 --[[
 function TaskView:goView25()
     if not SystemUtils:enablePokedex() then
@@ -1719,6 +2198,37 @@ function TaskView:goView33()
     self._viewMgr:showView("team.TeamHolyView", {})
 end
 
+-- 荣耀竞技场
+function TaskView:goView34()
+    local isOpen = SystemUtils:enableCrossArena()
+    if not isOpen then
+        self._viewMgr:showTip(lang("TIP_GUILD_OPEN_5"))
+        return
+    end
+    self._modelMgr:getModel("GloryArenaModel"):lOpenGloryArena()
+end
+
+-- 购买经验
+function TaskView:goView35() 
+    DialogUtils.showBuyRes({goalType = "texp", callback = function(success)
+        if success then self._tableViews[self._viewType]:setContentOffset(self._tableViews[self._viewType]:minContainerOffset()) end
+    end}) 
+end
+
+-- 大世界
+function TaskView:goView36()
+    self._viewMgr:showView("intance.IntanceView", {})
+end
+
+-- 征战商店
+function TaskView:goView37()
+    if not SystemUtils:enableCityBattle() then
+        self._viewMgr:showTip(lang("TIP_CITYBATTLE"))
+        return
+    end
+    self._viewMgr:showView("shop.ShopView",{idx = 8})
+end
+
 function TaskView:onButtonGetClicked(taskData)
     --print("onButtonGetClicked")
     -- [[体力超3000不让领取体力 by guojun 2016.8.23 
@@ -1762,7 +2272,7 @@ function TaskView:onButtonGetClicked(taskData)
                 self._primaryLineDirty = true
                 self:updateUI(self.kViewTypePrimaryLine)
             end)
-        elseif taskData.type == TaskView.kViewTypeEveryday or 3 == taskData.type then
+        elseif taskData.type == TaskView.kViewTypeEveryday or 3 == taskData.type then  --3 每日等级任务
             self._serverMgr:sendMsg("TaskServer", "detailTaskReward", context, true, {}, function(success, resultData)
                 if not success then 
                     --[[
@@ -1790,10 +2300,24 @@ function TaskView:onButtonGetClicked(taskData)
                 self._everyDayDirty = true
                 self:updateUI(self.kViewTypeEveryday)
             end)
+        elseif taskData.type == TaskView.kViewTypeWeekly or 5 == taskData.type then  --5 每周随机出任务
+            -- 领周常任务奖励
+            self._serverMgr:sendMsg("TaskServer", "weekTaskReward", context, true, {}, function(success, resultData)
+                if not success then                     
+                    self._viewMgr:showTip(lang("TIP_LINGQUGUOQI"))
+                    self:doRequestData()
+                    return 
+                end
+                self:showRewardDialog(taskData, resultData.d,resultData.awards)
+                if not (self._tasks and self.initTaskData and self.updateUI) then return end
+                self._tasks._data = self:initTaskData()
+                self._weeklyDirty = true
+                self:updateUI(self.kViewTypeWeekly)
+            end)
         end
     end
 
-    dump(taskData, "taskData==", 10)
+    -- dump(taskData, "taskData==", 10)
     if taskData and taskData.conditiontype == 201 then
         local isMaxLevel = self._userModel:isMaxLevel()
         if isMaxLevel then

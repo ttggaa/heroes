@@ -378,6 +378,12 @@ function ActivityResourcesRetrieveLayer:getUserExp(type_)
                     local userphysic = _userModel:getData().physcal
                     _viewMgr:checkLevelUpReturnMain(data.lvl)
                     _viewMgr:showDialog("global.DialogUserLevelUp", { preLevel = lastLvl, level = data.lvl, prePhysic = lastPhysical, physic = userphysic }, true, nil, nil, false)
+                elseif data and data.plvl then
+                    local lastPLvl = _userModel:getLastPLvl()
+                    local lastPTalentPoint = _userModel:getLastPTalentPoint()
+                    local plvl = _userModel:getData().plvl or 1
+                    local pTalentPoint = _userModel:getData().pTalentPoint or lastPTalentPoint
+                    ViewManager:getInstance():showDialog("global.DialogUserParagonLevelUp", {oldPlvl = lastPLvl, plvl = plvl, pTalentPoint = (pTalentPoint - lastPTalentPoint)}, true, nil, nil, false)
                 end 
         end})
         if result.d and result.d.offLine then

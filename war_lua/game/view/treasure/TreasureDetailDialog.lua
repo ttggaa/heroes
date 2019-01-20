@@ -157,14 +157,24 @@ function TreasureDetailDialog:createComTreasureIcon(id, stage, up)
 
     desBg:addChild(bgNode)
 
-    local skillDes
+    local typeTag = left:getChildByFullName("type")
+    typeTag:setString(lang("BAOWUADDTAG_"..self._curComData.addtag))
 
-    skillDes = self:generateDes(stage)
-    local rtx = RichTextFactory:create("[color = 8a5c1d,fontsize=16]" .. skillDes ..  "[-]", 300, 55) -- ,fontsize=18
+    local desScrollView = self._comTreasureUp:getChildByFullName("scrollView")
+    desScrollView:removeAllChildren()
+    local minHeight = desScrollView:getContentSize().height
+    local skillDes = self:generateDes(stage)
+    local rtx = RichTextFactory:create("[color = 8a5c1d,fontsize=16]" .. skillDes ..  "[-]", desScrollView:getContentSize().width - 10, 0) -- ,fontsize=18
     rtx:formatText()
     rtx:setName("rtx")
-    rtx:setPosition(desBg:getContentSize().width / 2+45, 40-rtx:getInnerSize().height / 2)
-    desBg:addChild(rtx, 99)
+    local innerH = rtx:getRealSize().height
+    rtx:setPosition(rtx:getRealSize().width / 2 + 5, innerH / 2)
+    if innerH < minHeight then
+        rtx:setPosition(rtx:getRealSize().width / 2 + 5, minHeight - innerH + innerH / 2)
+        innerH = minHeight
+    end
+    desScrollView:setInnerContainerSize(cc.size(desScrollView:getContentSize().width, innerH))
+    desScrollView:addChild(rtx)
     UIUtils:alignRichText(rtx, { hAlign = "left",vAlign="bottom" })
 
     return icon
@@ -393,6 +403,7 @@ function TreasureDetailDialog:generateExAtts( id, stage, node, offsetx, offsety 
 
         local des = lang("HEROMASTERYDES_" .. addValue .. math.max(i-1,1))
         local desEx = ""
+        desEx = lang("HEROMASTERYDESEX_" .. addValue .. math.max(i-1,1))
         if des == "" then
             des   = lang("PLAYERSKILLDES2_" .. addValue .. math.max(i-1,1))
             desEx = lang("PLAYERSKILLDESEX_" .. addValue .. math.max(i-1,1))

@@ -69,30 +69,58 @@ function WakeUpBattleView:getBattleInfo()
         globalServerUrl = RestartMgr.globalUrl_planB
     end
     print("globalServerUrl: ", globalServerUrl)
-    local param = {}
-    param.mod = "global"
-    param.act = "getBattleReport"
-    param.reportKey = self._battleInfo.k
-    -- self._battleInfo.k
-    param.sec = self._battleInfo.s
-    param.method = "system.sysInterface"
-    HttpManager:getInstance():sendMsg(globalServerUrl, nil, param, 
-    function(inData)
-        if inData.result ~= nil and inData.result.bcode ~= 1 then
-            if tonumber(self._battleInfo.bt) == 1 then
-                self:reviewArenaBattle(inData.result)
+    if tonumber(self._battleInfo.bt) == 3 then
+        local param = {}
+        param.mod = "global"
+        param.act = "getCrossArenaBattleData"
+        param.reportKey = self._battleInfo.k
+        -- self._battleInfo.k
+        param.sec = self._battleInfo.s
+        param.method = "system.sysInterface"
+        HttpManager:getInstance():sendMsg(globalServerUrl, nil, param, 
+        function(inData)
+            if inData.result ~= nil and inData.result.bcode ~= 1 then
+                self:reviewGloryArenaBattle(inData.result)
             else
-                self:reviewHeroDuelBattle(inData.result)
+                self._viewMgr:showTip(lang("REPORTSHARE_ERROR"))
             end
-        else
+        end,
+        function(status, errorCode, response)
             self._viewMgr:showTip(lang("REPORTSHARE_ERROR"))
-        end
-    end,
-    function(status, errorCode, response)
-        self._viewMgr:showTip(lang("REPORTSHARE_ERROR"))
-    end,
-    GameStatic.useHttpDns_Global)
+        end,
+        GameStatic.useHttpDns_Global)
+    else
+        local param = {}
+        param.mod = "global"
+        param.act = "getBattleReport"
+        param.reportKey = self._battleInfo.k
+        -- self._battleInfo.k
+        param.sec = self._battleInfo.s
+        param.method = "system.sysInterface"
+        HttpManager:getInstance():sendMsg(globalServerUrl, nil, param, 
+        function(inData)
+            if inData.result ~= nil and inData.result.bcode ~= 1 then
+                if tonumber(self._battleInfo.bt) == 1 then
+                    self:reviewArenaBattle(inData.result)
+                else
+                    self:reviewHeroDuelBattle(inData.result)
+                end
+            else
+                self._viewMgr:showTip(lang("REPORTSHARE_ERROR"))
+            end
+        end,
+        function(status, errorCode, response)
+            self._viewMgr:showTip(lang("REPORTSHARE_ERROR"))
+        end,
+        GameStatic.useHttpDns_Global)
+    end
 end
+
+
+function WakeUpBattleView:reviewGloryArenaBattle(result)
+    self._viewMgr:showDialog("gloryArena.GloryArenaDuelDialog", result)
+end
+
 
 function WakeUpBattleView:reviewStageBattle(result)
     local left = BattleUtils.jsonData2lua_battleData(result.atk)
@@ -104,6 +132,8 @@ function WakeUpBattleView:reviewStageBattle(result)
 
     end)
 end
+
+
 
 function WakeUpBattleView:reviewArenaBattle(result)
     local left = BattleUtils.jsonData2lua_battleData(result.atk)

@@ -178,6 +178,8 @@ function DialogAccessTo:createApproatchCell(data, x, y, index)
             self._viewMgr:showView("intance.IntanceEliteView", {sectionId= lvSectionId, quickStageId = lvBaseId,itemId = self._itemData.goodsId,needItemNum = self._itemData.needItemNum})
         elseif lvType == 3 then
             -- 各种商店
+
+            local shopIdx = lvSectionId
             if lvSectionId ~= 6 then
                 -- 商店
                 local isOpen = false
@@ -207,12 +209,18 @@ function DialogAccessTo:createApproatchCell(data, x, y, index)
                     isOpen = SystemUtils["enableCrossPK"]()
                 elseif lvSectionId == 12 then
                     isOpen = SystemUtils["enableHoly"]()
+                elseif lvSectionId == 13 then
+                    shopIdx = 10
+                    isOpen = SystemUtils["enableCrossGodWar"]()  
+                elseif lvSectionId == 14 then
+                    isOpen = SystemUtils["enableSignShop"]()  
+                elseif lvSectionId == 15 then
+                    isOpen = SystemUtils["enableCrossArena"]()
                 end
                 if not isOpen then
                     self._viewMgr:showTip(lang("TIP_TASK_TIP_LOCK"))
                     return 
                 end
-                local shopIdx = lvSectionId
                 if lvSectionId == 7 then
                     self._viewMgr:showView("treasure.TreasureShopView")
                 elseif lvSectionId == 9 then
@@ -249,6 +257,10 @@ function DialogAccessTo:createApproatchCell(data, x, y, index)
                             end
                         end})
                     end)
+                elseif lvSectionId == 14 then   --签到商店
+                    self._viewMgr:showDialog("activity.sign.AcSignShopView", {}, true)
+                elseif lvSectionId == 15 then -- 荣耀商店
+                    self._viewMgr:showView("shop.ShopView", {idx = 11})
                 else
                     self._viewMgr:showView("shop.ShopView", {idx = shopIdx,showDialogTreasure = lvSectionId == 7})
                 end
@@ -502,6 +514,13 @@ function DialogAccessTo:createApproatchCell(data, x, y, index)
                 return 
             end
             self._viewMgr:showView("skillCard.SkillCardTakeView")
+        elseif lvType == 20 then
+            local isOpen = SystemUtils:enableCrossArena()
+            if not isOpen then
+                self._viewMgr:showTip(lang("TIP_GUILD_OPEN_5"))
+                return
+            end
+            self._modelMgr:getModel("GloryArenaModel"):lOpenGloryArena()
         end
     end
     local limitNumLabel = item:getChildByFullName("limitNum")
@@ -574,6 +593,12 @@ function DialogAccessTo:createApproatchCell(data, x, y, index)
             isOpen = SystemUtils["enableCrossPK"]()
         elseif lvSectionId == 12 then
             isOpen = SystemUtils["enableHoly"]()
+        elseif lvSectionId == 13 then
+            isOpen = SystemUtils["enableCrossGodWar"]() 
+        elseif lvSectionId == 14 then
+            isOpen = SystemUtils["enableSignShop"]() 
+        elseif lvSectionId == 15 then
+            isOpen = SystemUtils["enableCrossArena"]()
         end
         shopInfo = {isOpen = isOpen}
     elseif lvType == 4 then
@@ -733,6 +758,11 @@ function DialogAccessTo:createApproatchCell(data, x, y, index)
         accessType:setString(lang("SOURCE_18"))
         stageInfo = {
             isOpen = SystemUtils:enableSkillBook() -- 暂时关闭 -- LeagueUtils:isLeagueOpen()
+        }
+    elseif lvType == 20 then
+        accessType:setString(lang("SOURCE_20"))
+        stageInfo = {
+            isOpen = SystemUtils:enableCrossArena()
         }
     end
     self:registerClickEvent(item, function (data)

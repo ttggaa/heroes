@@ -13,7 +13,21 @@ local mapMaskOffsetList = {
     [6] = 0,
     [7] = 0,
     [8] = 0,
-    [9] = 0 
+    [9] = 0, 
+    [10] = 75 
+}
+
+local mapMaskOffsetY = {
+    [1] = 0,
+    [2] = 0,
+    [3] = 0,
+    [4] = 0,
+    [5] = 0,
+    [6] = 0,
+    [7] = 0,
+    [8] = 0,
+    [9] = 0, 
+    [10] = 65 
 }
 
 -- race表和nest表 raceId对应表
@@ -26,7 +40,8 @@ local raceToNestsIdMap = {
     [106] = 6,
     [107] = 7,
     [108] = 8,
-    [109] = 9
+    [109] = 9,
+    [112] = 10
 }
 
 -- race表和nest表 raceId对应表
@@ -39,7 +54,8 @@ local nestsToRaceIdMap = {
     [6] = 106,
     [7] = 107,
     [8] = 108,
-    [9] = 109
+    [9] = 109,
+    [10] = 112
 }
 
 local raceNameOffset = {
@@ -51,7 +67,8 @@ local raceNameOffset = {
     [6] = 0,
     [7] = 0,
     [8] = 0,
-    [9] = 0
+    [9] = 0,
+    [10] = 70
 }
 
 local nestsTab = tab.nests
@@ -77,6 +94,7 @@ function NestsView:ctor(data)
 
     -- 阵营菜单圆弧半径
     self._campRoundR = 730
+    self._isChanging = false
 end
 
 --function NestsView:getBgName()
@@ -95,7 +113,7 @@ end
 
 function NestsView:setNavigation()
 --    self._viewMgr:showNavigation("global.UserInfoView", { title = "globalTitleUI_Nests.png",titleTxt = "兵营", types = { "nests1", "nests2", "nests3"} })
-    self._viewMgr:showNavigation("global.UserInfoView", {types = { "nests1", "nests2", "nests3"},hideHead = true })
+    self._viewMgr:showNavigation("global.UserInfoView", {types = { "nests1", "nests2", "nests3", "nests4"},hideHead = true })
 
 end
 
@@ -120,6 +138,7 @@ function NestsView:onInit()
         self._campCurIndex = self:getIndexByRaceId(nestsToRaceIdMap[self._nModel:getCampByTeamId(self._initData.tId)])
     end
 
+    print(" self._campCurIndex ",self._campCurIndex)
     self:updateTowerTableData()
 
     self._curRaceId = raceToNestsIdMap[self._campTableData[self._campCurIndex].id]
@@ -159,6 +178,20 @@ function NestsView:onInit()
     self._mapImg:setPosition(self._mapCenterX + self._mapImg:getContentSize().width*0.5-campPos[1], self._mapCenterY + self._mapImg:getContentSize().height*0.5-campPos[2])
     self._mapNode:addChild(self._mapImg)
 
+    self._mapImg2 = cc.Sprite:create("asset/uiother/map/chaodaditu2.jpg")
+
+    local w = self._mapImg2:getContentSize().width
+    local h = self._mapImg2:getContentSize().height
+    local scaleW = MAX_SCREEN_WIDTH / w
+    local scaleH = MAX_SCREEN_HEIGHT / h
+    self._mapImg2:setScale(scaleW > scaleH and scaleW or scaleH)
+    self._mapScale = self._mapImg2:getScale() * 1.42
+    print(" _mapScale ",self._mapScale)
+    self._mapImg2:setPosition(self._mapCenterX, self._mapCenterY)
+
+    self._mapNode:addChild(self._mapImg2)
+    self._mapImg2:setVisible(false)
+
     local mapPatchImgR = ccui.Scale9Sprite:createWithSpriteFrameName("bgLargeMap_nests.png")
     mapPatchImgR:setCapInsets(cc.rect(100, 20, 1, 1))
     mapPatchImgR:setContentSize(327, 2000)
@@ -186,7 +219,7 @@ function NestsView:onInit()
 --    self._mapClipNode:setPosition((self._mapNodeWidth + 120) * 0.5, self._mapNodeHeight * 0.5)
 ----    self._mapClipNode:setInverted(true)
 --    local mask = cc.Scale9Sprite:createWithSpriteFrameName("mapMask_nests.png")
---	mask:setCapInsets(cc.rect(80, 100, 1, 1))
+--  mask:setCapInsets(cc.rect(80, 100, 1, 1))
 --    mask:setContentSize(self._mapNodeWidth + 100, self._mapNodeHeight)
 --    mask:setPosition(0, -1)
 --    self._mapClipNode:setStencil(mask)
@@ -206,7 +239,7 @@ function NestsView:onInit()
     self._darkClipNode:setInverted(true)
     local mask = cc.Sprite:create("asset/uiother/nests/maskBorder".. self._curRaceId .. "_nests.png")
 --    mask:setPosition((self._mapNodeWidth + 120) * 0.5, self._mapNodeHeight * 0.5)
-    mask:setPosition(self._mapCenterX, self._mapCenterY)
+    mask:setPosition(self._mapCenterX + mapMaskOffsetList[self._curRaceId], self._mapCenterY+mapMaskOffsetY[self._curRaceId])
     mask:setScale(1.42)
     self._darkClipNode:setStencil(mask)
     self._darkClipNode:setAlphaThreshold(0.00001)
@@ -214,7 +247,7 @@ function NestsView:onInit()
     self._mapNode:addChild(self._darkClipNode)
 
     self._menuNode = self:getUI("bg.menuNode")
-    self._menuNode:setContentSize(ADOPT_IPHONEX and 197 or 177, MAX_SCREEN_HEIGHT)
+    self._menuNode:setContentSize(ADOPT_IPHONEX and 197 or 220, MAX_SCREEN_HEIGHT)
     local maskNode = ccui.Layout:create()
     maskNode:setBackGroundColor(cc.c3b(125, 125, 125))
     maskNode:setContentSize(155, 310)
@@ -329,15 +362,25 @@ function NestsView:reflashUI(isInit)
     self._leftArrow:setVisible(false)
     self._rightArrow:setVisible(self._minTowerOffsetX < 0)
 
+    print("_curRaceId  ",self._curRaceId)
     local namePath = string.format("campName%d_nests", tonumber(self._curRaceId))
     if self._curRaceId == 9 then
         namePath = namePath .. "_1"
     end
+
+    if isInit then
+        self._mapImg:setVisible(self._curRaceId ~= 10)
+        self._mapImg2:setVisible(self._curRaceId == 10)
+        self._mapImg2:setPosition(self._mapCenterX, self._mapCenterY)
+        self._mapImg:setPosition(self._mapCenterX, self._mapCenterY)
+    end
+    
     self._campNamePic:loadTexture(namePath .. ".png", 1)
     self._campNamePic:setPositionX(self._mapCenterX + raceNameOffset[self._curRaceId])
     self._titleLabel:setString(lang("NESTSLABEL_LANG_" .. self._curRaceId))
     self._mapDesLabel:setString(lang("NESTS_LANG_" .. self._curRaceId))
     self._mapDesLabel1:setString(lang("NESTS_LANG_" .. self._curRaceId .. "_1"))
+    self._mapBound:setPosition(self._mapCenterX + mapMaskOffsetList[self._curRaceId], self._mapCenterY+mapMaskOffsetY[self._curRaceId])
 end
 
 
@@ -443,42 +486,92 @@ function NestsView:refreshCamp(campIndex)
     
     if self._darkClipNode ~= nil then
         self._darkClipNode:removeFromParent(true)
-        self._darkClipNode = nil
+        self._darkClipNode = nil3
     end
 
     self._mapBound:stopAllActions()
     self._mapBound:setVisible(false)
     self._mapImg:stopAllActions()
     self._campNamePic:setVisible(false)
+    self:stopAllActions()
+    self._mapImg:setColor(cc.c3b(255,255,255))
+    self._mapImg2:setColor(cc.c3b(255,255,255))
 
     local campPos = tab:Setting("NESTS_RACE_" .. self._curRaceId).value
-    self._mapImg:runAction(cc.Sequence:create(
-        cc.EaseInOut:create(cc.MoveTo:create(0.5, cc.p(self._mapCenterX + 1000 - campPos[1], self._mapCenterY + 1000 - campPos[2])), 5),
-        cc.CallFunc:create(function()
-            self._mapBound:setVisible(true)
-            self._mapBound:setTexture("asset/uiother/nests/mapBorder" .. self._curRaceId .."_nests.png")
-            self._mapBound:runAction(cc.Blink:create(0.5, 2))
+    print("curRaceId  ",self._curRaceId)
+    if self._curRaceId < 10 then
+        local callback = function ( ... )
+            self._mapImg:runAction(cc.Sequence:create(
+            cc.EaseInOut:create(cc.MoveTo:create(0.5, cc.p(self._mapCenterX + 1000 - campPos[1], self._mapCenterY + 1000 - campPos[2])), 5),
+            cc.CallFunc:create(function()
+                self._mapBound:setVisible(true)
+                self._mapBound:setTexture("asset/uiother/nests/mapBorder" .. self._curRaceId .."_nests.png")
+                self._mapBound:runAction(cc.Blink:create(0.5, 2))
+                self._mapBound:setPosition(self._mapCenterX, self._mapCenterY)
+                self._mapBound:setScale(1.42)
+                self._mapDarkNode = ccui.Scale9Sprite:createWithSpriteFrameName("globalPanelUI7_zhezhao.png")
+                self._mapDarkNode:setCapInsets(cc.rect(54, 54, 1, 1))
+                self._mapDarkNode:setContentSize(MAX_SCREEN_WIDTH + 120, MAX_SCREEN_HEIGHT)
+                self._mapDarkNode:setAnchorPoint(cc.p(0.5, 0.5))
+                self._mapDarkNode:setPosition(self._mapNodeWidth*0.5, self._mapNodeHeight*0.5)
 
-            self._mapDarkNode = ccui.Scale9Sprite:createWithSpriteFrameName("globalPanelUI7_zhezhao.png")
-            self._mapDarkNode:setCapInsets(cc.rect(54, 54, 1, 1))
-            self._mapDarkNode:setContentSize(MAX_SCREEN_WIDTH + 120, MAX_SCREEN_HEIGHT)
-            self._mapDarkNode:setAnchorPoint(cc.p(0.5, 0.5))
-            self._mapDarkNode:setPosition(self._mapNodeWidth*0.5, self._mapNodeHeight*0.5)
+                self._darkClipNode = cc.ClippingNode:create()
+                self._darkClipNode:setPosition(0, 0)
+                self._darkClipNode:setInverted(true)
+                local mask = cc.Sprite:create("asset/uiother/nests/maskBorder" .. self._curRaceId  .. "_nests.png")
+                mask:setScale(1.42)
+                mask:setPosition(self._mapCenterX + mapMaskOffsetList[self._curRaceId], self._mapCenterY)
+                self._darkClipNode:setStencil(mask)
+                self._darkClipNode:setAlphaThreshold(0.00001)
+                self._darkClipNode:addChild(self._mapDarkNode)
+                self._mapNode:addChild(self._darkClipNode)
 
-            self._darkClipNode = cc.ClippingNode:create()
-            self._darkClipNode:setPosition(0, 0)
-            self._darkClipNode:setInverted(true)
-            local mask = cc.Sprite:create("asset/uiother/nests/maskBorder" .. self._curRaceId  .. "_nests.png")
-            mask:setScale(1.42)
-            mask:setPosition(self._mapCenterX + mapMaskOffsetList[self._curRaceId], self._mapCenterY)
-            self._darkClipNode:setStencil(mask)
-            self._darkClipNode:setAlphaThreshold(0.00001)
-            self._darkClipNode:addChild(self._mapDarkNode)
-            self._mapNode:addChild(self._darkClipNode)
+                self._campNamePic:setVisible(true)
+                self._isChanging = false
 
-            self._campNamePic:setVisible(true)
+            end)))
+        end
+        if self._mapImg2:isVisible() then
+            self:changeMap(self._mapImg2,self._mapImg,function ( ... )
+                callback()
+            end)
+        else
+            callback()
+        end
+        
+    else
+        self:changeMap(self._mapImg,self._mapImg2,function ( ... )
+            self._mapImg:runAction(cc.Sequence:create(
+                -- cc.EaseInOut:create(cc.MoveTo:create(0.5, cc.p(self._mapCenterX + 1000 - campPos[1], self._mapCenterY + 1000 - campPos[2])), 5),
+                cc.CallFunc:create(function()
+                    self._mapBound:setVisible(true)
+                    self._mapBound:setTexture("asset/uiother/nests/mapBorder" .. self._curRaceId .."_nests.png")
+                    self._mapBound:runAction(cc.Blink:create(0.5, 2))
+                    self._mapBound:setPosition(self._mapCenterX + mapMaskOffsetList[self._curRaceId], self._mapCenterY+mapMaskOffsetY[self._curRaceId])
+                    self._mapBound:setScale(self._mapScale)
 
-        end)))
+                    self._mapDarkNode = ccui.Scale9Sprite:createWithSpriteFrameName("globalPanelUI7_zhezhao.png")
+                    self._mapDarkNode:setCapInsets(cc.rect(54, 54, 1, 1))
+                    self._mapDarkNode:setContentSize(MAX_SCREEN_WIDTH + 130, MAX_SCREEN_HEIGHT)
+                    self._mapDarkNode:setAnchorPoint(cc.p(0.5, 0.5))
+                    self._mapDarkNode:setPosition(self._mapNodeWidth*0.5, self._mapNodeHeight*0.5)
+
+                    self._darkClipNode = cc.ClippingNode:create()
+                    self._darkClipNode:setPosition(0, 0)
+                    self._darkClipNode:setInverted(true)
+                    local mask = cc.Sprite:create("asset/uiother/nests/maskBorder" .. self._curRaceId  .. "_nests.png")
+                    mask:setScale(self._mapScale)
+                    mask:setPosition(self._mapCenterX + mapMaskOffsetList[self._curRaceId], self._mapCenterY+mapMaskOffsetY[self._curRaceId])
+                    self._darkClipNode:setStencil(mask)
+                    self._darkClipNode:setAlphaThreshold(0.00001)
+                    self._darkClipNode:addChild(self._mapDarkNode)
+                    self._mapNode:addChild(self._darkClipNode)
+
+                    self._campNamePic:setVisible(true)
+                    self._isChanging = false
+                end)))
+        end)
+    end
 
     self:sendGetNestsData(self._curRaceId, specialize(self.reflashUI, self))
 
@@ -490,15 +583,15 @@ function NestsView:campTableCellAtIndex(table, idx)
     if nil == cell then
         cell = cc.TableViewCell:new()
     else
-    	cell:removeAllChildren()
+        cell:removeAllChildren()
     end
     local cellData = self._campTableData[idx+1]
     local item = self:creatCampCell(cellData,idx+1)
     if item then
-	    item:setAnchorPoint(cc.p(0,0))
-	    item:setPosition(cc.p(0,0))
-	    cell:addChild(item)
-	end
+        item:setAnchorPoint(cc.p(0,0))
+        item:setPosition(cc.p(0,0))
+        cell:addChild(item)
+    end
 
     return cell
 end
@@ -516,6 +609,8 @@ function NestsView:creatCampCell(data,index)
     cellNode:addChild(selectBound)
 
     local item = ccui.ImageView:create()
+    print("data.id    ",data.id)
+    print("data.id    ",data.id)
     item:loadTexture("globalImgUI_class".. data.id - 100 .. ".png",1)
     item:setScale(self._campCurIndex == index and 1 or 0.9)
     item:setPosition(self._campCellSize.width * 0.5 + 10, self._campCellSize.height * 0.5)
@@ -539,7 +634,8 @@ function NestsView:creatCampCell(data,index)
 
     self:addClickTouchEvent(item, function()
         if self._campCurIndex == index then return end
-
+        -- if self._isChanging then return end
+        self._isChanging = true
         local preCell = self._campTableView:cellAtIndex(self._campCurIndex-1)
 
         if preCell then
@@ -573,7 +669,7 @@ function NestsView:creatCampCell(data,index)
 end
 
 function NestsView:scrollViewDidScroll(view)
-	self._inScrolling = view:isDragging()
+    self._inScrolling = view:isDragging()
     local cellList = view:getContainer():getChildren()
     for i = 1, #cellList do
         local posY = cellList[i]:getPositionY()
@@ -670,15 +766,15 @@ function NestsView:towerTableCellAtIndex(table, idx)
     if nil == cell then
         cell = cc.TableViewCell:new()
     else
-    	cell:removeAllChildren()
+        cell:removeAllChildren()
     end
     local cellData = self._towerTableData[idx+1]
     local item = self.createTowerCell(self,cellData,idx+1)
     if item then
-	    item:setPosition(cc.p(0,0))
-	    item:setAnchorPoint(cc.p(0,0))
-	    cell:addChild(item)
-	end
+        item:setPosition(cc.p(0,0))
+        item:setAnchorPoint(cc.p(0,0))
+        cell:addChild(item)
+    end
     return cell
 end
 
@@ -1131,6 +1227,23 @@ function NestsView:needActivityUpdate()
         end
         return false
     end
+end
+
+function NestsView:changeMap(map1,map2,callback)
+    self:runAction(cc.Sequence:create(cc.CallFunc:create(
+        function ( ... )
+            map1:setPosition(self._mapCenterX, self._mapCenterY)
+            map1:runAction(cc.TintTo:create(0.7,0,0,0))
+        end),cc.DelayTime:create(0.7),cc.CallFunc:create(
+        function ( ... )
+            map1:setVisible(false)
+            map2:setColor(cc.c3b(0,0,0))
+            map2:setVisible(true)
+            map2:runAction(cc.TintTo:create(0.7,255,255,255))
+        end),cc.DelayTime:create(0.7),cc.CallFunc:create(function ( ... )
+            callback()
+        end) 
+    ))
 end
 
 

@@ -350,7 +350,10 @@ function MainViewModel:checkTipsQipao36()
     if lvl < needLevel then
         return false
     end
-    return self._modelMgr:getModel("WeaponsModel"):checkMainViewTips()
+
+    local isRed1 = self._modelMgr:getModel("WeaponsModel"):checkMainViewTips()
+    local isRed2 = self._modelMgr:getModel("ParagonModel"):checkWarReadinessRedPoint()
+    return isRed1 or isRed1
 end
 
 --机械制造气泡
@@ -408,9 +411,37 @@ end
 
 -- 无尽炼狱气泡
 function MainViewModel:checkTipsQipao44(  )
-    return self._modelMgr:getModel("PurgatoryModel"):isShowQiPao()
+    if self._modelMgr:getModel("PurgatoryModel"):isShowQiPao() then
+        return true
+    else
+        return self._modelMgr:getModel("PurgatoryModel"):isHaveRedPrompt()
+    end
 end
 
+-- 法术祈愿热点橙色法术
+function MainViewModel:checkTipsQipao52(  )
+    return self._modelMgr:getModel("SpellBooksModel"):getHotSpotFlag()
+end
+
+-- 荣耀竞技场免费次数
+function MainViewModel:checkTipsQipao53(  )
+    return self._modelMgr:getModel("GloryArenaModel"):bIsCanAttack()
+end
+
+-- 免费阵营抽卡
+function MainViewModel:checkTipsQipao55( )
+    return self._modelMgr:getModel("RaceDrawModel"):haveFreeTips()
+end
+
+-- 半价阵营抽卡
+function MainViewModel:checkTipsQipao54( )
+    return self._modelMgr:getModel("RaceDrawModel"):haveHalfTips()
+end
+
+-- 军团试炼当日气泡
+function MainViewModel:checkTipsQipao56( )
+	return self._modelMgr:getModel("BossModel"):isNeedLegionTimesTip()
+end
 
 function MainViewModel:checkTipsQipao()
     local userlvl = self._modelMgr:getModel("UserModel"):getData().lvl
@@ -460,7 +491,7 @@ function MainViewModel:checkTipsQipao()
         if condition == 36 then
             dump(tempBubble,"666hahaha")
         end
-        print("tip.id==========================", tip.id, tip.condition)
+        -- print("tip.id==========================", tip.id, tip.condition)
         local sign = tip.sign
         if sign and sign == 1 then --无数量要求的普通气泡 add lishunan
             table.insert(self._data["bubble"],tempBubble)
@@ -508,7 +539,7 @@ function MainViewModel:isShowNotice()
     local userData = userModel:getData()
 
     local userData = userModel:getData()
-    local sysOpenTime = userData.sec_open_time  -- 开服时间
+    local sysOpenTime = userData.sec_open_time or 0  -- 开服时间
     local tempTime = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(sysOpenTime,"%Y-%m-%d 05:00:00"))
     if sysOpenTime < tempTime then
         sysOpenTime = sysOpenTime - 86400
@@ -565,7 +596,7 @@ function MainViewModel:isOpenShowNotice(flag)
     local userData = userModel:getData()
 
     local userData = userModel:getData()
-    local sysOpenTime = userData.sec_open_time  -- 开服时间
+    local sysOpenTime = userData.sec_open_time or 0  -- 开服时间
     local tempTime = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(sysOpenTime,"%Y-%m-%d 05:00:00"))
     if sysOpenTime < tempTime then
         sysOpenTime = sysOpenTime - 86400
@@ -657,7 +688,10 @@ function MainViewModel:getTimeShowOpen()
         [4] = 104,
         [5] = 101,
         [6] = 105,
-        [7] = 108
+        [7] = 108,
+        [8] = 109,
+        [9] = 110,
+        [10] = 111,
     }
 
     local hourOpenTab = {}
@@ -666,7 +700,7 @@ function MainViewModel:getTimeShowOpen()
     local openIdList = {}
 
     local userData = userModel:getData()
-    local sysOpenTime = userData.sec_open_time  -- 开服时间
+    local sysOpenTime = userData.sec_open_time or 0  -- 开服时间
     local tempTime = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(sysOpenTime,"%Y-%m-%d 05:00:00"))
     if sysOpenTime < tempTime then
         sysOpenTime = sysOpenTime - 86400
@@ -676,46 +710,54 @@ function MainViewModel:getTimeShowOpen()
     for indexId=1,table.nums(sonTab) do
         local i = sonTab[indexId]
         local v = tabSystemOn[i]
-        local openTime = v.openhour[1] .. ":" .. v.openminut[1]
-        local endTime = v.openhour[2] .. ":" .. v.openminut[2]
-        local weeklyTab = v.weekly
-        local curOpenTime = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(curServerTime,"%Y-%m-%d " .. openTime .. ":00"))
-        local curEndTime = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(curServerTime,"%Y-%m-%d " .. endTime .. ":00"))
-        if curServerTime > curOpenTime and curServerTime < curEndTime then
-            local opensysTime = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(sysOpenTime + (v["notice"]-1)*86400,"%Y-%m-%d 00:00:00"))
-            local tempTime = curServerTime - opensysTime
-            if (userData.lvl >= v.noticelv) and (tempTime > 0) then
-                if table.indexof(weeklyTab, weekday) ~= false then 
-                    if v.id == 102 or v.id == 103 or v.id == 104 then
-                        local godWarModel = self._modelMgr:getModel("GodWarModel")
-                        local flag = godWarModel:getTimeSystemOn()
-                        if flag == true then
-                            -- openId = v.id
-                            table.insert(openIdList, v.id)
-                            -- break
+        if v then
+            local openTime = v.openhour[1] .. ":" .. v.openminut[1]
+            local endTime = v.openhour[2] .. ":" .. v.openminut[2]
+            local weeklyTab = v.weekly
+            local curOpenTime = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(curServerTime,"%Y-%m-%d " .. openTime .. ":00"))
+            local curEndTime = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(curServerTime,"%Y-%m-%d " .. endTime .. ":00"))
+            if curServerTime > curOpenTime and curServerTime < curEndTime then
+                local opensysTime = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(sysOpenTime + (v["notice"]-1)*86400,"%Y-%m-%d 00:00:00"))
+                local tempTime = curServerTime - opensysTime
+                if (userData.lvl >= v.noticelv) and (tempTime > 0) then
+                    if table.indexof(weeklyTab, weekday) ~= false then 
+                        if v.id == 102 or v.id == 103 or v.id == 104 then
+                            local godWarModel = self._modelMgr:getModel("GodWarModel")
+                            local flag = godWarModel:getTimeSystemOn()
+                            if flag == true then
+                                -- openId = v.id
+                                table.insert(openIdList, v.id)
+                                -- break
+                            end
+                        elseif v.id == 106 then
+                            if SystemUtils:enableCityBattle() then
+                                -- openId = v.id
+                                table.insert(openIdList, v.id)
+                                -- break
+                            end
+                        elseif v.id == 108 then
+                            local flag = self._modelMgr:getModel("PurgatoryModel"):isOpenPurgatory()
+                            if flag then
+                                -- openId = v.id
+                                table.insert(openIdList, v.id)
+                                -- break
+                            end
+                        elseif v.id == 109 or v.id == 110 or v.id == 111 then
+                            local cGodWarModel = self._modelMgr:getModel("CrossGodWarModel")
+                            local flag = cGodWarModel:getTimeSystemOn()
+                            if flag == true then
+                                table.insert(openIdList, v.id)
+                            end
+                        else
+                            local flag = self._modelMgr:getModel("HeroDuelModel"):getHDuelIsOpen()
+                            if flag ~= false then
+                                -- openId = v.id
+                                table.insert(openIdList, v.id)
+                                -- break
+                            end
                         end
-                    elseif v.id == 106 then
-                        if SystemUtils:enableCityBattle() then
-                            -- openId = v.id
-                            table.insert(openIdList, v.id)
-                            -- break
-                        end
-                    elseif v.id == 108 then
-                        local flag = self._modelMgr:getModel("PurgatoryModel"):isOpenPurgatory()
-                        if flag then
-                            -- openId = v.id
-                            table.insert(openIdList, v.id)
-                            -- break
-                        end
-                    else
-                        local flag = self._modelMgr:getModel("HeroDuelModel"):getHDuelIsOpen()
-                        if flag ~= false then
-                            -- openId = v.id
-                            table.insert(openIdList, v.id)
-                            -- break
-                        end
-                    end
-                end 
+                    end 
+                end
             end
         end
     end

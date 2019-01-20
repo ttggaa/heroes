@@ -112,7 +112,6 @@ function GodWarShopView:getGoodsData( tp )
     goodsData = {}
     local shopTableName = "shopGodWar"
     local shopD = clone(tab[shopTableName])
-    -- dump(shopD,"shopD....")
     for k,gridD in pairs(shopD) do
         local itemId = gridD.itemId[1]
         gridD.itemId = itemId
@@ -128,7 +127,7 @@ function GodWarShopView:getGoodsData( tp )
             goodsData[pos].canBuyTimes = data.buyTimes or 0
             goodsData[pos].lastBuyTime = data.lastBuyTime or 0
             local recover = goodsData[pos].recover
-            local add = math.floor((nowTime-data.lastBuyTime)/recover)
+            local add = nowTime - (data.lastBuyTime + recover) > 0 and 1 or 0
             goodsData[pos].canBuyTimes = math.min(data.buyTimes + add,goodsData[pos].buyTimes)
             -- dump(goodsData[pos],"pos..." .. pos)
         end
@@ -269,8 +268,8 @@ function GodWarShopView:createItem(index, data,x,y)
     end
     local icon = IconUtils:createItemIconById({itemId = itemId,itemData = toolD,num = num,eventStyle = 0})
     icon:setContentSize(cc.size(100, 100))
-    icon:setPosition(10,20)
-    icon:setScale(0.65)
+    icon:setPosition(5,5)
+    icon:setScale(0.8)
     itemIcon:addChild(icon)
     -- 设置名称
     local itemName = item:getChildByFullName("itemName")
@@ -314,9 +313,9 @@ function GodWarShopView:createItem(index, data,x,y)
     priceLab:setPositionX(itemW/2+iconW/2-labelW/2-3)
 
     UIUtils:center2Widget(buyIcon,priceLab,itemW/2,5)
-    
+
     self:registerClickEvent(item, function( )
-        local canTouch = data.canBuyTimes ~= 0
+        local canTouch = data.canBuyTimes == 1
         if canTouch then
             self._refreshAnim = nil
             self._viewMgr:showDialog("shop.DialogShopBuy",data,true)
@@ -380,7 +379,7 @@ function GodWarShopView:createItem(index, data,x,y)
     -- dump(data,"godWarshop data....")
     local shopInfo = self._shopModel:getShopGoods("godWar")[tostring(data.id)]
     if shopInfo then
-        local add = math.floor((nowTime- shopInfo.lastBuyTime)/data.recover)
+        local add = nowTime - (data.lastBuyTime + data.recover) > 0 and 1 or 0
         local canBuyTimes = shopInfo.buyTimes
         data.buyTimes = tab:ShopGodWar(data.id).buyTimes 
         data.canBuyTimes = math.min(canBuyTimes + add,data.buyTimes)
@@ -424,29 +423,43 @@ function GodWarShopView:createItem(index, data,x,y)
         end
         self:updateTimeLab()
     end
+    --7.0优化  不现实倒计时 和 兑换次数
+    canBuyLab:setVisible(false)
+    timeLab:setVisible(false)
+    canBuyCountLab:setVisible(false)
+
+    -- 售完状态
+    local soldOut = item:getChildByFullName("soldOut")
+    soldOut:setVisible(false)
+    local canTouch = data.canBuyTimes == 1
+    if canTouch then
+        item:setEnabled(true)
+        soldOut:setVisible(false)
+        self:setNodeColor(item,cc.c4b(255, 255, 255,255))
+    else
+        self:setNodeColor(item,cc.c4b(182, 182, 182,255))
+        self:setNodeColor(soldOut,cc.c4b(255, 255, 255,255))
+        soldOut:setVisible(true)
+        item:setEnabled(false)
+    end
 end
 
 function GodWarShopView:updateTimeLab( )
     local nowTime = self._modelMgr:getModel("UserModel"):getCurServerTime()
     for index,timeLab in pairs(self._timeLabs) do
         if timeLab.updating then
-            local time = math.fmod((nowTime - timeLab.preUpTime), timeLab.recover) 
-            if time == 0 then
-                time = timeLab.recover
-            end
-            local deltTime = timeLab.recover - time
-            if deltTime <= 0 then
+            local time = nowTime - (timeLab.preUpTime + timeLab.recover)
+            if time >= 0 then
                 -- self:reflashUI()
                 if timeLab.data then
-                    dump(timeLab.data)
-                    local add = math.floor((nowTime - (timeLab.data.lastBuyTime or 0))/timeLab.recover)
+                    local add = nowTime - (timeLab.preUpTime + timeLab.recover)
                     local buyTimes = self._shopModel:getShopGoods("godWar")[tostring(timeLab.data.id)].buyTimes
                     timeLab.data.canBuyTimes = buyTimes + add
                     self:createItem(index,timeLab.data)
                 end
             else
                 -- print(index,"idx,updating?",deltTime,timeLab.updating,"timeLab.preUpTime",timeLab.preUpTime)
-                timeLab:setString(string.format("%02d:%02d:%02d",math.floor(deltTime/3600),math.floor(deltTime%3600/60),deltTime%60))
+                -- timeLab:setString(string.format("%02d:%02d:%02d",math.floor(deltTime/3600),math.floor(deltTime%3600/60),deltTime%60))
             end
         end
     end

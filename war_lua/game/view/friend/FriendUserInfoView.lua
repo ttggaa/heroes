@@ -176,7 +176,9 @@ function FriendUserInfoView:refreshUpUI()
 	self._upNode = self:getUI("bg.bg3.Panel_20")
 
 	--headIcon
-	self._avatar = IconUtils:createHeadIconById({avatar = self._userData["avatar"],level = self._userData["lv"] or 0, tp = 4,avatarFrame = self._userData["avatarFrame"], tencetTp = self._userData["qqVip"]}) 
+    local headP = {avatar = self._userData["avatar"],level = self._userData["lv"] or 0, tp = 4,
+                    avatarFrame = self._userData["avatarFrame"], tencetTp = self._userData["qqVip"], plvl = self._userData["plvl"]}
+	self._avatar = IconUtils:createHeadIconById(headP) 
     self._avatar:setAnchorPoint(0, 0)
     self._avatar:setPosition(0, 63)
     self._upNode:addChild(self._avatar, 2)
@@ -294,6 +296,8 @@ function FriendUserInfoView:initInfoPanel()
         detailData.uMastery = self._userData.uMastery
         detailData.hSkin = self._userData.hSkin
         detailData.spTalent = self._userData.spTalent
+        detailData.backups = self._userData.backups
+        detailData.pTalents = self._userData.pTalents
         ViewManager:getInstance():showDialog("rank.RankHeroDetailView", {data=detailData}, true)
     end)
     heroFrame:addChild(icon)
@@ -353,6 +357,34 @@ function FriendUserInfoView:initInfoPanel()
         weaponPanel:setVisible(false)
         heroName:setVisible(true)     
     end 
+
+    local btn_backup = self:getUI("bg.bg3.infoBg.btn_backup")
+    btn_backup:setVisible(false)
+    local formationData = self._userData.formation or {}
+    local bid = formationData.bid
+    local backupData = formationData.backupTs or {}
+    local bidData = clone(backupData[tostring(bid)])
+
+    if bid and bidData then
+        local helpTeams = self._userData.helpTeams or {}
+        local teams = self._userData.teams or {}
+        for i = 1, 3 do
+            local teamId = bidData["bt" .. i]
+            if teamId and teamId ~= 0 then
+                local teamData = helpTeams[tostring(teamId)]
+                if teamData == nil then
+                    teamData = teams[tostring(teamId)]
+                end
+                bidData["btData" .. i] = clone(teamData)
+            end
+        end
+        local growBackups = self._userData.backups or {}
+        local growData = growBackups[tostring(bid)] or {}
+        btn_backup:setVisible(true)
+        self:registerClickEvent(btn_backup, function( )
+            self._viewMgr:showDialog("backup.BackupUserInfoDialog",  {bid = bid, bidData = bidData, growData = growData, playerData = self._userData})
+        end)
+    end
 end
 
 --创建兵团头像  hgf
@@ -375,6 +407,8 @@ function FriendUserInfoView:createTeams( x,y,teamId,teamData )
         detailData.treasures = self._userData.treasures
         detailData.runes = self._userData.runes
         detailData.heros = self._userData.heros
+        detailData.battleArray = self._userData.battleArray
+        detailData.pTalents = self._userData.pTalents
         ViewManager:getInstance():showDialog("rank.RankTeamDetailView", {data=detailData}, true)
     end})
     return teamIcon
@@ -481,7 +515,7 @@ end
 
 -- 好友切磋功能 by guojun 2017.3.25
 function FriendUserInfoView:onFightFriend( )
-    dump(self._userData,"userData")
+    -- dump(self._userData,"userData")
     local detailCallback = function( result,isPlat )
         local info = result.info
         if not info.battle or not info.battle.formation then

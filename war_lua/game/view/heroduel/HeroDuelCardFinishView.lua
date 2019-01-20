@@ -82,14 +82,16 @@ function HeroDuelCardFinishView:onInit()
             quaAddition = 0,  
             eventStyle = 2,
             formationType = self._modelMgr:getModel("FormationModel").kFormationTypeHeroDuel,
-            isCustom = true
+            isCustom = true,
+            isHeroDuel = 1
         }
         local teamIcon = IconUtils:createTeamIconById(param)
         teamIcon:setPosition(offsetX+(tI-1)%8*(realW+3), offsetY-math.floor((tI-1)/8)*(realW+12))
         teamIcon:setScale(realW / teamIcon:getContentSize().width)
         teamNode:addChild(teamIcon)
 
-        local classIcon = cc.Sprite:createWithSpriteFrameName(sysTeam.classlabel .. ".png")
+        local className = TeamUtils:getClassIconNameByTeamD(inTeamData, "classlabel", sysTeam)
+        local classIcon = cc.Sprite:createWithSpriteFrameName(className .. ".png")
         classIcon:setAnchorPoint(0, 1)
         classIcon:setPosition(-2, teamIcon:getContentSize().height)
         classIcon:setScale(0.8)

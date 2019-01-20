@@ -345,7 +345,7 @@ function ACEveryDayRechargeLayer:setReward()
             itemIcon:setScale(0.6)
             rewardDay:addChild(itemIcon)
         end
-        param = nil 
+        param = nil
     end
 end
 

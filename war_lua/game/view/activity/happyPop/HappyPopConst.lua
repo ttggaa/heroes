@@ -15,4 +15,7 @@ HappyPopConst.cardType = {
 	clock = 4,		--时钟
 }
 
-HappyPopConst.isShow = false   --是否显示牌id
+HappyPopConst.isShow = false   	--是否显示牌id
+HappyPopConst.isSkip = false   	--是否快速点击
+HappyPopConst.isSkipHero = true --是否跳过英雄关联牌
+HappyPopConst.revertTime = 0.4  --快速点击翻牌间隔时间

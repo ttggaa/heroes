@@ -438,6 +438,14 @@ function MFFriendDialog:updateCell(inView, data, indexId)
         name:setString(data.name)
     end
 
+
+    local level = inView:getChildByFullName("level")
+    local tempLevl = level
+    if level then
+        local inParam = {lvlStr = "Lv." .. data.lvl, lvl = data.lvl, plvl = data.plvl}
+        tempLevl = UIUtils:adjustLevelShow(level, inParam, 1)
+    end
+
     local vipIcon = inView:getChildByFullName("vipIcon")
     vipIcon:setVisible(true)
     -- dump(data,"hidevip 隐藏vip=============")
@@ -450,12 +458,7 @@ function MFFriendDialog:updateCell(inView, data, indexId)
         vipIcon:setVisible(false)
         -- vipIcon:loadTexture(("chatPri_vipLv0.png"), 1)
     end
-
-
-    local level = inView:getChildByFullName("level")
-    if level then
-        level:setString("Lv." .. data.lvl)
-    end
+    vipIcon:setPositionX(tempLevl:getPositionX() + tempLevl:getContentSize().width + 25)
 
     local des1 = inView:getChildByFullName("des1")
     local des2 = inView:getChildByFullName("des2")

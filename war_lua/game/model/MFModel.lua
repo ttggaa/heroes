@@ -1022,7 +1022,7 @@ end
 --领主管家获取所有奖励  add by haotaian
 function MFModel:getAllGifts()
     local allGifts = {}
-    for i=1,6 do
+    for i=1,7 do
         local cityTab = tab:MfOpen(i)
         local userlvl = self._modelMgr:getModel("UserModel"):getData().lvl
         if userlvl >= cityTab["lv"] then

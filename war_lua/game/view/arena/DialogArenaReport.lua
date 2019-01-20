@@ -141,6 +141,7 @@ end
 
 function DialogArenaReport:scrollViewDidScroll(view)
     -- print("scrollViewDidScroll")
+    self._inScrolling = view:isDragging()
 end
 
 function DialogArenaReport:scrollViewDidZoom(view)
@@ -277,6 +278,7 @@ function DialogArenaReport:createItem( data,x,y )
 
 	local lv = data[prefix .. "Lvl"]
 	local name = data[prefix .. "Name"]
+    local plvl = data[prefix .. "Plvl"]
     self._shareMyName = data[antiPrefix .. "Name"]
     self._shareEnemyName = name
 	local avatar = data[prefix .. "Avatar"]
@@ -285,17 +287,12 @@ function DialogArenaReport:createItem( data,x,y )
 	level:setString("")
     level:setVisible(false)
 	itemName:setString(name or "avatar")
-	if not avatar or avatar==0 then--safecode toberemove
-	   avatar = 1203--safecode toberemove
-	end--safecode toberemove
-	-- local avatarName = tab:RoleAvatar(avatar).icon
-	-- local icon = ccui.ImageView:create()
-    local icon = IconUtils:createHeadIconById({avatar = avatar,level = lv or "0" ,tp = 4,avatarFrame=data[prefix .. "AvatarFrame"]}) 
-	-- icon:loadTexture(avatarName,1)
-	-- icon:setScale(0.9)
+	if not avatar or avatar==0 then
+	   avatar = 1203
+	end
+    local icon = IconUtils:createHeadIconById({avatar = avatar,level = lv or "0" ,tp = 4,avatarFrame=data[prefix .. "AvatarFrame"], plvl = plvl}) 
 	icon:setAnchorPoint(cc.p(0,0))
     icon:setPosition(cc.p(0,-8))
-	-- icon:setPosition(cc.p(itemNode:getContentSize().width/2,itemNode:getContentSize().height/2))
 	itemNode:addChild(icon)
     itemNode:setSwallowTouches(false)
 	local curTime = self._modelMgr:getModel("UserModel"):getCurServerTime()
@@ -374,13 +371,17 @@ function DialogArenaReport:createItem( data,x,y )
             print("=====id为空=====")
             return
         end
-        self._serverMgr:sendMsg("ArenaServer", "getDetailInfo", {roleId = itemData[itemPrefix .. "Id"] }, true, {}, function(result) 
-            local info = result.info
-            info.battle.msg = info.msg
-            info.battle.rank = info.rank
-            info.battle.hScore = itemData[itemPrefix .. "Score"] or 0
-            self._viewMgr:showDialog("arena.DialogArenaUserInfo",info.battle,true)
-        end)
+        if not self._inScrolling then
+            self._serverMgr:sendMsg("ArenaServer", "getDetailInfo", {roleId = itemData[itemPrefix .. "Id"] }, true, {}, function(result) 
+                local info = result.info
+                info.battle.msg = info.msg
+                info.battle.rank = info.rank
+                info.battle.hScore = itemData[itemPrefix .. "Score"] or 0
+                self._viewMgr:showDialog("arena.DialogArenaUserInfo",info.battle,true)
+            end)
+        else
+            self._inScrolling = false
+        end
     end)
 	return item
 end

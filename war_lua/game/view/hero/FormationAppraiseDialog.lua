@@ -98,7 +98,8 @@ function FormationAppraiseDialog:onInit()
     itemIcon:setPosition(self._iconPanel:getContentSize().width*0.5,self._iconPanel:getContentSize().height*0.5)
     local inView = self._bg
     self._heroName:setString(lang(heroData.heroname))
-    self._level:setString("Lv."..self._content.lvl)
+    local inParam = {lvlStr = "Lv." .. (self._content.level or self._content.lvl or 0), lvl = (self._content.level or self._content.lvl or 0), plvl = self._content.plvl}
+    UIUtils:adjustLevelShow(self._level, inParam, 1)
     self._vip:setVisible(false)
     local vipLabel = cc.Label:createWithBMFont(UIUtils.bmfName_vip, "V" .. self._content.vipLv)
     vipLabel:setAnchorPoint(cc.p(0,0.5))

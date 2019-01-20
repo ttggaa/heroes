@@ -242,7 +242,63 @@ function GuildView:onInit()
             redbtn:setVisible(false)
         end
     end
+    self:updateUltimateBtn()
+end
 
+function GuildView:updateUltimateBtn()
+    -- 终极降临
+    local acUltimateModel = self._modelMgr:getModel("AcUltimateModel")
+    self._acUltimateModel = acUltimateModel
+    local ultimateBtn = self:getUI("bg.ultimateBtn")
+    ultimateBtn:setVisible(false)        
+    ultimateBtn:setTouchEnabled(false)
+    if acUltimateModel:isActivityOpen() then
+        ultimateBtn:setScale(1.5)
+        ultimateBtn:setPosition(140,610)
+        ultimateBtn:loadTextures("button_ultimateBtn_mainView.png","button_ultimateBtn_mainView.png","",1)        
+        local btnTxt = self:getUI("bg.ultimateBtn.btnTxt")
+        btnTxt:setFontSize(14)
+        btnTxt:setFontName(UIUtils.ttfName)
+        btnTxt:setColor(UIUtils.colorTable.ccBuildNameColor)
+        btnTxt:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
+        btnTxt:setPosition(30, 5)
+
+        ultimateBtn:setVisible(true)
+        ultimateBtn:setTouchEnabled(true)
+        local isHaveRed = acUltimateModel:isRedNotice()
+        self:updateBtnRed(ultimateBtn, isHaveRed)
+        self:registerClickEvent(ultimateBtn, function ()
+            if not acUltimateModel:isActivityOpen() then
+                self._viewMgr:showTip("活动已结束")
+                return
+            end
+            self._serverMgr:sendMsg("ComingGuildAcServer", "getInfo", {}, true, {}, function(data)
+                -- 获取信息回调
+                self._viewMgr:showDialog("activity.acUltimate.AcUltimateDialog",
+                    {closeCallBack=function ( )
+                        -- 有推送消息更新
+                        self._acUltimateModel:doUpdate()
+                        local isHaveRed = acUltimateModel:isRedNotice()
+                        self:updateBtnRed(ultimateBtn, isHaveRed)
+                    end},
+                    false,nil,nil,false)
+            end)
+        end)
+        
+    end
+end
+function GuildView:updateBtnRed(btn,isHaveRed)
+    local dot = btn.__noticeTip
+    if not dot then
+        dot = ccui.ImageView:create()
+        dot:loadTexture("globalImageUI_bag_keyihecheng.png", 1)
+        dot:setPosition(55,55)
+        btn.__noticeTip = dot
+        btn:addChild(dot,99)
+    end
+
+    dot:setVisible(isHaveRed)
+    return dot
 end
 
 function GuildView:showRoleAnima()
@@ -1217,7 +1273,8 @@ function GuildView:onTop()
         self._mcBg:setVisible(true)
         self._mcBg:setLocalZOrder(-1*self._mcBg:getPositionY())
     end
-   
+    
+    self._acUltimateModel:doUpdate()
     self:hadNewBtnInfo()
     self:isOpenAnim()
 

@@ -59,6 +59,49 @@ local HUD_TYPE
 -- 显示单兵血条的血上限
 local SHOW_HP_PRO = 1.0
 
+local debugLabelConfig = {
+    {name = "总伤害"},
+    {name = "攻速"},
+    {name = "攻击"},
+    {name = "防御"},
+    {name = "暴击"},
+    {name = "兵伤"},
+    {name = "免伤"},
+    {name = "法免"},
+    {name = "增益数"},
+    {name = "减益数"},
+    
+    {name = ""},
+    {name = ""},
+    {name = ""},
+    {name = ""},
+    {name = ""},
+    {name = ""},
+    {name = ""},
+    {name = ""},
+    {name = ""},
+    {name = ""},
+
+    --21 统计死亡数量
+    {name = "0/0",anchor=0.5,fontsize=20,pos = cc.p(60,15),color1 = cc.c3b(255, 255, 255),color2 = cc.c3b(255, 255, 255)},
+    -- 
+    {name = "全属性",anchor=0.5,fontsize=20,pos = cc.p(60,-100),color1 = cc.c3b(255, 50, 50),color2 = cc.c3b(255, 60, 60)},
+    --所有的士兵属性
+    {name = "所有的士兵属性",anchor=0.5,fontsize=18,pos = cc.p(-200,-100),color1 = cc.c3b(236, 214, 2),color2 = cc.c3b(2, 13, 236)}
+    
+}
+
+dump(debugLabelConfig)
+
+for i,v in ipairs(debugLabelConfig) do
+    local reset_i = i>10 and -10 or 0
+    local offsetX = i>10 and 125 or 105
+    v.pos = v.pos or cc.p(110+math.floor((i-1)/10)*50+(i-1)%2*offsetX ,110-math.floor((i+reset_i-1)/2)*23)
+    v.color1 = v.color1 or (i>10 and cc.c3b(87, 190, 237) or cc.c3b(255, 255, 255))
+    v.color2 = v.color2 or (i>10 and cc.c3b(254, 223, 157) or cc.c3b(255, 255, 255))
+    v.fontsize = v.fontsize or 16
+end
+
 function BattleObjectLayer:ctor(objLayer)
     frameInv = BC.frameInv
     _3dVertex1 = cc.Vertex3F(BC.BATTLE_3D_ANGLE, 0, 0)
@@ -155,44 +198,52 @@ function BattleObjectLayer:ctor(objLayer)
     self._camp = {{}, {}}
     self._building = {}
 
-    -- 方阵选中状态框
-    local bg = cc.Node:create()
-    bg = cc.Node:create()
-    bg:setRotation3D(_3dVertex1)
-    self._rootLayer:addChild(bg)
-    local bg1 = cc.Sprite:createWithSpriteFrameName("head1_battle.png")
-    bg:addChild(bg1)
-    local icon = cc.Sprite:create()
-    icon:setScale(0.48)
-    icon:setPosition(25, 25)
-    bg1:addChild(icon, -1)
-    local bg2 = cc.Sprite:createWithSpriteFrameName("hp1_battle.png")
-    bg:addChild(bg2)
+    -- -- 方阵选中状态框
+    -- local bg = cc.Node:create()
+    -- bg = cc.Node:create()
+    -- bg:setRotation3D(_3dVertex1)
+    -- self._rootLayer:addChild(bg)
+    -- local bg1 = cc.Sprite:createWithSpriteFrameName("head1_battle.png")
+    -- bg:addChild(bg1)
+    -- local icon = cc.Sprite:create()
+    -- icon:setScale(0.48)
+    -- icon:setPosition(25, 25)
+    -- bg1:addChild(icon, -1)
+    -- local bg2 = cc.Sprite:createWithSpriteFrameName("hp1_battle.png")
+    -- bg:addChild(bg2)
 
-    local hp = ccui.LoadingBar:create("hp2_battle.png", 1, 100)
-    hp:setPosition(24, 20)
-    bg2:addChild(hp)
+    -- local bg3 = cc.Sprite:createWithSpriteFrameName("trainig_stakeInfoBgBlue_battle.png")
+    -- bg3:setPositionY(100)
+    -- bg:addChild(bg3,-1)
 
-    bg:setScale(0.8)
-    bg.bg1 = bg1
-    bg.bg2 = bg2
-    bg.icon = icon
-    bg.hp = hp
-    bg:setLocalZOrder(10000)
-    self._selectTeamBg = bg
-    self._selectTeamBg:setVisible(false)
+    -- local hp = ccui.LoadingBar:create("hp2_battle.png", 1, 100)
+    -- hp:setPosition(24, 20)
+    -- bg2:addChild(hp)
 
-    if BattleUtils.XBW_SKILL_DEBUG then
-        for i = 1, 16 do
-            local label = cc.Label:createWithTTF("", UIUtils.ttfName, 18)
-            label:setColor(cc.c3b(255, 255, 120))
-            label:enableOutline(cc.c4b(0, 0, 0, 255), 1)
-            label:setAnchorPoint(0, 0.5)
-            label:setPosition(100, (i - 1) * 20)
-            bg:addChild(label)
-            bg["label"..i] = label
-        end
-    end
+    -- bg:setScale(0.6)
+    -- bg.bg1 = bg1
+    -- bg.bg2 = bg2
+    -- bg.bg3 = bg3
+    -- bg.icon = icon
+    -- bg.hp = hp
+    -- bg:setLocalZOrder(10000)
+    -- self._selectTeamBg = bg
+    -- self._selectTeamBg:setVisible(false)
+
+    -- if BattleUtils.XBW_SKILL_DEBUG then
+    --     for i = 1, 20 do
+    --         print(i,"===")
+    --         local label = cc.Label:createWithTTF("", UIUtils.ttfName,16)
+    --         -- label:enableOutline(cc.c4b(0, 0, 0, 255), 1)
+    --         label:setAnchorPoint(0, 0.5)
+    --         label:setColor(debugLabelConfig[i].color or cc.c3b(255, 255, 120))
+    --         -- label:enableOutline(cc.c4b(0, 0, 0, 255), 1)
+    --         label:setPosition(debugLabelConfig[i].pos)
+    --         label:setString(debugLabelConfig[i].name)
+    --         bg:addChild(label)
+    --         bg["label"..i] = label
+    --     end
+    -- end
 
     -- 通用buff图标池
     self._commonBuffPool = {}
@@ -213,7 +264,45 @@ function BattleObjectLayer:ctor(objLayer)
 
     -- NPC脚下光环
     self._teamHalo = {}
+
+    self._drawNode = {}
 end
+
+
+--获取画线对象
+function BattleObjectLayer:lGetDrawNode(nIndex, pLayout)
+    if BattleUtils.XBW_SKILL_TEAM_ATTACK_ARER then
+        if nIndex == nil then
+            nIndex = 100
+        end
+        if pLayout == nil then
+            return
+        end
+        if self._drawNode[nIndex] == nil then
+            self._drawNode[nIndex] = cc.DrawNode:create()
+            self._drawNode[nIndex]._parent = pLayout
+            pLayout:addChild(self._drawNode[nIndex], 99999)
+        else
+            if self._drawNode[nIndex]._parent == pLayout then
+                return self._drawNode[nIndex]
+            end
+            self._drawNode[nIndex]:retain():removeFromParent():addTo(pLayout, 99999):release()
+            self._drawNode[nIndex]._parent = pLayout
+        end
+        return self._drawNode[nIndex] 
+    end
+    return nil
+end
+
+--清除画线对象
+function BattleObjectLayer:lClearDrawNode()
+    for key, var in ipairs(self._drawNode) do
+        if var then
+            var:clear()
+        end
+    end
+end
+
 
 function BattleObjectLayer:_cacheAnimShadow(id, maxFrame)
     self._animShadowCache[id] = {}
@@ -268,6 +357,64 @@ function BattleObjectLayer:initLayer(sceneLayer, uiLayer)
 
     self._skillNameNode:setVisible(false)
     self._skillLine:setVisible(false)
+
+    -- 方阵选中状态框
+    local bg = cc.Node:create()
+    bg = cc.Node:create()
+    -- bg:y2(_3dVertex1)
+    self._uiLayer:addChild(bg)
+    local bg1 = cc.Sprite:createWithSpriteFrameName("head1_battle.png")
+    bg1:setPosition(60,75)
+    bg:addChild(bg1)
+    local icon = cc.Sprite:create()
+    icon:setScale(0.48)
+    icon:setPosition(25, 25)
+    bg1:addChild(icon, -1)
+    bg1:setScale(1.9)
+    local bg2 = cc.Sprite:createWithSpriteFrameName("hp1_battle.png")
+    bg2:setPosition(26,110)
+    bg:addChild(bg2)
+
+    
+    local bg3 = cc.Sprite:createWithSpriteFrameName("trainig_stakeInfoBgBlue_battle.png")
+    bg3:setPosition(0,0)
+    bg3:setAnchorPoint(0,0)
+    bg:addChild(bg3,-1)
+
+    local split = cc.Sprite:createWithSpriteFrameName("globalImageUI12_cutline1.png")
+    split:setPosition(210, 65)
+    split:setScaleY(4.5)
+    bg3:addChild(split)
+
+    local hp = ccui.LoadingBar:create("hp2_battle.png", 1, 100)
+    hp:setPosition(24, 20)
+    bg2:addChild(hp)
+    bg2:setVisible(false)
+
+    -- bg:setScale(0.8)
+    bg.bg1 = bg1
+    bg.bg2 = bg2
+    bg.bg3 = bg3
+    bg.icon = icon
+    bg.hp = hp
+    bg:setLocalZOrder(10000)
+    bg:setPosition(MAX_SCREEN_WIDTH - (ADOPT_IPHONEX and 395 or 345),MAX_SCREEN_HEIGHT-260)
+    self._selectTeamBg = bg
+    self._selectTeamBg:setVisible(false)
+
+    if BattleUtils.XBW_SKILL_DEBUG or BattleUtils.SHOW_SKILL_DEBUG[BattleUtils.CUR_BATTLE_TYPE] then
+        for i = 1, 23 do
+            local label = cc.Label:createWithTTF("", UIUtils.ttfName,debugLabelConfig[i].fontsize or 16)
+            -- label:enableOutline(cc.c4b(0, 0, 0, 255), 1)
+            label:setAnchorPoint(debugLabelConfig[i].anchor or 0, 0.5)
+            label:setColor(debugLabelConfig[i].color1 or cc.c3b(255, 255, 120))
+            -- label:enableOutline(cc.c4b(0, 0, 0, 255), 1)
+            label:setPosition(debugLabelConfig[i].pos)
+            label:setString(debugLabelConfig[i].name)
+            bg:addChild(label)
+            bg["label"..i] = label
+        end
+    end
 end
 
 function BattleObjectLayer:enableBlack()
@@ -790,6 +937,16 @@ function BattleObjectLayer:setVisible(id, visible)
     end
 end
 
+-- 设设置人物动画层的透明度
+function BattleObjectLayer:lSetOpacity(id, nValue)
+    if BC.jump then return end
+    local obj = self._objs[id]
+    local sp = obj.sp
+    if sp and sp.lSetOpacity then
+        sp:lSetOpacity(nValue)
+    end
+end
+
 function BattleObjectLayer:setShadowVisible(id, visible)
     if BC.jump then return end
     local obj = self._objs[id]
@@ -977,7 +1134,7 @@ function BattleObjectLayer:showSkillName(id, one, x, y, camp, name, noAnim)
 
     local labelnode = cc.Node:create()
     local label = LABEL:createWithTTF(name, ttfname, index >= 4 and 18 or 22)
-    local bg = cc.Sprite:createWithSpriteFrameName(showSkillNameBg[camp][index])
+    local bg = cc.Sprite:createWithSpriteFrameName(showSkillNameBg[camp][1])
     bg:addChild(label)
     label:setPosition(bg:getContentSize().width * 0.5, bg:getContentSize().height * 0.5)
     label:setColor(cc.c3b(255, 255, 255))
@@ -1134,6 +1291,87 @@ function BattleObjectLayer:bodyDisappear(ID)
     if BC.jump then return end
     local obj = self._objs[ID]
     obj.sp:setVisible(false)
+end
+
+function BattleObjectLayer:helpTeamsArriving(camp, diedCount)
+    if BC.jump then return end
+    -- ViewManager:getInstance():showTip((camp == 1 and "我方" or "敌方") .. (string.format("再死亡%d个兵团，助战出场", diedCount)))
+end
+
+function BattleObjectLayer:helpTeamsArrived(camp, helpData)
+    if BC.jump then return end
+    local backupNode = cc.Node:create()
+    backupNode:setName("backup_arrived_info")
+    local img_backup = ccui.ImageView:create("backup_img.png", 1)
+    img_backup:setPosition(0, 30)
+    backupNode:addChild(img_backup)
+    local icon_backup = ccui.ImageView:create(helpData.specialSkillIcon .. ".png", 1)
+    icon_backup:setPosition(-90, -30)
+    icon_backup:setScale(0.6)
+    icon_backup:setName("icon_backup")
+    backupNode:addChild(icon_backup)
+    local icon_board = ccui.ImageView:create("hero_skill_bg2_forma.png", 1)
+    icon_board:setPosition(icon_backup:getPosition())
+    icon_board:setScale(0.6)
+    backupNode:addChild(icon_board)
+    local name_backup = ccui.Text:create()
+    name_backup:setColor(cc.c3b(0, 0, 0))
+    name_backup:setFontName(UIUtils.ttfName_Title)
+    name_backup:setString(lang(helpData.name))
+    name_backup:setFontSize(30)
+    name_backup:setPosition(10, icon_board:getPositionY())
+    name_backup:setName("name_backup")
+    backupNode:addChild(name_backup)
+    backupNode:setPosition(300, MAX_SCREEN_HEIGHT * 0.7)
+    backupNode:setCascadeOpacityEnabled(true)
+    backupNode:setOpacity(0)
+    self._uiLayer:addChild(backupNode, 2)
+
+    local realCamp = BC_reverse and 3 - camp or camp
+    if 1 == realCamp then
+        backupNode:setPositionX(400)
+        backupNode:runAction(cc.Sequence:create(
+            cc.Spawn:create(
+                cc.FadeIn:create(0.01),
+                cc.EaseOut:create(cc.MoveBy:create(1.5, cc.p(-130, 0)), 1)
+                ),
+            cc.FadeOut:create(0.01)
+            ))
+        local mc1 = mcMgr:createViewMC("houyuandida1_houyuandida", false, true)
+        mc1:setPlaySpeed(1, true)
+        mc1:setPosition(220 + (1136 - MAX_SCREEN_WIDTH) / 2, MAX_SCREEN_HEIGHT * 0.7)
+        self._uiLayer:addChild(mc1, 1)
+        local mc2 = mcMgr:createViewMC("houyuandida2_houyuandida", false, true, function (  )
+            backupNode:stopAllActions()
+            backupNode:removeFromParent()
+
+        end)
+        mc2:setPlaySpeed(1, true)
+        mc2:setPosition(220 + (1136 - MAX_SCREEN_WIDTH) / 2, MAX_SCREEN_HEIGHT * 0.7)
+        self._uiLayer:addChild(mc2, 1)
+    else
+        backupNode:setPositionX(MAX_SCREEN_WIDTH - 400)
+        backupNode:runAction(cc.Sequence:create(
+            cc.Spawn:create(
+                cc.FadeIn:create(0.01),
+                cc.EaseOut:create(cc.MoveBy:create(1.3, cc.p(130, 0)), 1)
+                ),
+            cc.FadeOut:create(0.01)
+            ))
+        local mc1 = mcMgr:createViewMC("houyuandida3_houyuandida", false, true)
+        mc1:setPlaySpeed(1, true)
+        mc1:setPosition(MAX_SCREEN_WIDTH - (220), MAX_SCREEN_HEIGHT * 0.7)
+        self._uiLayer:addChild(mc1, 1)
+
+        local mc2 = mcMgr:createViewMC("houyuandida4_houyuandida", false, true, function (  )
+            backupNode:stopAllActions()
+            backupNode:removeFromParent()
+        end)
+        mc2:setPlaySpeed(1, true)
+        mc2:setPosition(MAX_SCREEN_WIDTH - (220), MAX_SCREEN_HEIGHT * 0.7)
+        self._uiLayer:addChild(mc2, 1)
+    end
+
 end
 
 -- 通用buff图标动画
@@ -1995,7 +2233,7 @@ function BattleObjectLayer:update(battleTime)
     self:updateTeamHalo()
 
     -- 血条
-    if BattleUtils.XBW_SKILL_DEBUG then
+    if BattleUtils.XBW_SKILL_DEBUG or BattleUtils.SHOW_SKILL_DEBUG[BattleUtils.CUR_BATTLE_TYPE] then
         if self._selectTeam then
             if self._selectTeam.state == ETeamStateDIE then
                 self._selectTeam = nil
@@ -2008,7 +2246,7 @@ function BattleObjectLayer:update(battleTime)
                     local _x = BC_reverse and MAX_SCENE_WIDTH_PIXEL - x or x
                     self._selectTeamBg.x = _x + (self._selectTeam.x - _x) * 0.2
                     self._selectTeamBg.y = y + (self._selectTeam.y - y) * 0.2
-                    self._selectTeamBg:setPosition(self._selectTeamBg.x, self._selectTeamBg.y)
+                    -- self._selectTeamBg:setPosition(self._selectTeamBg.x, self._selectTeamBg.y)
                 end
                 self:setSelectTeamHP()
             end
@@ -2156,12 +2394,12 @@ function BattleObjectLayer:playEffect_skill3(name, zOrder, filpX)
     mc:setPositionAndLocalZorder(MAX_SCREEN_WIDTH * 0.5, MAX_SCREEN_HEIGHT * 0.5, -20 + zOrder)
     if filpX then
         mc:setScale(-1, 1)
-        if ADOPT_IPHONEX then
+        if ADOPT_IPHONEX  or ADOPT_XIAOMIM2 then
             mc:setScaleX(-1.35)
         end 
     else
         mc:setScale(1, 1)
-        if ADOPT_IPHONEX then
+        if ADOPT_IPHONEX  or ADOPT_XIAOMIM2 then
             mc:setScaleX(1.35)
         end 
     end
@@ -2177,18 +2415,19 @@ function BattleObjectLayer:playEffect_skill4(name, zOrder, x, y, filpX)
     mc:setPositionAndLocalZorder(x, y, -1000 + zOrder)
     if filpX then
         mc:setScale(-1, 1)
-        if ADOPT_IPHONEX then
+        if ADOPT_IPHONEX or ADOPT_XIAOMIM2 then
             mc:setScaleX(-1.35)
         end
     else
         mc:setScale(1, 1)
-        if ADOPT_IPHONEX then
+        if ADOPT_IPHONEX or ADOPT_XIAOMIM2 then
             mc:setScaleX(1.35)
         end 
     end
     self._rootLayer:addChild(mc)
     mc:setPlaySpeed(BC.BATTLE_SPEED * MCSPEEDK)
     self:addToMCUpdatePool(mc, false, true)
+    
 end
 
 -- 飞行光影
@@ -2623,6 +2862,7 @@ function BattleObjectLayer:playEffect_totem(name, x, y, isfront, isstand, loop, 
         mc:addEndCallback(function (_, sender)
             sender:clearCallbacks()
             sender:stop()
+            -- sender:removeFromParent()
         end)
     else
         mc:addEndCallback(function (_, sender)
@@ -2688,7 +2928,7 @@ function BattleObjectLayer:playEffect_totem2(name, soldier, pos, isfront, isstan
 end
 
 -- 图腾光影 屏幕
-function BattleObjectLayer:playEffect_totem3(name, zOrder, loop)
+function BattleObjectLayer:playEffect_totem3(name, zOrder, loop, isNotCache)
     if BC.jump then return end
     local mc = mcMgr:createMovieClip(name)
     mc:setPositionAndLocalZorder(MAX_SCREEN_WIDTH * 0.5, MAX_SCREEN_HEIGHT * 0.5, -20 + zOrder)
@@ -2696,21 +2936,65 @@ function BattleObjectLayer:playEffect_totem3(name, zOrder, loop)
     self._totemLayer:addChild(mc)
     mc:setPlaySpeed(BC.BATTLE_SPEED * MCSPEEDK)
 
-    if ADOPT_IPHONEX then
+    if ADOPT_IPHONEX or ADOPT_XIAOMIM2 then
         mc:setScale(1.35)
         mc:setPositionAndLocalZorder(MAX_SCREEN_WIDTH * 0.5, MAX_SCREEN_HEIGHT * 0.5 - 50, -20 + zOrder)
     end 
-    self._mcPool[mc] = mc
-    if loop == 0 then
-        mc:addEndCallback(function (_, sender)
-            sender:clearCallbacks()
-            sender:stop()
-        end)
+    if not isNotCache then
+        --如动画的创建是通过定时器创建的，两个动画一起创建，会出现动画卡住的情况，所以在子物体修改动画这里做了临时调整
+        self._mcPool[mc] = mc
+        if loop == 0 then
+            mc:addEndCallback(function (_, sender)
+                sender:clearCallbacks()
+                sender:stop()
+            end)
+        else
+            mc:addEndCallback(function (_, sender)
+                sender:gotoAndPlay(loop)
+            end)
+        end
     else
-        mc:addEndCallback(function (_, sender)
-            sender:gotoAndPlay(loop)
-        end)
+        mc:setPlaySpeed(1.2)
+        if loop == 0 then
+            mc:addEndCallback(function (_, sender)
+                sender:clearCallbacks()
+                sender:stop()
+                sender:removeFromParent()
+            end)
+        end
     end
+    return mc
+end
+
+-- 图腾光影 单次，由于是单次动画所以结束之后会删除，这个时候不考虑，动画速度的修改
+function BattleObjectLayer:playEffect_totem4(name, x, y, isfront, isstand, scale, dir)
+    if BC.jump then return end
+    local mc = mcMgr:createMovieClip(name)
+    x = BC_reverse and MAX_SCENE_WIDTH_PIXEL - x or x
+    if dir == nil then
+        dir = 1
+    end
+    if scale == nil then
+        scale = 1
+    end
+    local _scale = mcScale * scale
+    mc:setScale(_scale * dir, _scale)
+    self._rootLayer:addChild(mc)
+    mc:setPlaySpeed(BC.BATTLE_SPEED * MCSPEEDK)
+    if isfront then
+        mc:setPositionAndLocalZorder(x, y, -y)
+    else
+        mc:setPositionAndLocalZorder(x, y, -1000)
+    end
+    if isstand then
+        mc:setRotation3D(_3dVertex1)
+    end
+    -- self._mcPool[mc] = mc
+    mc:addEndCallback(function (_, sender)
+        sender:clearCallbacks()
+        sender:stop()
+        sender:removeFromParent()
+    end)
     return mc
 end
 
@@ -2869,19 +3153,20 @@ function BattleObjectLayer:setSelectTeam(team)
         self._selectTeamBg:setVisible(self._selectTeam ~= nil)
         if team then
             self._selectTeamBg.bg1:setSpriteFrame("head"..team.camp.."_battle.png")
+            self._selectTeamBg.bg3:setSpriteFrame("trainig_stakeInfoBg".. (team.camp == 1 and "Blue" or "Red") .."_battle.png")
             if team.headPic then
                 self._selectTeamBg.icon:setSpriteFrame(IconUtils.iconPath .. team.headPic..".jpg")
             end
             self:setSelectTeamHP()
             local width, height = team.soldier[1]:getSize()
-            if BattleUtils.XBW_SKILL_DEBUG then
+            if BattleUtils.XBW_SKILL_DEBUG or BattleUtils.SHOW_SKILL_DEBUG[BattleUtils.CUR_BATTLE_TYPE] then
                 team.soldier[1]:printAttr()
             end
             
-            self._selectTeamBg.bg1:setPosition(0, 60 + height * 0.5)
-            self._selectTeamBg.bg2:setPosition(0, 30 + height * 0.5)
+            -- self._selectTeamBg.bg1:setPosition(20, 50 + height * 0.5)
+            -- self._selectTeamBg.bg2:setPosition(20, 30 + height * 0.5)
             local _x = BC_reverse and MAX_SCENE_WIDTH_PIXEL - self._selectTeam.x or self._selectTeam.x
-            self._selectTeamBg:setPosition(_x, self._selectTeam.y)
+            -- self._selectTeamBg:setPosition(_x, self._selectTeam.y)
             self._selectTeamBg.x, self._selectTeamBg.y = _x, self._selectTeam.y
         end
     end
@@ -2899,16 +3184,17 @@ function BattleObjectLayer:setSelectTeamHP()
             self._selectTeamBg.hp:loadTexture("hp3_battle.png", 1)
         end
     end
-    if BattleUtils.XBW_SKILL_DEBUG then
+    if BattleUtils.XBW_SKILL_DEBUG or BattleUtils.SHOW_SKILL_DEBUG[BattleUtils.CUR_BATTLE_TYPE] then
         local bg = self._selectTeamBg
         if bg then
             if bg.label1 == nil then
-                for i = 1, 16 do
-                    local label = cc.Label:createWithTTF("", UIUtils.ttfName, 16)
-                    label:setColor(cc.c3b(255, 255, 120))
-                    label:enableOutline(cc.c4b(0, 0, 0, 255), 1)
-                    label:setAnchorPoint(0, 0.5)
-                    label:setPosition(50, (i - 1) * 20)
+                for i = 1, 23 do
+                    local label = cc.Label:createWithTTF("", UIUtils.ttfName,16)
+                    label:setAnchorPoint(debugLabelConfig[i].anchor or 0, 0.5)
+                    label:setColor(debugLabelConfig[i].color1 or cc.c3b(255, 255, 120))
+                    -- label:enableOutline(cc.c4b(0, 0, 0, 255), 1)
+                    label:setPosition(debugLabelConfig[i].pos)
+                    label:setString(debugLabelConfig[i].name)
                     label:setGlobalZOrder(1000)
                     bg:addChild(label)
                     bg["label"..i] = label
@@ -2920,25 +3206,141 @@ function BattleObjectLayer:setSelectTeamHP()
             local count = #team.aliveSoldier
             local soldier, def, atkspeed, moveSpeed
             local level = team.level
-            for i = 1, 16 do
+            soldier = team.aliveSoldier[1]
+            if not soldier then 
+                print("no soldier ...")
+                return 
+            end
+            def = (soldier.attr[BC.ATTR_Def] + soldier.attr[BC.ATTR_DefAdd] * (level + 9)) * (1 + soldier.attr[BC.ATTR_DefPro] * 0.01)
+            local baseAtkSpeed = soldier.attr[BC.ATTR_Haste]
+            if baseAtkSpeed >= 0 then
+                atkSpeed = soldier.atkspeed * (1 + BC.K_ASPEED * soldier.attr[BC.ATTR_Haste])
+            else
+                atkSpeed = soldier.atkspeed / (1 - BC.K_ASPEED * soldier.attr[BC.ATTR_Haste])
+            end
+            atkSpeed = tonumber(string.format("%.3f", atkSpeed))
+            moveSpeed = soldier.team.speedMove + soldier.attr[BC.ATTR_MSpeed]
+            local debugValue = 
+            {
+                ItemUtils.formatItemCount(team.damage or 0, "w"),
+                atkSpeed or 0,
+                ItemUtils.formatItemCount(soldier.atk or 0, "w"),
+                ItemUtils.formatItemCount(def or 0, "w"),
+                soldier.attr[BC.ATTR_Crit],
+                (math.floor(soldier.attr[BC.ATTR_DamageInc]) ~= soldier.attr[BC.ATTR_DamageInc] and string.format("%.1f",soldier.attr[BC.ATTR_DamageInc] or 0) or soldier.attr[BC.ATTR_DamageInc] or 0) .. "%",
+                (math.floor(soldier.attr[BC.ATTR_DamageDec]) ~= soldier.attr[BC.ATTR_DamageDec] and string.format("%.1f",soldier.attr[BC.ATTR_DamageDec] or 0) or soldier.attr[BC.ATTR_DamageDec] or 0) .. "%",
+                (math.floor(soldier.attr[BC.ATTR_DecAll]) ~= soldier.attr[BC.ATTR_DecAll] and string.format("%.1f",soldier.attr[BC.ATTR_DecAll] or 0) or soldier.attr[BC.ATTR_DecAll] or 0) .. "%",
+                soldier:getBuffCount() or 0,
+                soldier:getDebuffCount() or 0,
+                count .. "/" .. #team.soldier,
+            } 
+            for i = 11, 21 do
                 label = bg["label"..i]
-                if i > count then
-                    label:setVisible(false)
-                else
-                    soldier = team.aliveSoldier[i]
-                    label:setVisible(true)
-                    def = (soldier.attr[BC.ATTR_Def] + soldier.attr[BC.ATTR_DefAdd] * (level + 9)) * (1 + soldier.attr[BC.ATTR_DefPro] * 0.01)
-                    atkSpeed = soldier.atkspeed * (1 + BC.K_ASPEED * soldier.attr[BC.ATTR_Haste])
-                    moveSpeed = soldier.team.speedMove + soldier.attr[BC.ATTR_MSpeed]
-                    label:setString("hp:"..soldier.HP.."/"..soldier.maxHP.." 攻:"..soldier.atk.." 防:"..def.." 攻速:"..atkSpeed .." 移速:"..moveSpeed 
+
+                label:setColor(debugLabelConfig[i]["color" .. self._selectTeam.camp] or cc.c3b(255, 255, 120))
+                label:setString(debugValue[i-10])
+                -- if i > count then
+                --     label:setVisible(false)
+                -- else
+                --     soldier = team.aliveSoldier[i]
+                --     label:setVisible(true)
+                --     label:setString("hp:"..soldier.HP.."/"..soldier.maxHP.." 攻:"..soldier.atk.." 防:"..def.." 攻速:"..atkSpeed .." 移速:"..moveSpeed 
+                --         .. " 暴击:" .. soldier.attr[BC.ATTR_Crit] .. " 闪避:" .. soldier.attr[BC.ATTR_Dodge] .. " 命中:" .. soldier.attr[BC.ATTR_Hit]
+                --         .. " 破甲:" .. soldier.attr[BC.ATTR_Pen]
+                --         .. " 兵伤:" .. soldier.attr[BC.ATTR_DamageInc]
+                --         .. " 兵免:" .. soldier.attr[BC.ATTR_DamageDec]
+                --         .. " 法免:" .. soldier.attr[BC.ATTR_DecAll]
+                --         )
+                -- end
+            end
+            label22 = bg.label22
+            
+            if BattleUtils.XBW_SKILL_DEBUG then
+                label22:setVisible(not BattleUtils.XBW_SKILL_TEAM_DEBUG) 
+                local buffNames = ""
+                local totalShield = 0
+                for _,buff in pairs(soldier.buff) do
+                    if buff.buffD then
+                        local buffD = buff.buffD
+                        buffNames = buffNames .. "\n " .. buff.buffD.id .. ":".. (buff.buffD.kind or "no kind") .. ":".. (buff.buffD.label or "no kind") .. ":" .. (buff.buffD.buffart or "no art") .. ":" .. (buff.count or "1")
+                        if buffD["kind"] == 0 then
+                            if buff.shield > 0 then
+                                totalShield = totalShield + buff.shield
+                            end
+                        end
+                    end
+                end
+                local buffDeName = ""
+                local deBuffCount, deBuffLabel = soldier:getDebuffCount()
+                for key, var in pairs(deBuffLabel) do
+                    if soldier.buff[key] then
+                        local _buff = soldier.buff[key]
+                        buffDeName = buffDeName .. " " .. _buff.buffD.id
+                    end
+                end
+                -- local AllSkillID = ""
+                -- for k, v in pairs(team.skillTab) do
+                --     local strV = k .. " "
+                --     for key, var in ipairs(v) do
+                --         strV = strV .. " " .. var
+                --     end
+                --     AllSkillID = AllSkillID .. strV .. "\n"
+                -- end
+--                local damageSkill = ""
+--                for key, var in pairs(team.damageSkill) do
+--                    damageSkill = damageSkill .. key .. " " .. var .. "\n"
+--                end
+
+                label22:setString(
+                    " teamID: " .. (team.info.teamid or team.D.id)
+                    .."\n hp:"..soldier.HP.."/"..soldier.maxHP
+                   .. "\n 攻:"..soldier.atk
+                   .. " 防:"..def
+                   .. " 攻速:"..atkSpeed 
+                   .. " 移速:"..moveSpeed 
+                   .. "\n 暴击:" .. soldier.attr[BC.ATTR_Crit] 
+                   .. " 闪避:" .. soldier.attr[BC.ATTR_Dodge] 
+                   .. " 命中:" .. soldier.attr[BC.ATTR_Hit]
+                   .. " 破甲:" .. soldier.attr[BC.ATTR_Pen]
+                   .. "\n 兵伤:" .. soldier.attr[BC.ATTR_DamageInc]
+                   .. " 兵免:" .. soldier.attr[BC.ATTR_DamageDec]
+                   .. " 法免:" .. soldier.attr[BC.ATTR_DecAll]
+                   .. "\n 暴伤:" .. soldier.attr[BC.ATTR_CritD]
+                   .. "  韧性:" .. soldier.attr[BC.ATTR_Resilience]
+                   .. "  吸血:" .. soldier.attr[BC.ATTR_AHP]
+                   .. "  治疗:" .. soldier.attr[BC.ATTR_Heal]
+                   .. "  被疗:" .. soldier.attr[BC.ATTR_BeHeal]
+                   .. "\n 护盾:" .. totalShield
+                   .. "\n buff:" .. (soldier:getBuffCount() or 0)
+                   .. " debuff:" .. (soldier:getDebuffCount() or 0)
+                    -- .. "\n AllSkillID \n" .. AllSkillID
+                    .. "\n debuffId " .. buffDeName
+                   .. "\n buffId :kind:label:art:count" .. buffNames
+                    )
+            else
+                label22:setVisible(false)
+            end
+
+            label23 = bg.label23
+            label23:setVisible(BattleUtils.XBW_SKILL_TEAM_DEBUG)
+            if label23 then
+                local _strContent = ""
+                for key = 1, #team.aliveSoldier do
+                    local soldier = team.aliveSoldier[key]
+                    local def = (soldier.attr[BC.ATTR_Def] + soldier.attr[BC.ATTR_DefAdd] * (level + 9)) * (1 + soldier.attr[BC.ATTR_DefPro] * 0.01)
+                    local atkSpeed = soldier.atkspeed * (1 + BC.K_ASPEED * soldier.attr[BC.ATTR_Haste])
+                    local moveSpeed = soldier.team.speedMove + soldier.attr[BC.ATTR_MSpeed]
+                    _strContent = _strContent .. "hp:"..soldier.HP.."/"..soldier.maxHP.." 攻:"..soldier.atk.." 防:"..def.." 攻速:"..atkSpeed .." 移速:"..moveSpeed 
                         .. " 暴击:" .. soldier.attr[BC.ATTR_Crit] .. " 闪避:" .. soldier.attr[BC.ATTR_Dodge] .. " 命中:" .. soldier.attr[BC.ATTR_Hit]
                         .. " 破甲:" .. soldier.attr[BC.ATTR_Pen]
                         .. " 兵伤:" .. soldier.attr[BC.ATTR_DamageInc]
                         .. " 兵免:" .. soldier.attr[BC.ATTR_DamageDec]
-                        .. " 法免:" .. soldier.attr[BC.ATTR_DecAll]
-                        )
+                        .. " 法免:" .. soldier.attr[BC.ATTR_DecAll] 
+                        .. "\n"
                 end
+                label23:setString(_strContent)
             end
+
         end
     end
 end

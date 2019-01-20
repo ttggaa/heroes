@@ -96,11 +96,14 @@ function HeroSpine:create()
         self._heroCamp = heroCamp
         self._imageName:addChild(heroCamp)
         --self._imageName:setPosition(self._layer:getContentSize().width / 2 + self._heroData.mppos[1], self._layer:getContentSize().height / 2 + self._heroData.mppos[2])
-        if self._isPad then
-            self._imageName:setPosition(self._layer:getContentSize().width / 2 + self._heroData.ipadmppos[1]-heroCampW, self._heroData.ipadmppos[2])
-        else
-            self._imageName:setPosition(self._layer:getContentSize().width / 2 + self._heroData.mppos[1]-heroCampW, self._heroData.mppos[2])
-        end
+        -- if self._isPad then
+        --     self._imageName:setPosition(self._layer:getContentSize().width / 2 + self._heroData.ipadmppos[1]-heroCampW, self._heroData.ipadmppos[2])
+        -- else
+        --     self._imageName:setPosition(self._layer:getContentSize().width / 2 + self._heroData.mppos[1]-heroCampW, self._heroData.mppos[2])
+        -- end
+        local screen_x_offset = (MAX_SCREEN_REAL_WIDTH - 1136) * 0.5 > 0 and (MAX_SCREEN_REAL_WIDTH - 1136) * 0.5 or 0
+        self._imageName:setPosition(MAX_SCREEN_REAL_WIDTH - heroCampW - screen_x_offset*2 - 30, self._heroData.mppos[2])
+
         self._layer:addChild(self._imageName, 20)
 
         self._nameBg = ccui.ImageView:create("name_bg_hero.png", 1)

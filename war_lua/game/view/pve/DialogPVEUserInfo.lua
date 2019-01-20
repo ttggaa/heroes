@@ -103,21 +103,20 @@ function DialogPVEUserInfo:reflashUI(data)
 	end
 
 
-	-- local userInfo = self._modelMgr:getModel("UserModel"):getData()
 	if not data.avatar or data.avatar==0 then--safecode toberemove
-		data.avatar = 1203--safecode toberemove
-	end--safecode toberemove
+		data.avatar = 1203
+	end
 
     local tencetTp = data["qqVip"]
+    local headP = {avatar = data.avatar,level = (data.level or data.lv or "0") ,tp = 4,
+    				avatarFrame = data["avatarFrame"], tencetTp = tencetTp, plvl = data.plvl}
     if not self._avatar then
-        self._avatar = IconUtils:createHeadIconById({avatar = data.avatar,level = (data.level or data.lv or "0") ,tp = 4,avatarFrame = data["avatarFrame"], tencetTp = tencetTp})
-        -- self._avatar:getChildByFullName("iconColor"):loadTexture("globalImageUI6_headBg.png",1)
+        self._avatar = IconUtils:createHeadIconById(headP)
         self._avatar:setPosition(cc.p(-1,-1))
         self._heroHead:addChild(self._avatar)
     else
-        IconUtils:updateHeadIconByView(self._avatar,{avatar = data.avatar,level = (data.level or data.lv or "0") ,tp = 4,avatarFrame = data["avatarFrame"], tencetTp = tencetTp})
-        -- self._avatar:getChildByFullName("iconColor"):loadTexture("globalImageUI6_headBg.png",1)
-    end
+        IconUtils:updateHeadIconByView(self._avatar, headP)
+   end
 
 --    	data["tequan"] = "sq_gamecenter"
 	local tequanImg = IconUtils.tencentIcon[data["tequan"]] or "globalImageUI6_meiyoutu.png"
@@ -200,6 +199,8 @@ function DialogPVEUserInfo:reflashUI(data)
         detailData.uMastery = self._palyerData.uMastery
         detailData.hSkin = self._palyerData.hSkin
         detailData.spTalent = self._palyerData.spTalent
+	    detailData.backups = self._palyerData.backups
+	    detailData.pTalents = self._palyerData.pTalents
 		ViewManager:getInstance():showDialog("rank.RankHeroDetailView", {data=detailData}, true)
     	-- ViewManager:getInstance():showDialog("formation.NewFormationDescriptionView", { iconType = NewFormationIconView.kIconTypeArenaHero, iconId = data.hero.heroId}, true)
     end)
@@ -284,6 +285,8 @@ function DialogPVEUserInfo:createTeams( x,y,teamId,teamData )
     	detailData.treasures = self._palyerData.treasures
     	detailData.runes = self._palyerData.runes
     	detailData.heros = self._palyerData.heros
+    	detailData.battleArray = self._palyerData.battleArray
+        detailData.pTalents = self._palyerData.pTalents
     	ViewManager:getInstance():showDialog("rank.RankTeamDetailView", {data=detailData}, true)
 
 

@@ -324,6 +324,7 @@ function ArrowRankView:createCell(cellData, idx)
 	else
 		vipLab:setVisible(true)
 	end
+	vipLab:setVisible(false)
 
 	--score
 	local score = item:getChildByFullName("score")

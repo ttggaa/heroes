@@ -533,6 +533,12 @@ function AdventureTaskView:showRewardDialog(taskData, resultData)
                 local userphysic = self._userModel:getData().physcal
                 self._viewMgr:checkLevelUpReturnMain(resultData.lvl)
                 ViewManager:getInstance():showDialog("global.DialogUserLevelUp", { preLevel = lastLvl, level = resultData.lvl, prePhysic = lastPhysical, physic = resultData.physcal }, true, nil, nil, false)
+            elseif resultData.plvl then
+                local lastPLvl = self._userModel:getLastPLvl()
+                local lastPTalentPoint = self._userModel:getLastPTalentPoint()
+                local plvl = self._userModel:getData().plvl or 1
+                local pTalentPoint = self._userModel:getData().pTalentPoint or lastPTalentPoint
+                ViewManager:getInstance():showDialog("global.DialogUserParagonLevelUp", {oldPlvl = lastPLvl, plvl = plvl, pTalentPoint = (pTalentPoint - lastPTalentPoint)}, true, nil, nil, false)
             end
         end
     end

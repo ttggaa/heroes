@@ -95,6 +95,7 @@ function HeroCardView:onInit()
     --星图动画a4
     self._heroStarMC = mcMgr:createViewMC("xingtu_xingtu3", true, false)
     self._heroStarMC:setPosition(size.width / 2, size.height / 2)
+    self._heroStarMC:setScale(0.9)
     self._cardImage:addChild(self._heroStarMC)
     self._heroStarMC:setVisible(false)
 

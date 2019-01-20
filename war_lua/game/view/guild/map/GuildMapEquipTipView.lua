@@ -8,6 +8,7 @@
 local GuildMapEquipTipView = class("GuildMapEquipTipView", BaseLayer)
 function GuildMapEquipTipView:ctor(params)
     GuildMapEquipTipView.super.ctor(self)
+    self._userModel = self._modelMgr:getModel("UserModel")
     self._Atts = {}
 end
 
@@ -31,8 +32,25 @@ function GuildMapEquipTipView:setAttrs(id)
         attrPanel:setVisible(false)
         return
     end
+    -- level 
+    local lv = self._userModel:getPlayerLevel() or 20
+    local arrt = self._curComData.arrt
+    local lowLevel = 0
+    local highLevel = 0
+    local lvlArr = {}
+    local leftEquipAttr = {}--self._curComData.arrt[1]    
+    local rightEquipAttr = {}--self._curComData.arrt[2]
+    for k,v in pairs(arrt) do
+        lvlArr = v[1]
+        lowLevel = lvlArr[1]
+        highLevel = lvlArr[2]
+        if lowLevel <= lv and lv <= highLevel then
+            leftEquipAttr = v[2][1]
+            rightEquipAttr = v[2][2]
+            break
+        end
+    end
 
-    local leftEquipAttr = self._curComData.arrt[1]
     local leftTipLab = self:getUI("bg.attrPanel.leftTipLab")
     leftTipLab:setString(lang("SHOW_ATTR_" .. leftEquipAttr[1]))
     
@@ -41,10 +59,9 @@ function GuildMapEquipTipView:setAttrs(id)
     leftLab:setColor(UIUtils.colorTable.ccUIBaseColor2)
 
     
-    if self._curComData.arrt[2] == nil then return end
+    if not rightEquipAttr then return end
 
 
-    local rightEquipAttr = self._curComData.arrt[2]
     local rightTipLab = self:getUI("bg.attrPanel.rightTipLab")
     rightTipLab:setString(lang("SHOW_ATTR_" .. rightEquipAttr[1]))
 

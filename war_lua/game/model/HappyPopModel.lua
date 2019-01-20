@@ -58,6 +58,23 @@ function HappyPopModel:getData()
 	return self._data or {}
 end
 
+function HappyPopModel:setClickTime(isForce)   --单副牌开始的时间（用来最小翻牌结束时间防作弊判断）
+	local curTime = self._userModel:getCurServerTime()
+	local time = SystemUtils.loadAccountLocalData("HAPPY_POP_CLICK_TIME", curTime)
+	if isForce or time == nil then
+		SystemUtils.saveAccountLocalData("HAPPY_POP_CLICK_TIME", curTime)
+	end
+end
+
+function HappyPopModel:getClickTime()
+	local time = SystemUtils.loadAccountLocalData("HAPPY_POP_CLICK_TIME", curTime)
+	return time or 0
+end
+
+function HappyPopModel:clearClickTime()
+	SystemUtils.loadAccountLocalData("HAPPY_POP_CLICK_TIME", nil)
+end
+
 function HappyPopModel:saveLocalData(inDisT)   --退出保存进度
 	if not self._data or not self._data["card"] or next(self._data["card"]) == nil then
 		return
@@ -119,6 +136,7 @@ function HappyPopModel:clearAndRestart()
 	self._data["card"] = {}
     self._data["info"] = {}
 	SystemUtils.saveAccountLocalData("HAPPY_POP_GAME", {})   --清进度
+	SystemUtils.saveAccountLocalData("HAPPY_POP_CLICK_TIME", nil)
 end
 
 --新手引导状态

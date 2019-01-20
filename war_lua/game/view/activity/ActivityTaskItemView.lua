@@ -43,6 +43,7 @@ function ActivityTaskItemView:ctor(params)
     self._tmpShowBuy = params.tmpShowBuy
     self._tmpShowRematinTimes = params.tmpShowRematinTimes
     self._teamModel = self._modelMgr:getModel("TeamModel")
+    -- print("============self._viewType=====",self._viewType)
 end
 
 function ActivityTaskItemView:disableTextEffect(element)
@@ -240,7 +241,7 @@ function ActivityTaskItemView:onInit()
     end
 
     self._layerViewType4._rewards = {}
-    for i = 1, 1 do
+    for i = 1, 2 do
         self._layerViewType4._rewards[i] = {}
         self._layerViewType4._rewards[i]._icon = self:getUI("layer_item_4.layer_reward.layer_item_" .. i)
     end
@@ -372,8 +373,46 @@ function ActivityTaskItemView:onInit()
 
     self:updateUI()
 end
-
+local discountToCn = {
+    "一折","二折","三折",
+    "四折","五折","六折",
+    "七折","八折","九折",
+}
 function ActivityTaskItemView:updateViewType1()
+    if  self._taskData and self._taskData.discount_label then
+        if not self._layerViewType1._btnGet.__flag then
+            local disCountImg = ccui.ImageView:create()
+            disCountImg:loadTexture("globalImageUI6_connerTag_L.png",1)
+            disCountImg:setPosition(29,31)
+            disCountImg:setScale(0.8)
+            self._layerViewType1._btnGet:addChild(disCountImg)
+            local txt = ccui.Text:create()
+            txt:setFontSize(20)
+            txt:setFontName(UIUtils.ttfName)
+            if discountToCn[math.ceil(self._taskData.discount_label/100)] then 
+                txt:setString(discountToCn[math.ceil(self._taskData.discount_label/100)])
+            else
+                txt:setString("") 
+            end
+            txt:setPosition(25,35)
+            txt:setRotation(-45)
+            txt:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
+            disCountImg:addChild(txt,1)
+            self._layerViewType1._btnGet.__flag = disCountImg
+            self._layerViewType1._btnGet.__flagTxt = txt
+        else
+            self._layerViewType1._btnGet.__flag:setVisible(true)
+            if discountToCn[math.ceil(self._taskData.discount_label/100)] then 
+                self._layerViewType1._btnGet.__flagTxt:setString(discountToCn[math.ceil(self._taskData.discount_label/100)])
+            else
+                self._layerViewType1._btnGet.__flagTxt:setString("") 
+            end  
+        end
+    else
+        if self._layerViewType1._btnGet.__flag then
+            self._layerViewType1._btnGet.__flag:setVisible(false)
+        end
+    end
     self._layerViewType1._layerGray:setVisible(0 == self._taskData.statusInfo.status)
     self._layerViewType1._btnGo:setVisible(-1 == self._taskData.statusInfo.status and self._taskData.button > 0)
     self._layerViewType1._btnGet:setVisible(1 == self._taskData.statusInfo.status or (-1 == self._taskData.statusInfo.status and 0 == self._taskData.button))
@@ -555,6 +594,40 @@ function ActivityTaskItemView:updateViewType7()
 end
 
 function ActivityTaskItemView:updateViewType2()
+    if  self._taskData and self._taskData.discount_label then
+        if not self._layerViewType2._btnGet.__flag then
+            local disCountImg = ccui.ImageView:create()
+            disCountImg:loadTexture("globalImageUI6_connerTag_L.png",1)
+            disCountImg:setPosition(29,31)
+            disCountImg:setScale(0.8)
+            self._layerViewType2._btnGet:addChild(disCountImg)
+            local txt = ccui.Text:create()
+            txt:setFontSize(20)
+            txt:setFontName(UIUtils.ttfName)
+            if discountToCn[math.ceil(self._taskData.discount_label/100)] then 
+                txt:setString(discountToCn[math.ceil(self._taskData.discount_label/100)])
+            else
+                txt:setString("") 
+            end
+            txt:setPosition(25,35)
+            txt:setRotation(-45)
+            txt:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
+            disCountImg:addChild(txt,1)
+            self._layerViewType2._btnGet.__flag = disCountImg
+            self._layerViewType2._btnGet.__flagTxt = txt
+        else
+            self._layerViewType2._btnGet.__flag:setVisible(true)
+            if discountToCn[math.ceil(self._taskData.discount_label/100)] then 
+                self._layerViewType2._btnGet.__flagTxt:setString(discountToCn[math.ceil(self._taskData.discount_label/100)])
+            else
+                self._layerViewType2._btnGet.__flagTxt:setString("") 
+            end            
+        end
+    else
+        if self._layerViewType2._btnGet.__flag then
+            self._layerViewType2._btnGet.__flag:setVisible(false)
+        end
+    end
     self._layerViewType2._layerGray:setVisible(0 == self._taskData.statusInfo.status)
     self._layerViewType2._btnGo:setVisible(-1 == self._taskData.statusInfo.status and self._taskData.button > 0)
 	self._layerViewType2._btnGet:setVisible(1 == self._taskData.statusInfo.status or (-1 == self._taskData.statusInfo.status and 0 == self._taskData.button))
@@ -616,6 +689,7 @@ function ActivityTaskItemView:updateViewType2()
     end
 
     local giftContain = self._taskData.exchange_num
+
     for i = 1, --[[#giftContain]]1 do
         local giftItem = --[[1 == #giftContain and self._layerViewType2._consumes[2]._icon or]] self._layerViewType2._consumes[i]._icon
         giftItem:setVisible(true)
@@ -733,6 +807,7 @@ function ActivityTaskItemView:updateViewType2()
             local propsTab = tab:SiegeEquip(itemId)
             local param = {itemId = itemId, level = 1, itemData = propsTab, quality = propsTab.quality, iconImg = propsTab.art, eventStyle = 1}
             itemIcon = IconUtils:createWeaponsBagItemIcon(param)
+            self._layerViewType2._labelReward:setString(lang(propsTab.name) .. "*" .. giftContain[i][3])
         elseif itemType == "rune" then
             local runeData = tab:Rune(itemId)
             itemIcon =IconUtils:createHolyIconById({suitData = runeData})
@@ -776,6 +851,40 @@ function ActivityTaskItemView:updateViewType2()
 end
 
 function ActivityTaskItemView:updateViewType3()
+    if  self._taskData and self._taskData.discount_label then
+        if not self._layerViewType3._btnGet.__flag then
+            local disCountImg = ccui.ImageView:create()
+            disCountImg:loadTexture("globalImageUI6_connerTag_L.png",1)
+            disCountImg:setPosition(29,31)
+            disCountImg:setScale(0.8)
+            self._layerViewType3._btnGet:addChild(disCountImg)
+            local txt = ccui.Text:create()
+            txt:setFontSize(20)
+            txt:setFontName(UIUtils.ttfName)
+            if discountToCn[math.ceil(self._taskData.discount_label/100)] then 
+                txt:setString(discountToCn[math.ceil(self._taskData.discount_label/100)])
+            else
+                txt:setString("") 
+            end
+            txt:setPosition(25,35)
+            txt:setRotation(-45)
+            txt:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
+            disCountImg:addChild(txt,1)
+            self._layerViewType3._btnGet.__flag = disCountImg
+            self._layerViewType3._btnGet.__flagTxt = txt
+        else
+            self._layerViewType3._btnGet.__flag:setVisible(true)
+            if discountToCn[math.ceil(self._taskData.discount_label/100)] then 
+                self._layerViewType3._btnGet.__flagTxt:setString(discountToCn[math.ceil(self._taskData.discount_label/100)])
+            else
+                self._layerViewType3._btnGet.__flagTxt:setString("") 
+            end
+        end
+    else
+        if self._layerViewType3._btnGet.__flag then
+            self._layerViewType3._btnGet.__flag:setVisible(false)
+        end
+    end
     self._layerViewType3._layerGray:setVisible(0 == self._taskData.statusInfo.status)
     self._layerViewType3._btnGo:setVisible(-1 == self._taskData.statusInfo.status and self._taskData.button > 0)
     self._layerViewType3._btnGet:setVisible(1 == self._taskData.statusInfo.status or (-1 == self._taskData.statusInfo.status and 0 == self._taskData.button))
@@ -932,6 +1041,40 @@ end
 
 
 function ActivityTaskItemView:updateViewType4()
+    if  self._taskData and self._taskData.discount_label then
+        if not self._layerViewType4._btnGet.__flag then
+            local disCountImg = ccui.ImageView:create()
+            disCountImg:loadTexture("globalImageUI6_connerTag_L.png",1)
+            disCountImg:setPosition(29,31)
+            disCountImg:setScale(0.8)
+            self._layerViewType4._btnGet:addChild(disCountImg)
+            local txt = ccui.Text:create()
+            txt:setFontSize(20)
+            txt:setFontName(UIUtils.ttfName)
+            if discountToCn[math.ceil(self._taskData.discount_label/100)] then 
+                txt:setString(discountToCn[math.ceil(self._taskData.discount_label/100)])
+            else
+                txt:setString("") 
+            end
+            txt:setPosition(25,35)
+            txt:setRotation(-45)
+            txt:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
+            disCountImg:addChild(txt,1)
+            self._layerViewType4._btnGet.__flag = disCountImg
+            self._layerViewType4._btnGet.__flagTxt = txt
+        else
+            self._layerViewType4._btnGet.__flag:setVisible(true)
+            if discountToCn[math.ceil(self._taskData.discount_label/100)] then 
+                self._layerViewType4._btnGet.__flagTxt:setString(discountToCn[math.ceil(self._taskData.discount_label/100)])
+            else
+                self._layerViewType4._btnGet.__flagTxt:setString("") 
+            end  
+        end
+    else
+        if self._layerViewType4._btnGet.__flag then
+            self._layerViewType4._btnGet.__flag:setVisible(false)
+        end
+    end
     self._layerViewType4._layerGray:setVisible(0 == self._taskData.statusInfo.status)
     self._layerViewType4._btnGo:setVisible(-1 == self._taskData.statusInfo.status and self._taskData.button > 0)
     self._layerViewType4._btnGet:setVisible(1 == self._taskData.statusInfo.status or (-1 == self._taskData.statusInfo.status and 0 == self._taskData.button))
@@ -1021,13 +1164,14 @@ function ActivityTaskItemView:updateViewType4()
     end
 
 
-    for i=1, 1 do
+    for i=1, 2 do
         self._layerViewType4._rewards[i]._icon:setVisible(false)
     end
 
     local giftContain = self._taskData.reward
-    for i = 1, --[[#giftContain]]1 do
-        local giftItem = --[[1 == #giftContain and self._layerViewType4._rewards[2]._icon or]] self._layerViewType4._rewards[i]._icon
+    local rwdNum = math.min(#giftContain, 2)
+    for i = 1, rwdNum do
+        local giftItem = self._layerViewType4._rewards[i]._icon
         giftItem:setVisible(true)
         local itemIcon = giftItem:getChildByTag(self.kRewardItemTag2)
         if itemIcon then itemIcon:removeFromParent() end
@@ -1087,6 +1231,40 @@ function ActivityTaskItemView:updateViewType4()
 end
 
 function ActivityTaskItemView:updateViewType5()
+    if  self._taskData and self._taskData.discount_label then
+        if not self._layerViewType5._btnGet.__flag then
+            local disCountImg = ccui.ImageView:create()
+            disCountImg:loadTexture("globalImageUI6_connerTag_L.png",1)
+            disCountImg:setPosition(29,31)
+            disCountImg:setScale(0.8)
+            self._layerViewType5._btnGet:addChild(disCountImg)
+            local txt = ccui.Text:create()
+            txt:setFontSize(20)
+            txt:setFontName(UIUtils.ttfName)
+            if discountToCn[math.ceil(self._taskData.discount_label/100)] then 
+                txt:setString(discountToCn[math.ceil(self._taskData.discount_label/100)])
+            else
+                txt:setString("") 
+            end
+            txt:setPosition(25,35)
+            txt:setRotation(-45)
+            txt:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
+            disCountImg:addChild(txt,1)
+            self._layerViewType5._btnGet.__flag = disCountImg
+            self._layerViewType5._btnGet.__flagTxt = txt
+        else
+            self._layerViewType5._btnGet.__flag:setVisible(true)
+            if discountToCn[math.ceil(self._taskData.discount_label/100)] then 
+                self._layerViewType5._btnGet.__flagTxt:setString(discountToCn[math.ceil(self._taskData.discount_label/100)])
+            else
+                self._layerViewType5._btnGet.__flagTxt:setString("") 
+            end  
+        end
+    else
+        if self._layerViewType5._btnGet.__flag then
+            self._layerViewType5._btnGet.__flag:setVisible(false)
+        end
+    end
     self._layerViewType5._layerGray:setVisible(0 == self._taskData.statusInfo.status)
     self._layerViewType5._btnGo:setVisible(-1 == self._taskData.statusInfo.status and self._taskData.button > 0)
     self._layerViewType5._btnGet:setVisible(1 == self._taskData.statusInfo.status or (-1 == self._taskData.statusInfo.status and 0 == self._taskData.button))
@@ -1233,6 +1411,40 @@ function ActivityTaskItemView:updateViewType5()
 end
 
 function ActivityTaskItemView:updateViewType6()
+    if  self._taskData and self._taskData.discount_label then
+        if not self._layerViewType6._btnGet.__flag then
+            local disCountImg = ccui.ImageView:create()
+            disCountImg:loadTexture("globalImageUI6_connerTag_L.png",1)
+            disCountImg:setPosition(29,31)
+            disCountImg:setScale(0.8)
+            self._layerViewType6._btnGet:addChild(disCountImg)
+            local txt = ccui.Text:create()
+            txt:setFontSize(20)
+            txt:setFontName(UIUtils.ttfName)
+            if discountToCn[math.ceil(self._taskData.discount_label/100)] then 
+                txt:setString(discountToCn[math.ceil(self._taskData.discount_label/100)])
+            else
+                txt:setString("") 
+            end
+            txt:setPosition(25,35)
+            txt:setRotation(-45)
+            txt:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
+            disCountImg:addChild(txt,1)
+            self._layerViewType6._btnGet.__flag = disCountImg
+            self._layerViewType6._btnGet.__flagTxt = txt
+        else
+            self._layerViewType6._btnGet.__flag:setVisible(true)
+            if discountToCn[math.ceil(self._taskData.discount_label/100)] then 
+                self._layerViewType6._btnGet.__flagTxt:setString(discountToCn[math.ceil(self._taskData.discount_label/100)])
+            else
+                self._layerViewType6._btnGet.__flagTxt:setString("") 
+            end  
+        end
+    else
+        if self._layerViewType6._btnGet.__flag then
+            self._layerViewType6._btnGet.__flag:setVisible(false)
+        end
+    end
     self._layerViewType6._layerGray:setVisible(0 == self._taskData.statusInfo.status)
     self._layerViewType6._btnGo:setVisible(-1 == self._taskData.statusInfo.status and self._taskData.button > 0)
     self._layerViewType6._btnGet:setVisible(1 == self._taskData.statusInfo.status or (-1 == self._taskData.statusInfo.status and 0 == self._taskData.button))

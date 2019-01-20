@@ -15,6 +15,8 @@ function PvpInView:getAsyncRes()
     }
 end
 
+-- local gloryArenaIconBg = {"ti_fenghuang.jpg"}
+
 function PvpInView:getBgName()
     return "bg_001.jpg"
 end
@@ -25,6 +27,12 @@ function PvpInView:setNavigation()
 end
 
 function PvpInView:onTop( )
+    if self._updateSche == nil then
+        self._updateSche = ScheduleMgr:regSchedule(1000, self, function( )
+    	    self:updatePvpIn()
+        end)
+        print("PvpInView:onTop")
+    end 
 	self:updatePvpIn()
 	self:reflashUI()
 end
@@ -35,6 +43,31 @@ function PvpInView:onInit()
     self:addAnimBg()
 	self._scrollView = self:getUI("bg.scrollView")
 	-- self._scrollView:setBounceEnabled(true)
+    local scrollSize = self._scrollView:getContentSize()
+    self._rightArrow = mcMgr:createViewMC("tujianyoujiantou_teamnatureanim", true, false)
+    self._rightArrow:setPosition(self._scrollView:getPositionX() + scrollSize.width,300)
+    self:getUI("bg"):addChild(self._rightArrow, 99)
+
+    self._leftArrow = mcMgr:createViewMC("tujianzuojiantou_teamnatureanim", true, false)
+    self._leftArrow:setPosition(self._scrollView:getPositionX(),300)
+    self:getUI("bg"):addChild(self._leftArrow, 99)
+
+    self._leftArrow:setVisible(false)
+    self._rightArrow:setVisible(true)
+
+    self._scrollView:addEventListener(function(sender, EventType)
+        if EventType == SCROLLVIEW_EVENT_SCROLL_TO_LEFT or EventType == SCROLLVIEW_EVENT_BOUNCE_LEFT then
+            self._leftArrow:setVisible(false)
+            self._rightArrow:setVisible(true)
+        elseif EventType == SCROLLVIEW_EVENT_SCROLL_TO_RIGHT or EventType == SCROLLVIEW_EVENT_BOUNCE_RIGHT then
+            self._leftArrow:setVisible(true)
+            self._rightArrow:setVisible(false)
+        else
+            self._leftArrow:setVisible(true)
+            self._rightArrow:setVisible(true)
+        end
+    end)
+
 	self._hole1 = self:getUI("bg.scrollView.hole1")
     self._hole1.pointIcon = self._hole1:getChildByFullName("pointIcon")
     self._hole1.pointIcon:setVisible(false)
@@ -172,16 +205,61 @@ function PvpInView:onInit()
 	end)
 
 
+	local _isOpen, _openDes, _lvlTip = self:isGloryArenaOpen()
+
+    self._hole4 = self:getUI("bg.scrollView.hole4")
+
+    self:isLocked(self._hole4, not _isOpen, _openDes)
+
+	self._gloryArenaBg = self:getUI("bg.scrollView.hole4.heroBg")
+	self._gloryArenaBg:setVisible(_isOpen)
+
+	self._hole4:setScaleAnimMin(0.9)
+    self._hole4.pointIcon = self._hole4:getChildByFullName("pointIcon")
+    self._hole4.pointIcon:setVisible(false)
+	if _isOpen then
+		self._serverMgr:sendMsg("CrossArenaServer", "enterCrossArena", {},true ,{}, function(resule)
+			self:updateGloryArena()
+		end)
+	else
+		self._serverMgr:sendMsg("CrossArenaServer", "enterCrossArena", {},true ,{}, function(resule)
+		end)
+	end
+    self:registerClickEvent(self._hole4, function()
+--         if _isOpen then
+-- --            self._modelMgr:getModel("GloryArenaModel"):lOpenGloryArena()
+--             self._serverMgr:sendMsg("CrossArenaServer", "enterCrossArena", {},true ,{}, function(resule)
+--                 self._viewMgr:showView("gloryArena.GloryArenaView")
+--             end
+--             )
+--         else
+			
+--         end
+		local _isOpen, _openDes, _lvlTip = self:isGloryArenaOpen()
+		if _isOpen then
+				self._serverMgr:sendMsg("CrossArenaServer", "enterCrossArena", {},true ,{}, function(resule)
+					self._viewMgr:showView("gloryArena.GloryArenaView")
+				end
+			)
+		else
+			self._viewMgr:showTip(_lvlTip or _openDes)
+			self._serverMgr:sendMsg("CrossArenaServer", "enterCrossArena", {},true ,{}, function(resule)
+			end)
+		end
+	end)
+
 	SystemUtils["enablesevenDayAim"]()
     self:reflashUI()
     self:listenReflash("ArenaModel", self.reflashUI)
     self:listenReflash("LeagueModel", self.reflashUI)
-    self:listenReflash("PlayerTodayModel", self.reflashUI)
+	self:listenReflash("PlayerTodayModel", self.reflashUI)
+	self:listenReflash("GloryArenaModel", self.reflashUI)
 
     self._updateSche = ScheduleMgr:regSchedule(1000, self, function( )
     	self:updatePvpIn()
     end)
     self:updatePvpIn()
+
 end
 
 -- 刷新助战英雄
@@ -234,6 +312,48 @@ function PvpInView:updateHeroDuelFeature()
     self._featureBg:getChildByFullName("desLabel"):setString("赛季:" .. month..".01-"..month.."."..daySum)
 end
 
+-- 
+function PvpInView:updateGloryArena()
+	local bIsCross = self._modelMgr:getModel("GloryArenaModel"):bIsCross()
+	local Season = self._modelMgr:getModel("GloryArenaModel"):lGetSeason()
+	local resData = tab:HonorArenaResource(tonumber(Season))
+	local GloryISOpne = self._modelMgr:getModel("GloryArenaModel"):lIsOpen()
+	if GloryISOpne then
+		self._hole4.pointIcon:setVisible(self._modelMgr:getModel("GloryArenaModel"):bIsCanMainTips())
+	end
+--	print("+++++++++++++++++++++", Season)
+	if resData then
+		self._gloryArenaBg:getChildByFullName("titleName"):setString(lang(resData.Name) or "涅槃")
+		self._gloryArenaBg:getChildByFullName("desLabel"):setString("赛季:" .. self._modelMgr:getModel("GloryArenaModel"):lGetTimeShow(2))
+		self._gloryArenaBg:getChildByFullName("titleTxt"):setString("本期奖励:")
+		local icon = self._gloryArenaBg:getChildByFullName("icon")
+		icon:ignoreContentAdaptWithSize(false)
+		icon:loadTexture((resData.Resource1 or "ti_fenghuang") .. ".jpg", ccui.TextureResType.plistType)
+
+		if icon.headIcon == nil then
+			icon.headIcon = ccui.ImageView:create((resData.Resource2 or "avatarFrame_76") .. ".png", ccui.TextureResType.plistType)
+			icon.headIcon:setContentSize(icon:getContentSize())
+			icon.headIcon:setAnchorPoint(cc.p(0, 0))
+            icon.headIcon:setScale(1.1)
+            local _pos = cc.p(-6, -4)
+--            local _pos = cc.p(-12, -15)
+            if resData.offect then
+                _pos = cc.p(resData.offect[1] or -6, resData.offect[2] or -4)
+            end
+            icon.headIcon:setPosition(_pos)
+			icon:addChild(icon.headIcon)
+		end
+		icon:setScale(0.5)
+	end
+
+    -- 赛季时间
+    -- local nowTime = self._modelMgr:getModel("UserModel"):getCurServerTime()
+    -- local year = tonumber(TimeUtils.date("%Y",nowTime))
+    -- local month = TimeUtils.date("%m",nowTime)
+    -- local daySum = TimeUtils.getDaysOfMonth(nowTime)
+    -- self._gloryArenaBg:getChildByFullName("desLabel"):setString("赛季:" .. month..".01-"..month.."."..daySum)
+end
+
 function PvpInView:updatePvpIn( )
 	if self._modelMgr:getModel("LeagueModel"):isMondayRest() then
 		if not self._mondayRest then
@@ -266,6 +386,23 @@ function PvpInView:updatePvpIn( )
 			self:reflashUI()
 		end
 	end
+
+    local function gloryCallback()
+        local gloryArenaMode = ModelManager:getInstance():getModel("GloryArenaModel")
+        if not tolua.isnull(self) and  self.isGloryArenaOpen and self.isLocked and self.getUI then
+            local _isOpen, _openDes, _lvlTip = self:isGloryArenaOpen()
+            local hole4 = self:getUI("bg.scrollView.hole4")
+            self:isLocked(hole4, not _isOpen, _openDes)
+            if _isOpen and self.updateGloryArena then
+                self:updateGloryArena()
+			end
+			local gloryArenaBg = self:getUI("bg.scrollView.hole4.heroBg")
+			if gloryArenaBg then
+				gloryArenaBg:setVisible(_isOpen)
+			end
+        end
+    end
+    self._modelMgr:getModel("GloryArenaModel"):lCheckTime(gloryCallback)
 end
 
 function PvpInView:isSysOpen( sOpenId, desLab )
@@ -303,7 +440,8 @@ function PvpInView:isSysOpen( sOpenId, desLab )
 				if dayCountDown < 86400 then
 					local leagueOpen = self:isLeagueOpen()
 					local heroDuelOpen = self:isHeroDuelOpen()
-					if leagueOpen and heroDuelOpen then 
+					local gloryArenaOpen = self:isGloryArenaOpen()
+					if leagueOpen and heroDuelOpen and gloryArenaOpen then 
 						ScheduleMgr:unregSchedule(self._daySche)
 						self._daySche = nil 
 					end
@@ -327,6 +465,16 @@ function PvpInView:isSysOpen( sOpenId, desLab )
 				end)
 			end
 		end
+
+		if sOpenId == 106 then
+			openDes = self:updateGloryArenaTime(serverBeginTime,openDay,serverHour,openTimeNotice)
+			if not self._gloryArenaOpenSch then
+				self._gloryArenaOpenSch = ScheduleMgr:regSchedule(1000, self, function( )
+					self:updateGloryArenaTime(serverBeginTime,openDay,serverHour,openTimeNotice)
+				end)
+			end
+		end
+
 	end 
 	local lvlTip
 	if isOpen then -- 后判断等级
@@ -340,6 +488,8 @@ function PvpInView:isSysOpen( sOpenId, desLab )
 				lvlTip = lang("TIP_LEAGUE")
 			elseif sOpenId == 104 then
 				lvlTip = lang("TIP_HERODUEL")
+            elseif sOpenId == 106 then
+                lvlTip = lang("honorArena_tip_7")
 			end
 		end
 	end
@@ -350,11 +500,28 @@ function PvpInView:isSysOpen( sOpenId, desLab )
 			lvlTip = lang("LEAGUETIP_18")
 		end
 	end
+
+	if sOpenId == 106 and isOpen then
+		if not self._modelMgr:getModel("GloryArenaModel"):lIsCurTimeOpen() then
+			isOpen = false
+			-- openDes = "即将开启"
+			lvlTip = lang("honorArena_tip_6")
+		end
+        if isOpen then
+            isOpen, lvlTip = self._modelMgr:getModel("GloryArenaModel"):lCheckAdditionalContion()
+        end
+	end
+
 	return isOpen,openDes,lvlTip -- false,"暂未开启",
 end
 
 function PvpInView:isLeagueOpen(sOpenId,desLab)
 	local isOpen,openDes,lvlTip = self:isSysOpen(101,self:getUI("bg.scrollView.hole2.lockbg.des")) 
+	return isOpen,openDes,lvlTip -- false,"暂未开启",
+end
+
+function PvpInView:isGloryArenaOpen(sOpenId,desLab)
+	local isOpen,openDes,lvlTip = self:isSysOpen(106,self:getUI("bg.scrollView.hole4.lockbg.des")) 
 	return isOpen,openDes,lvlTip -- false,"暂未开启",
 end
 
@@ -434,6 +601,41 @@ function PvpInView:updateHeroDuelTime( serverBeginTime,openDay,serverHour,openTi
 	return openDes
 end
 
+function PvpInView:updateGloryArenaTime( serverBeginTime,openDay,serverHour,openTimeNotice )
+	local hole3DesLab
+	hole3DesLab = self:getUI("bg.scrollView.hole4.lockbg.des")
+	local nowTime = ModelManager:getInstance():getModel("UserModel"):getCurServerTime()
+	-- local leftTime = openDay*86400 - (nowTime-serverBeginTime) - (serverHour-5)*3600
+	local openHour = string.format("%02d:00:00",openTimeNotice)
+	local openTime = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(serverBeginTime + openDay*86400,"%Y-%m-%d " .. openHour))
+    local leftTime = openTime - nowTime
+	-- leftTime = leftTime-1
+	-- print("···",math.floor(leftTime/3600),math.floor(leftTime%3600/60),math.floor(leftTime%60))
+	local openDes 
+	if leftTime < 0 and self._gloryArenaOpenSch then
+		local isOpen, openDes = self:isGloryArenaOpen()
+		hole3DesLab:setString(openDes)
+		hole3DesLab:setVisible(true)
+		self:isLocked(self._hole3,not isOpen)
+		if isOpen then
+	        self:updateGloryArena()
+	    end
+		ScheduleMgr:unregSchedule(self._gloryArenaOpenSch)
+		self._gloryArenaOpenSch = nil 
+		self._gloryArenaBg:setVisible(isOpen)
+	else
+		openDes = --"据玩法开启还有" .. math.floor(leftTime/3600) .. ":" .. math.floor(leftTime%3600/60) .. ":" .. math.floor(leftTime%60)
+		string.format("距玩法开启还有%02d:%02d:%02d",math.floor(leftTime/3600),
+			math.floor(leftTime%3600/60),math.floor(leftTime%60))
+	end
+	if hole3DesLab then
+		hole3DesLab:setString(openDes)
+		hole3DesLab:getVirtualRenderer():setMaxLineWidth(180)
+		hole3DesLab:setTextHorizontalAlignment(1)
+	end
+	return openDes
+end
+
 function PvpInView:isLocked( node,lock,lockDes )
 	local lockbg = node:getChildByFullName("lockbg")
 	if not lockbg then return end
@@ -457,6 +659,15 @@ end
 -- 第一次进入调用, 有需要请覆盖
 function PvpInView:onShow()
 	self:updatePvpIn()
+end
+
+-- 第一次进入调用, 有需要请覆盖
+function PvpInView:onHide()
+    if self._updateSche then
+        print("PvpInView:onHide")
+		ScheduleMgr:unregSchedule(self._updateSche)
+		self._updateSche = nil 
+	end
 end
 
 -- 接收自定义消息
@@ -486,10 +697,25 @@ function PvpInView:reflashUI(data)
 	else
 	   self._hole2.pointIcon:setVisible(false)
 	end
+    if self._hole4 then
+        local _isOpen, _openDes, _lvlTip = self:isGloryArenaOpen()
+        self:isLocked(self._hole4, not _isOpen, _openDes)
+	    self._gloryArenaBg:setVisible(_isOpen)
+        self._hole4.pointIcon:setVisible(false)
+	    if _isOpen then
+		    self:updateGloryArena()
+	    end
+    end
+
+--    local gloryArenaMode = ModelManager:getInstance():getModel("GloryArenaModel")
+--	local GloryISOpne = gloryArenaMode:lIsOpen()
+--	if GloryISOpne then
+--		self._hole4.pointIcon:setVisible(gloryArenaMode:bIsCanMainTips())
+--	end
 end
 function PvpInView:beforePopAnim()
 	PvpInView.super.beforePopAnim(self)
-	for i=1,3 do
+	for i=1,4 do
 		self["_hole" .. i]:setCascadeOpacityEnabled(true, true)
 		self["_hole" .. i]:setOpacity(0)
 		self["_hole" .. i]:setScaleAnim(true)
@@ -513,7 +739,7 @@ function PvpInView:popAnim(callback)
 	local fadeInTime = 0.2
 	local moveDis = 200
 	local springDis = 10
-	for i=1,3 do
+	for i=1,4 do
 		local hole = self["_hole" .. i]
 		local holeInitPos = cc.p(hole:getPositionX(),hole:getPositionY())
 		local holeSpringPos = cc.p(hole:getPositionX()-springDis,hole:getPositionY())
@@ -573,6 +799,10 @@ function PvpInView:onDestroy( )
 	if self._updateSche then
 		ScheduleMgr:unregSchedule(self._updateSche)
 		self._updateSche = nil 
+	end
+	if self._gloryArenaOpenSch then
+		ScheduleMgr:unregSchedule(self._gloryArenaOpenSch)
+		self._gloryArenaOpenSch = nil 
 	end
 	PvpInView.super.onDestroy(self)
 end

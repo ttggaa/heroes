@@ -15,6 +15,7 @@ function PurgatoryModel:ctor()
     self._careerList = {}   -- 已领生涯奖励的层数
     self._careerStageId = 0    -- 历史通过最高关卡
     self._friendList = {}   -- 基友闯关信息
+    self._historyMaxStageId = 0     --历史最高层
 end
 
 function PurgatoryModel:setData(data, isAll)
@@ -46,10 +47,10 @@ function PurgatoryModel:setData(data, isAll)
         self._maxBuffStage = 0
     end
 
-    -- if data.maxi then    字段改为acci
-    --     self._careerStageId = data.maxi
-    --     data.maxi = nil
-    -- end
+    if data.maxi then
+        self._historyMaxStageId = data.maxi
+        data.maxi = nil
+    end
 
     if data.acci then
         self._careerStageId = data.acci
@@ -62,6 +63,10 @@ function PurgatoryModel:setData(data, isAll)
     end
 
     self:reflashData()
+end
+
+function PurgatoryModel:getHistoryMaxStageId(  )
+    return self._historyMaxStageId
 end
 
 function PurgatoryModel:setFriendData( list )
@@ -113,6 +118,26 @@ function PurgatoryModel:updateData( inData )
 	self:reflashData()
 end
 
+function PurgatoryModel:isHaveRedPrompt(  )
+    -- 是否有可领取奖励
+    local isOpen = self:isOpenPurgatory()
+    if not isOpen then
+        return false
+    end
+    
+    local careerCfg = clone(tab.purAccuReward)
+    for k, v in pairs(careerCfg) do
+        local floorNum = v.floor
+        if floorNum <= self._careerStageId then
+            local isGetReward = self._careerList[tostring(v.id)]
+            if not isGetReward then
+                return true
+            end
+        end
+    end
+    return false
+end
+
 function PurgatoryModel:getHighScoreStage(  )
     local hscore = self._userModel:getData().hScore
     local result = 1
@@ -147,7 +172,7 @@ function PurgatoryModel:showBuffSelectDialog( stageId, callback )
     --stage
     if stageId and stageId == self._curStage then
         local sData = self._stageInfos[stageId]
-        if sData and sData.buffs and table.nums(sData.buffs) == 3 then
+        if sData and sData.buffs then
             self._viewMgr:showDialog("purgatory.PurgatoryBuffSelectDialog", {buff = clone(sData), callback = callback})
         end
         return
@@ -174,7 +199,7 @@ function PurgatoryModel:showBuffSelectDialog( stageId, callback )
         local completeList = {}
         for k, v in pairs(buffList) do
             local sData = self._stageInfos[v]
-            if sData and sData.buffs and table.nums(sData.buffs) == 3 then
+            if sData and sData.buffs then
                 table.insert(completeList, clone(sData))
             end
         end

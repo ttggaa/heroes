@@ -37,7 +37,9 @@ local labelTag = {
 	eliteBtn = 3,
 }
 local titlePos = {
-	[912] = {bgPos = {140,580},txtPos={315,510}}
+	[912] = {bgPos = {140,580},txtPos={315,510}},
+	[913] = {bgPos = {734,582},txtPos={315,510},txtVisble=0},
+    [914] = {bgPos = {430,570},txtPos={180,565}}
 }
 local normalColor = cc.c4b(78,50,13,255)
 local normalOutColor = cc.c4b(30, 75, 172, 255)
@@ -122,6 +124,9 @@ function ActivityCarnival:onInit()
     	local pos = titlePos[self._acId]
     	title_red_bg:setPosition(pos.bgPos[1], pos.bgPos[2])
 		title_img:setPosition(pos.txtPos[1], pos.txtPos[2])
+		if pos.txtVisble and pos.txtVisble == 0 then	
+		 	title_img:loadTexture("globalImageUI6_meiyoutu.png",1) 	
+		end
 	end
         
     local pumpkin908 = self:getUI("bg.pumpkin908")
@@ -283,8 +288,8 @@ function ActivityCarnival:onInit()
 	bubble1:setSwallowTouches(false)
 	bubble3:setSwallowTouches(false)
 
-	-- 春节嘉年华 屏蔽气泡逻辑
-	if self._acId ~= 912 then
+	-- 春节嘉年华 屏蔽气泡逻辑 914嘉年华屏蔽气泡
+	if self._acId ~= 912 and self._acId ~= 914 then
 		self:addBubbles(self._targetBtn)
 	else
 		self._isHideBubble = true
@@ -1739,6 +1744,48 @@ function ActivityCarnival:jumpToView28()
     end
 
     self._viewMgr:showView("pokedex.PokedexView")
+end
+-- 前往圣徽 button == 29
+function ActivityCarnival:jumpToView29() 
+	if not SystemUtils:enableHoly() then
+        self._viewMgr:showTip(lang("TIP_rune"))
+        return 
+    end
+    self._viewMgr:showView("team.TeamHolyView", {})
+end
+-- 前往炼狱 button == 30
+function ActivityCarnival:jumpToView30() 
+	local purModel = self._modelMgr:getModel("PurgatoryModel")
+    purModel:showPurgatoryView()
+end
+
+-- 前往战阵
+function ActivityCarnival:jumpToView31()
+    if not SystemUtils:enableBattleArray()  then
+        self._viewMgr:showTip(lang("TIP_BattleArray"))
+        return
+    end
+    self._viewMgr:showView("battleArray.BattleArrayEnterView")
+end
+
+-- 前往后援
+function ActivityCarnival:jumpToView32()
+    if not SystemUtils:enableBackup() then
+        self._viewMgr:showTip(lang("TIP_Backup"))
+        return
+    end
+    self._modelMgr:getModel("BackupModel"):showBackupGradeView()
+end
+
+-- 前往炼金工坊
+function ActivityCarnival:jumpToView33()
+    if not SystemUtils:enableAlchemy()  then
+        self._viewMgr:showTip(lang("TIP_Alchemy"))
+        return
+    end
+    self._serverMgr:sendMsg("AlchemyServer", "getInfo", {}, true, {}, function(result)
+        self._viewMgr:showView("MF.MFAlchemyView", {})
+    end)
 end
 
 -- 全目标数字变化动画

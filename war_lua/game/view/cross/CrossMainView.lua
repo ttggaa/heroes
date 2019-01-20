@@ -340,7 +340,7 @@ end
 
 function CrossMainView:updateAdvance() 
     local arenaData = self._crossModel:getOpenArenaData()
-    dump(arenaData)
+    -- dump(arenaData)
     local state = self._crossModel:getOpenState()
 
     local arenaName = self:getUI("leftAdvance.arenaName")
@@ -648,7 +648,7 @@ function CrossMainView:updateArenaWin(inView, colorValue, indexId)
     end
     playBg:setVisible(true)
     aNameBg:setVisible(true)
-    local param = {avatar = playData.avatar, level = playData.lv, tp = 4, avatarFrame = playData["avatarFrame"]}
+    local param = {avatar = playData.avatar, level = playData.lv, tp = 4, avatarFrame = playData["avatarFrame"], plvl = playData.plvl}
     local icon = inView.headIcon
     if not icon then
         icon = IconUtils:createHeadIconById(param)
@@ -713,6 +713,7 @@ function CrossMainView:enterCrossPK(region)
     self._serverMgr:sendMsg("CrossPKServer", "enterCrossPK", param, true, {}, function (result)
         local tabSelect = 2
         local soloData = self._crossModel:getSoloArenaData(arenaType)
+        local weakNpcData = self._crossModel:getWeakNpcData(arenaType)
         if soloData == false then
             tabSelect = 1
         else
@@ -729,9 +730,18 @@ function CrossMainView:enterCrossPK(region)
                     end
                 end)
             end
+            if not weakNpcData then
+                local tparam = {region = arenaType}
+                self._serverMgr:sendMsg("CrossPKServer", "getWeakNpcData", tparam, true, {}, function ( result )
+                    local weakNpcData = self._crossModel:getWeakNpcData(arenaType)
+                    if weakNpcData == nil then
+                        tabSelect = 1
+                    end
+                end)
+            end
         end
 
-        dump(result, "result==========", 10)
+        -- dump(result, "result==========", 10)
         UIUtils:reloadLuaFile("cross.CrossPKView")
         self._viewMgr:showView("cross.CrossPKView", {arenaId = region, defReport = 2, tabSelect = tabSelect})
     end)
@@ -802,7 +812,7 @@ function CrossMainView:getCrossPKInfo()
     end
     
     self._serverMgr:sendMsg("CrossPKServer", "getCrossPKInfo", {}, true, {}, function (result)
-        dump(result)
+        -- dump(result)
         self:getCrossPKInfoFinish(result)
     end, function(errorId)
         errorId = tonumber(errorId)
@@ -830,7 +840,7 @@ function CrossMainView:getRankList()
     local region = 2
     local param = {region = region, start = 1}
     self._serverMgr:sendMsg("CrossPKServer", "getRankList", param, true, {}, function(result) 
-        dump(result)
+        -- dump(result)
         UIUtils:reloadLuaFile("cross.CrossRankDialog")
         self._viewMgr:showDialog("cross.CrossRankDialog", {arenaType = region},true)
     end)

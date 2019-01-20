@@ -160,7 +160,8 @@ function DialogArenaUserInfo:reflashUI(data)
 
     local tencetTp = data["qqVip"]
     if not self._avatar then
-        self._avatar = IconUtils:createHeadIconById({avatar = data.avatar,level = data.lv or "0" ,tp = 4,avatarFrame=data["avatarFrame"], tencetTp = tencetTp}) 
+    	local headP = {avatar = data.avatar,level = data.lv or 0 ,tp = 4,avatarFrame=data["avatarFrame"], plvl = data["plvl"], tencetTp = tencetTp}
+        self._avatar = IconUtils:createHeadIconById(headP) 
         -- self._avatar:getChildByFullName("iconColor"):loadTexture("globalImageUI6_headBg.png",1)
         self._avatar:setPosition(cc.p(-1,-1))
         self._heroHead:addChild(self._avatar)
@@ -259,7 +260,14 @@ function DialogArenaUserInfo:reflashUI(data)
     self:registerClickEvent(icon,function( )
     	local detailData = {}
     	detailData.heros = self._palyerData.hero
-    	detailData.heros.heroId = self._palyerData.formation.heroId
+    	local heroId = 60001
+    	if self._palyerData.formation 
+    		and self._palyerData.formation.heroId
+    		and 0 ~= self._palyerData.formation.heroId
+    	then
+			heroId = self._palyerData.formation.heroId
+    	end
+    	detailData.heros.heroId = heroId
     	if self._palyerData.globalSpecial and self._palyerData.globalSpecial ~= "" then
     		detailData.globalSpecial = self._palyerData.globalSpecial
     	end
@@ -272,6 +280,8 @@ function DialogArenaUserInfo:reflashUI(data)
 	    detailData.uMastery = self._palyerData.uMastery
 	    detailData.hSkin = self._palyerData.hSkin
 	    detailData.spTalent = self._palyerData.spTalent
+	    detailData.backups = self._palyerData.backups
+	    detailData.pTalents = self._palyerData.pTalents
     	-- ViewManager:getInstance():showDialog("formation.NewFormationDescriptionView", { iconType = NewFormationIconView.kIconTypeArenaHero, iconId = data.formation.heroId}, true)
     	ViewManager:getInstance():showDialog("rank.RankHeroDetailView", {data=detailData}, true)
     end)
@@ -282,19 +292,32 @@ function DialogArenaUserInfo:reflashUI(data)
 	local iconSize = 93
 	local boardHeight = self._scrollView:getContentSize().height
 	local idx = 1
-	-- dump(data.teams)
 	local teams = data.teams or {}
 	local item
-	for teamId,team in pairs(teams) do
-		x = (idx-1)%col*iconSize+offsetx
-		y = boardHeight- (math.floor((idx-1)/col+1)*iconSize)+offsety
-		team.teamId = tonumber(teamId)
-		item = self:createTeams(x,y,tonumber(teamId),team)
-		idx=idx+1
-		item:setScale(0.73)
-		item:setPosition(x,y)
-		self._scrollView:addChild(item)
+	for i = 1, 8 do
+		local teamId = formationData["team" .. i]
+		if teamId and teamId ~= 0 then
+			local team = teams[tostring(teamId)]
+			x = (idx-1)%col*iconSize+offsetx
+			y = boardHeight- (math.floor((idx-1)/col+1)*iconSize)+offsety
+			team.teamId = tonumber(teamId)
+			item = self:createTeams(x,y,tonumber(teamId),team)
+			idx=idx+1
+			item:setScale(0.73)
+			item:setPosition(x,y)
+			self._scrollView:addChild(item)
+		end
 	end
+	-- for teamId,team in pairs(teams) do
+	-- 	x = (idx-1)%col*iconSize+offsetx
+	-- 	y = boardHeight- (math.floor((idx-1)/col+1)*iconSize)+offsety
+	-- 	team.teamId = tonumber(teamId)
+	-- 	item = self:createTeams(x,y,tonumber(teamId),team)
+	-- 	idx=idx+1
+	-- 	item:setScale(0.73)
+	-- 	item:setPosition(x,y)
+	-- 	self._scrollView:addChild(item)
+	-- end
 	local teamMaxNum = tab:UserLevel(tonumber(data.lv or data.level)).num
 	for i = idx ,8 do
 		x = (idx-1)%col*iconSize+offsetx
@@ -336,6 +359,31 @@ function DialogArenaUserInfo:reflashUI(data)
     	weaponPanel:setVisible(false)
 		self._heroName:setVisible(true)    	
     end 
+
+    local helpTeams = data.helpTeams or {}
+    local btn_backup = self:getUI("bg.info_panel.btn_backup")
+    btn_backup:setVisible(false)
+    local backupData = formationData.backupTs or {}
+    local bid = formationData.bid
+    local bidData = clone(backupData[tostring(bid)])
+    if bid and bidData then
+    	for i = 1, 3 do
+    		local teamId = bidData["bt" .. i]
+    		if teamId and teamId ~= 0 then
+    			local teamData = helpTeams[tostring(teamId)]
+    			if teamData == nil then
+    				teamData = teams[tostring(teamId)]
+    			end
+    			bidData["btData" .. i] = clone(teamData)
+    		end
+    	end
+    	local growBackups = data.backups or {}
+    	local growData = growBackups[tostring(bid)] or {}
+    	btn_backup:setVisible(true)
+    	self:registerClickEvent(btn_backup, function( )
+    		self._viewMgr:showDialog("backup.BackupUserInfoDialog",  {bid = bid, bidData = bidData, growData = growData, playerData = self._palyerData})
+    	end)
+    end
 
 end
 
@@ -434,7 +482,14 @@ function DialogArenaUserInfo:createTeams( x,y,teamId,teamData )
 	-- dump(teamData)
 	local teamD = tab:Team(teamId)
 	-- print("===========self._palyerData.formation.heroId,teamId=>",self._palyerData.formation.heroId,teamId)
-	local _,changeId = TeamUtils.changeArtForHeroMasteryByData(self._palyerData.hero,self._palyerData.formation.heroId,teamId)
+	local heroId = 0
+	if self._palyerData.formation 
+		and self._palyerData.formation.heroId
+		and 0 ~= self._palyerData.formation.heroId
+	then
+		heroId = self._palyerData.formation.heroId
+	end
+	local _,changeId = TeamUtils.changeArtForHeroMasteryByData(self._palyerData.hero,heroId,teamId)
 	-- print("===========cahngeId=========",changeId)
 	if changeId then
 		teamD = tab:Team(changeId)
@@ -451,6 +506,8 @@ function DialogArenaUserInfo:createTeams( x,y,teamId,teamData )
     	detailData.treasures = self._palyerData.treasures
     	detailData.runes = self._palyerData.runes
     	detailData.heros = self._palyerData.heros
+    	detailData.battleArray = self._palyerData.battleArray
+    	detailData.pTalents = self._palyerData.pTalents
     	ViewManager:getInstance():showDialog("rank.RankTeamDetailView", {data=detailData}, true)
     	-- ViewManager:getInstance():showDialog("formation.NewFormationDescriptionView", { iconType = NewFormationIconView.kIconTypeArenaTeam, iconId = teamId}, true)
     end})

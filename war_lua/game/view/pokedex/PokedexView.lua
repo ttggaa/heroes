@@ -6,7 +6,7 @@
 --]]
 
 local PokedexView = class("PokedexView", BaseView)
-local pokedexMax = 14
+local pokedexMax = 15
 function PokedexView:ctor(params)
     PokedexView.super.ctor(self)
     self._pokedex = {}
@@ -137,8 +137,7 @@ function PokedexView:setPokedexFormation()
     local pfBtn = self:getUI("organizeBg.pfBtn")
     self:registerClickEvent(pfBtn, function()
         local pFormation = self._pokedexModel:getPFormation()
-        UIUtils:reloadLuaFile("pokedex.PokedexSFromDialog")
-        self._viewMgr:showDialog("pokedex.PokedexSFromDialog", {data = pFormation, callback = callback})
+        self._modelMgr:getModel("FormationModel"):showFormationEditView({data = pFormation, isOnly = "pokedex", callback = callback})
     end)
     local changeName = self:getUI("organizeBg.changeName")
     self:registerClickEvent(changeName, function()

@@ -15,6 +15,7 @@ end
 function GuildMapServer:onGetJReward(result, error)
 	if error~=0 then
 		self:handleErrorCode(error)
+		return
 	end
 	self:handleAboutServerData(result, true)
 	self:callback(result)
@@ -1131,6 +1132,65 @@ function GuildMapServer:onSphinxAfter(result, error)
     guildMapModel:updateEleData(result, false)
     self:handleAboutServerData(result)
     self:callback(result, error)
+end
+
+function GuildMapServer:onUseTMap(result, error)
+	if error~=0 then
+		if self:handleErrorCode(error) then return end
+		return
+	end
+	local mapList = result.mapList
+	if self:checkPushExcludeUser(mapList) then return end
+	self._guildMapModel:addData(mapList, true)
+	
+	self._guildMapModel:setTreasureData(result.tMap)
+	self:handleAboutServerData(result, true)
+	self:callback(result)
+end
+
+function GuildMapServer:onQuitTMap(result, error)
+	if error~=0 then
+		self:handleErrorCode(error)
+		return
+	end
+	self:handleAboutServerData(result, true)
+	self._guildMapModel:clearTreasureState()
+	self:callback(result)
+end
+
+function GuildMapServer:onGetTMapReward(result, error)
+	if error~=0 then
+		self:handleErrorCode(error)
+        self:callback(result, error)
+		return
+	end
+	self:handleAboutServerData(result, true)
+	self._guildMapModel:clearTreasureState()
+	self:callback(result)
+end
+
+function GuildMapServer:onTMapPveBefore(result, error)--藏宝图PVE战斗前请求
+	if error ~= 0 then
+        self:callback(result, error)
+		if self:handleErrorCode(error) then return end
+		return
+	end
+	self:handleAboutServerData(result)
+	self:callback(result)
+end
+
+function GuildMapServer:onTMapPveAfter(result, error)
+	if error ~= 0 then
+		if self:handleErrorCode(error) then return end
+		return
+	end
+	local guildMapModel = self._modelMgr:getModel("GuildMapModel")
+	guildMapModel:updateBattleData(result, false)
+	guildMapModel:clearTreasureState()
+	guildMapModel:setTreasureReward(result.reward)
+    result.reward = {}
+	self:handleAboutServerData(result, true)
+	self:callback(result)
 end
 
 function GuildMapServer:handleErrorCode(errorCode)

@@ -38,7 +38,11 @@ function GuildMapFindFamEffectDialog:onInit()
     mc:setPosition(self:getContentSize().width/2+35, self:getContentSize().height/2-10)
     mc:setName(name)
     self:addChild(mc,1000)
-    return mc
+    
+	local closePanel = self:getUI("closePanel")
+	self:registerClickEvent(closePanel, function()
+		self:close()
+	end)
 end
 
 return GuildMapFindFamEffectDialog

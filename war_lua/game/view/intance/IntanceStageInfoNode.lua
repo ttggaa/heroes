@@ -280,6 +280,8 @@ function IntanceStageInfoNode:wideEnterBtn(inTime)
     end
 
     local oldUserPrePhysic = userModel:getData().physcal
+    local oldPlvl = userModel:getData().plvl or 0
+    local oldPTalentPoint = userModel:getData().pTalentPoint or 0
 
     local param = {id = self._curStageBaseId,num = inTime}
     self._serverMgr:sendMsg("StageServer", "sweepStage", param, true, {}, function (result)
@@ -294,12 +296,13 @@ function IntanceStageInfoNode:wideEnterBtn(inTime)
         local tmpRewards = IntanceUtils:handleWideReward(result["rewards"], result["tRewards"])
  
         local newUserData = userModel:getData()
-
+        local newPlvl = newUserData.plvl or 0
         local isAutoClose = false
         if self._oldUserLevel < newUserData.lvl then 
             isAutoClose =  true
+        elseif oldPlvl < newPlvl then
+            isAutoClose = true
         end
-
         local function userUpdate()
             self._intanceWideRewardView = nil
             if self._oldUserLevel == nil then 
@@ -311,6 +314,8 @@ function IntanceStageInfoNode:wideEnterBtn(inTime)
                 oldUserPrePhysic = oldUserPrePhysic - (mainStage.costPhysical * inTime)
                 ViewManager:getInstance():showDialog("global.DialogUserLevelUp",{preLevel = tempOldUserLevel,level = newUserData.lvl,prePhysic = oldUserPrePhysic,physic = newUserData.physcal}, nil, nil, nil, false)
                 self._oldUserLevel = nil
+            elseif oldPlvl < newPlvl then
+                ViewManager:getInstance():showDialog("global.DialogUserParagonLevelUp", {oldPlvl = oldPlvl, plvl = newPlvl, pTalentPoint = (newUserData.pTalentPoint - oldPTalentPoint)}, true, nil, nil, false)
             end
         end
 
@@ -619,6 +624,8 @@ function IntanceStageInfoNode:battleCallBack(inResult, inCallBack)
     local userModel = self._modelMgr:getModel("UserModel")
     local oldUserLevel = userModel:getData().lvl 
     local oldUserPrePhysic = userModel:getData().physcal
+    local oldPlvl = userModel:getData().plvl or 0
+    local oldPTalentPoint = userModel:getData().pTalentPoint or 0
     GuideUtils.saveIndex(GuideUtils.getNextBeginningIndex())
     self._serverMgr:sendMsg("StageServer", "atkAfterStage", param, true, {}, function (result)
         if result == nil then 
@@ -693,6 +700,7 @@ function IntanceStageInfoNode:battleCallBack(inResult, inCallBack)
 
         -- 升级提示
         local newUserData = userModel:getData()
+        local newPlvl = newUserData.plvl or 0
         local mainStage = tab:MainStage(tonumber(battleId))
         
         if oldUserLevel < newUserData.lvl then 
@@ -709,6 +717,10 @@ function IntanceStageInfoNode:battleCallBack(inResult, inCallBack)
                 ViewManager:getInstance():showDialog("global.DialogUserLevelUp", {preLevel = oldUserLevel,level = newUserData.lvl, prePhysic = oldUserPrePhysic, physic = newUserData.physcal}, nil, nil, nil, false)
             end
 
+        elseif oldPlvl < newPlvl then
+            self._userUpdateCallBack = function (  )
+                ViewManager:getInstance():showDialog("global.DialogUserParagonLevelUp", {oldPlvl = oldPlvl, plvl = newPlvl, pTalentPoint = (newUserData.pTalentPoint - oldPTalentPoint)}, true, nil, nil, false)
+            end
         else
             self._userUpdateCallBack = nil
         end

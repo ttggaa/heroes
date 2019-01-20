@@ -810,6 +810,10 @@ function ServerManager:__onError(error)
         self:_restart("您的魔法门通行证已过期，按确定返回登录界面进行续签", error.code)   
     elseif error.code == 999723 then
         -- need update client
+        local data = {}
+        data.error = error
+        data.response = GLOBAL_VALUES.last_onResponse
+        ApiUtils.playcrab_lua_error("ServerManager ErrorMsg====="..error["code"], serialize(data))
         self:_restart("领主大人，恩洛斯世界有新事物加入，需重新载入，请返回穿越门重新穿越", error.code)
     elseif error.code == 999712 then
         -- 请求后端或者其他node出现的错误
@@ -868,10 +872,13 @@ function ServerManager:reconnect()
         self._lastSendRequestId, function (data)
         print("reauth成功")
         if not TEST_REAUTH then
-            -- dump(data)
             if data.error then
                 self._reconnectTimeOutTick = nil
                 self:onError({code = data.error.code})
+                if data.error.code == 999723 then
+                    local temp = data
+                    ApiUtils.playcrab_lua_error("ServerManager ErrorMsg====="..data.error.code, serialize(temp))
+                end
                 return
             end
             self._reconnectTimeOutTick = nil

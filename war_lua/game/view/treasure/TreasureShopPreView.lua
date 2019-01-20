@@ -25,10 +25,10 @@ function TreasureShopPreView:onInit()
     if not self.imgs then return end
 	self._treasure1:loadTexture((self.imgs[2] or "globalImageUI6_meiyoutu.png") ,1)
     self._treasure1:setScale(0.9)
-    self._treasure1:setPosition(420,300)
+    self._treasure1:setPosition(420,280)
 	self._treasure2:loadTexture((self.imgs[1] or "globalImageUI6_meiyoutu.png"),1)
     self._treasure2:setScale(0.85)
-    self._treasure2:setPosition(730,290)
+    self._treasure2:setPosition(730,280)
 end
 
 -- 第一次进入调用, 有需要请覆盖

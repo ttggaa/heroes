@@ -17,13 +17,14 @@ function ShopServer:ctor(data)
     self._teamModel = self._modelMgr:getModel("TeamModel")
     self._recallModel = self._modelMgr:getModel("FriendRecallModel")
     self._teamShopModel = self._modelMgr:getModel("TeamShopModel")
+    self._limitPrayModel = self._modelMgr:getModel("LimitPrayModel")
 end
 
 function ShopServer:onGetShopInfo( result, error)
 	if error ~= 0 then 
 		return
 	end
-	-- dump(result.shop, "onGetShopInfo", 10)
+	-- dump(result, "onGetShopInfo", 10)
 	if result.shop.zhigou or result.zhigou then
 		self._directShopModel:setData(result.shop or result)
 
@@ -34,6 +35,9 @@ function ShopServer:onGetShopInfo( result, error)
     elseif result.rune or result.shop.rune then
         local shopData = result.shop.rune or result.rune
         self._teamShopModel:setData(shopData)
+    elseif result.pray or result.shop.pray then
+    	local shopData = result.shop.pray or result.pray
+        self._limitPrayModel:setShopData(shopData)
 	else
 		self._shopModel:setData(result.shop or result)
 	end
@@ -63,8 +67,7 @@ function ShopServer:onBuyShopItem( result, error)
 	if error ~= 0 then 
 		return
 	end
-	dump(result,"result",10)
-	-- dump(result.d.shop)
+	-- dump(result.d.shop,"onBuyShopItem ",10) 
 	if result.d.shop and result.d.shop.zhigou then
 		self._directShopModel:updateShopGoodsAfterBuy(result.d.shop)
 		local data = result.d.shop.zhigou.weekCards or result.d.shop.zhigou
@@ -80,6 +83,10 @@ function ShopServer:onBuyShopItem( result, error)
         local shopData = result.d.shop.rune
         self._teamShopModel:updateShopView(shopData)
         result.d.shop.rune = nil 
+    elseif result.d.shop and result.d.shop.pray then    	
+    	local shopData = result.d.shop.pray
+        self._limitPrayModel:updateShopData(shopData)
+        result.d.shop.pray = nil
 	elseif result.d.shop then
 		self._shopModel:updateShopGoodsAfterBuy(result.d.shop)
 	else
@@ -89,11 +96,17 @@ function ShopServer:onBuyShopItem( result, error)
 	
 	result.d.shop = nil
 	self._itemModel:updateItems(result["d"]["items"])
+    if result["unset"] then 
+        local removeItems = self._itemModel:handelUnsetItems(result["unset"])
+        -- dump(removeItems,"removeItems==>",5)
+        self._itemModel:delItems(removeItems, true)
+    end
 	result["d"]["items"] = nil
 	if result["d"].teams then
         self._teamModel:updateTeamData(result["d"].teams)
         result["d"].teams = nil
     end
+
 	self._userModel:updateUserData(result["d"])
 	self:callback(result)
 end

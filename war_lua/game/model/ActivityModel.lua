@@ -2082,6 +2082,13 @@ function ActivityModel:hasActivityTaskCanGet()
     if self:isRuneCardCandGet() then
         return true
     end
+    if self:isZhuboCandGet() then
+        return true
+    end
+
+    if self:isElementGiftRed() then
+        return true
+    end
     
     return false
 end
@@ -2586,6 +2593,97 @@ function ActivityModel:isRuneCardCandGet()
         return true
     end
     return false
+end
+
+
+-- 主播活动红点
+function ActivityModel:isZhuboCandGet()
+    local acData = self:getAcShowDataByType(41)
+    local currT = self._modelMgr:getModel("UserModel"):getCurServerTime()
+    local startT = acData.start_time or 0
+    local endT = acData.disappear_time or 0
+
+    local dayInfo = self._modelMgr:getModel("PlayerTodayModel"):getData() or {}
+    local isRed = not (dayInfo and dayInfo.day88 == 1)
+    if currT < startT or currT >= endT then
+        isRed = false
+    end
+
+    return isRed
+end
+
+--元素馈赠红点
+function ActivityModel:isElementGiftRed()
+    local isRed = false
+    if not self._eleGift then
+        self._eleGift = clone(tab.eleGift)
+    end
+    -- 有可领奖励
+    local acData = self._userModel:getElementGiftData()
+    -- 活动没开
+    if not self:isElementGiftOpen() then
+        return false
+    end
+    local gIds = acData.gIds or {}
+    local aday = acData.aday or 0
+    local Active_day = 0
+    for k,v in pairs(self._eleGift) do
+        if aday >= v.Active_day and not gIds[tostring(v.id)] then
+            isRed = true
+            break
+        end
+    end
+    -- 当天第一次红点
+    if not isRed then
+        local curServerTime = self._userModel:getCurServerTime()
+        local timeDate
+        local tempCurDayTime = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(curServerTime,"%Y-%m-%d 05:00:00"))
+        if curServerTime > tempCurDayTime then
+            timeDate = TimeUtils.getDateString(curServerTime,"%Y%m%d")
+        else
+            timeDate = TimeUtils.getDateString(curServerTime - 86400,"%Y%m%d")
+        end
+        local tempdate = SystemUtils.loadAccountLocalData("ACTIVITY_ELEMGIFT")
+        if tempdate ~= timeDate then
+            isRed = true
+        end
+    end
+    return isRed
+end
+
+--元素馈赠是否开启
+function ActivityModel:isElementGiftOpen()
+    if not GameStatic.is_show_eleGift then
+        return false
+    end
+    if not self._eleGift then
+        self._eleGift = clone(tab.eleGift)
+    end
+    local openTimeStr = tab:Setting("ELEMENT_GIFT_OPENING_TIME").value
+    if openTimeStr then 
+        -- print("openTimeStr==================",openTimeStr)
+        local openTime = TimeUtils.getIntervalByTimeString(openTimeStr)
+        local currTime = self._userModel:getCurServerTime()
+        -- print("===============openTime,currTime======",openTime,currTime)
+        if currTime < openTime then
+            return false
+        end
+    end
+    local giftNum = table.nums(self._eleGift)
+    local isOpen = false
+    local acData = self._userModel:getElementGiftData()
+    dump(acData,"acData==>",5)
+    if acData and acData.sts and tonumber(acData.sts) == 1 then
+        isOpen = true
+    end
+    if isOpen and acData.gIds and type(acData.gIds) == "table" then
+        -- 活动奖励全部领取 活动结束
+        if giftNum == table.nums(acData.gIds) then
+           isOpen = false
+        end
+    end
+
+    return isOpen
 end
 
 function ActivityModel.dtor()

@@ -14,6 +14,7 @@
     teamBoost       => tb
 ]]--
 local TeamModel = class("TeamModel", BaseModel)
+require "game.view.team.TeamConst"
 -- 
 
 -- 1 = 白色
@@ -59,6 +60,16 @@ end
  
 -- 子类覆盖此方法来存储数据
 function TeamModel:setData(data)
+    --初始化特技数据  by wangyan
+    for k,v in pairs(data) do
+        if not v["sl5"] then v["sl5"] = -1 end
+        if not v["sl6"] then v["sl6"] = -1 end
+        if not v["sl7"] then v["sl7"] = -1 end
+        if not v["se5"] then v["se5"] = 0 end
+        if not v["se6"] then v["se6"] = 0 end
+        if not v["se7"] then v["se7"] = 0 end
+    end
+
     self._checkTipData = {}
 	-- 匹配数据
 	local backData = self:processData(data)
@@ -292,7 +303,7 @@ function TeamModel:getTeamHeroSkill(heroData)
         local _global = heroT["global"]
         local masteryId = _special*10+_global
         local heroStar = com.star
-        print("heroStar======", heroStar, _global)
+        -- print("heroStar======", heroStar, _global)
         if heroStar >= _global then
             local masteryD = tab.heroMastery[masteryId]
             local cradsk = masteryD["cradsk"]
@@ -309,7 +320,7 @@ function TeamModel:getTeamHeroSkill(heroData)
             end
         end
     end
-    dump(cradskSkill)
+    -- dump(cradskSkill)
     -- self._cradskSkill = cradskSkill
     return cradskSkill
 end
@@ -379,7 +390,7 @@ function TeamModel:getHeroAttrData(heroData)
         local _global = heroT["global"]
         local masteryId = _special*10+_global
         local heroStar = com.star
-        print("heroStar=========", id, heroStar, _global)
+        -- print("heroStar=========", id, heroStar, _global)
         if heroStar >= _global then
             local masteryD = tab.heroMastery[masteryId]
             local addattrs = masteryD["addattr"]
@@ -517,39 +528,57 @@ end
 function TeamModel:refreshDataOrder()
     if next(self._data) == nil then return end
     local formationModel = self._modelMgr:getModel("FormationModel")
-    local loadedMap = formationModel:getTeamLoadedMap()
-    for k,v in pairs(self._data) do
+    local loadedMap, backupLoadMap = formationModel:getTeamLoadedMap()
+    local data1 = {}
+    local data2 = {}
+    local data3 = {}
+    local tempData = self._data
+    for k,v in pairs(tempData) do
         v.isInFormation = loadedMap[v.teamId]
+        v.isInBackup = backupLoadMap[v.teamId]
+        if v.isInFormation then
+            table.insert(data1, v)
+        elseif v.isInBackup then
+            table.insert(data2, v)
+        else
+            table.insert(data3, v)
+        end
     end
-    local sortFunc = function(a, b) 
-        local aisInFormation = (loadedMap[a.teamId] ~= nil)
-        local bisInFormation = (loadedMap[b.teamId] ~= nil)
-        if aisInFormation == true and bisInFormation == false then
+    local sortFunc = function(a, b)
+        if a.score > b.score then
             return true
         end
-        if (aisInFormation == true and bisInFormation == true)
-            or (aisInFormation == false and bisInFormation == false) then
-            if a.score > b.score then
+        if a.score == b.score then 
+            if a.stage > b.stage then 
                 return true
             end
-            if a.score == b.score then 
-                if a.stage > b.stage then 
+             if a.stage == b.stage then 
+                if a.star > b.star then 
                     return true
                 end
-                 if a.stage == b.stage then 
-                    if a.star > b.star then 
+                if a.star == b.star then 
+                    if a.teamId > b.teamId then 
                         return true
                     end
-                    if a.star == b.star then 
-                        if a.teamId > b.teamId then 
-                            return true
-                        end
-                    end
-                 end
-            end
+                end
+             end
         end
+    end 
+    table.sort(data1, sortFunc)
+    table.sort(data2, sortFunc)
+    table.sort(data3, sortFunc)
+
+    self._data = {}
+    for k, v in pairs(data1) do
+        table.insert(self._data, v)
     end
-    table.sort(self._data, sortFunc)
+    for k, v in pairs(data2) do
+        table.insert(self._data, v)
+    end
+    for k, v in pairs(data3) do
+        table.insert(self._data, v)
+    end
+
     self._indexMap = {}
     for k, v in pairs(self._data) do
         self._indexMap[v.teamId] = k
@@ -587,7 +616,7 @@ function TeamModel:processData(inData)
         end
         v1.skillTab = TeamUtils:getTeamAwakingSkill(v1)
         -- v1.score = self:handleTeamScore(v1)
-        local onTeam, onStage, onStar, onSkill, onGrade, onBoost, onTree = self:checkTips(v1)
+        local onTeam, onStage, onStar, onSkill, onGrade, onBoost, onTree, onExclusive = self:checkTips(v1)
         v1.onTeam = onTeam
         v1.onStage = onStage
         v1.onStar = onStar
@@ -595,6 +624,7 @@ function TeamModel:processData(inData)
         v1.onGrade = onGrade
         v1.onBoost = onBoost
         v1.onTree = onTree
+        v1.onExclusive = onExclusive
         
         v1.volume  = self:getTeamVolume(v1)
 
@@ -713,16 +743,69 @@ function TeamModel:checkTips(inTeam)
 
     local onTree = self:checkTree(inTeam, sysTeamData)
 
+    local onExclusive = self:checkExclusive(inTeam, sysTeamData)
+
     local onTeam = false 
 
-    if onStage == true or onStar == true or onSkill == true 
+    if onStage == true or onStar == true or onSkill == true or onExclusive == true 
         or onGrade == true or onTree == 2 then 
         onTeam = true 
         self._checkTipData[tostring(inTeam.teamId)] = true
     else 
         self._checkTipData[tostring(inTeam.teamId)] = nil
     end
-    return onTeam, onStage, onStar, onSkill, onGrade, onBoost, onTree
+    return onTeam, onStage, onStar, onSkill, onGrade, onBoost, onTree, onExclusive
+end
+
+function TeamModel:checkExclusive( inTeam, sysTeamData )
+    local flag = false
+    local tabData = tab:SystemOpen("Exclusive")
+    local exclusiveShowLevel = tabData[2]
+    local userData = self._modelMgr:getModel("UserModel"):getData()
+    local userLevel = userData.lvl
+
+    local exclusiveData = tab.exclusive[inTeam.teamId]
+    if exclusiveData and exclusiveData.isOpen and exclusiveData.isOpen == 1 and userLevel >= exclusiveShowLevel then
+        local curExLevel = inTeam.zLv or 0
+        local curExExp = inTeam.zExp or 0
+        local curExStarLevel = (inTeam.zStar or 0) - 1
+
+        local teamLv = inTeam.level
+        local maxLv = tab.setting["G_EXCLUSIVE_MAXLEVEL"].value
+        if curExLevel < teamLv and curExLevel < maxLv then
+            local levelupData = tab.exclusiveLevel[curExLevel]
+            local allExpNum = levelupData.exp
+            local consumeData = levelupData.cost[1]
+            local xishu = exclusiveData.xishu or 1
+            local needNum = (math.ceil(consumeData[3] * xishu)) * (allExpNum - curExExp)
+            local itemId = consumeData[2]
+            local itemType = consumeData[1]
+            if itemType ~= "tool" then
+                itemId = IconUtils.iconIdMap[itemType]
+            end
+            local _, haveNum = self._modelMgr:getModel("ItemModel"):getItemsById(itemId)
+            if haveNum >= needNum then
+                flag = true
+            end
+        end
+
+        local consumeList = exclusiveData.costs
+        local maxLevel = #consumeList - 1
+        if curExStarLevel < maxLevel then
+            local consumeData = consumeList[curExStarLevel + 2]
+            local itemId = consumeData[2]
+            local itemType = consumeData[1]
+            local needNum = consumeData[3]
+            if itemType ~= "tool" then
+                itemId = IconUtils.iconIdMap[itemType]
+            end
+            local _, haveNum = self._modelMgr:getModel("ItemModel"):getItemsById(itemId)
+            if haveNum >= needNum then
+                flag = true
+            end
+        end
+    end
+    return flag
 end
 
 -- 觉醒红点
@@ -995,6 +1078,12 @@ function TeamModel:checkOpenSkill(inTeam)
             return true
         end
     end
+    for i = 5, 6 do
+        local isShow = self:checkTeamRedSKillRedPoint(inTeam)
+        if isShow then
+            return true
+        end
+    end
     return false
 end
 
@@ -1080,7 +1169,7 @@ function TeamModel:updateTeamTips()
 
         v1.skillTab = TeamUtils:getTeamAwakingSkill(v1)
 
-        local onTeam, onStage, onStar, onSkill, onGrade, onBoost, onTree = self:checkTips(v1)
+        local onTeam, onStage, onStar, onSkill, onGrade, onBoost, onTree, onExclusive = self:checkTips(v1)
         v1.onTeam = onTeam
         v1.onStage = onStage
         v1.onStar = onStar
@@ -1088,6 +1177,7 @@ function TeamModel:updateTeamTips()
         v1.onGrade = onGrade
         v1.onBoost = onBoost
         v1.onTree = onTree
+        v1.onExclusive = onExclusive
     end
     self:noticeMainTip()
 end
@@ -1164,7 +1254,7 @@ function TeamModel:updateTeamData(inData,isNotReflash)
                 v1.skillTab = TeamUtils:getTeamAwakingSkill(v1)
 
                 self._checkTipData[tostring(v1.teamId)] = nil
-                local onTeam, onStage, onStar, onSkill, onGrade, onBoost, onTree = self:checkTips(v1)
+                local onTeam, onStage, onStar, onSkill, onGrade, onBoost, onTree, onExclusive = self:checkTips(v1)
                 v1.onTeam = onTeam
                 v1.onStage = onStage
                 v1.onStar = onStar
@@ -1172,6 +1262,7 @@ function TeamModel:updateTeamData(inData,isNotReflash)
                 v1.onGrade = onGrade
                 v1.onBoost = onBoost
                 v1.onTree = onTree
+                v1.onExclusive = onExclusive
 
                 -- 伪装数据
                 v1.onCheck = BattleUtils.checkTeamData(v1, false)
@@ -1201,7 +1292,7 @@ function TeamModel:updateTeamData(inData,isNotReflash)
             end
             v2.skillTab = TeamUtils:getTeamAwakingSkill(v2)
 
-            local onTeam, onStage, onStar, onSkill, onGrade, onBoost, onTree = self:checkTips(v2)
+            local onTeam, onStage, onStar, onSkill, onGrade, onBoost, onTree, onExclusive = self:checkTips(v2)
             v2.onTeam = onTeam
             v2.onStage = onStage
             v2.onStar = onStar
@@ -1209,10 +1300,19 @@ function TeamModel:updateTeamData(inData,isNotReflash)
             v2.onGrade = onGrade
             v2.onBoost = onBoost
             v2.onTree = onTree
+            v2.onExclusive = onExclusive
 
             -- 伪装数据
             v2.onCheck = BattleUtils.checkTeamData(v2, false)
             table.insert(self._data, v2)
+
+            --初始化特技数据
+            if not v2["sl5"] then v2["sl5"] = -1 end
+            if not v2["sl6"] then v2["sl6"] = -1 end
+            if not v2["sl7"] then v2["sl7"] = -1 end
+            if not v2["se5"] then v2["se5"] = 0 end
+            if not v2["se6"] then v2["se6"] = 0 end
+            if not v2["se7"] then v2["se7"] = 0 end
         end
     end
     self:noticeMainTip()
@@ -1300,6 +1400,24 @@ function TeamModel:getTeamWithVolume(inClass)
     return classTeam
 end
 
+
+--[[
+
+    根据class获取兵团
+
+]]
+function TeamModel:getHaveTeamWithClass( classType )
+    local classTeam = {}
+    local sysTeam
+    for k,v in pairs(self:getData()) do
+        sysTeam = tab:Team(v.teamId)
+        if sysTeam.class == classType then 
+            table.insert(classTeam, v)
+        end
+    end
+    return classTeam
+end
+
 -- 平原
 function TeamModel:getTeamWithPingyuan()
     return self:getTeamWithRace(101)
@@ -1345,16 +1463,22 @@ function TeamModel:getTeamWithYaosai()
     return self:getTeamWithRace(108)
 end
 
+-- 海盗
+function TeamModel:getTeamWithHaidao()
+    return self:getTeamWithRace(112)
+end
+
 -- 根据兵种标签划分
 function TeamModel:getTeamWithRace(inClass)
     local classTeam = {}
     local sysTeam
 
     local formationModel = self._modelMgr:getModel("FormationModel")
-    local tempTeamLoadMap = formationModel:getTeamLoadedMap()
+    local tempTeamLoadMap, backupLoadMap = formationModel:getTeamLoadedMap()
     for k,v in pairs(self:getAllTeamData()) do
         sysTeam = tab:Team(v.teamId)
         v.isInFormation = tempTeamLoadMap[v.teamId]
+        v.isInBackup = backupLoadMap[v.teamId]
         if sysTeam.race[1] == inClass then 
             table.insert(classTeam, v)
         end
@@ -1446,9 +1570,10 @@ function TeamModel:getAllTeamData()
     local tempTeam = {}
     local sysTeam
     local formationModel = self._modelMgr:getModel("FormationModel")
-    local tempTeamLoadMap = formationModel:getTeamLoadedMap()
+    local tempTeamLoadMap, backupTeamLoadMap = formationModel:getTeamLoadedMap()
     for k,v in pairs(self:getData()) do
         v.isInFormation = tempTeamLoadMap[v.teamId]
+        v.isInBackup = backupTeamLoadMap[v.teamId]
         v.showType = 1
         table.insert(tempTeam, v)
     end
@@ -1717,6 +1842,8 @@ function TeamModel:getClassTeam(teamType)
         teamData = self:getTeamWithDixiacheng()
     elseif teamType == 14 then -- 要塞
         teamData = self:getTeamWithYaosai()
+    elseif teamType == 15 then -- 海盗
+        teamData = self:getTeamWithHaidao()
     elseif teamType == 0 then -- 全部
         teamData = self._data
     end
@@ -1793,6 +1920,11 @@ function TeamModel:getTeamAddPingScore(teamD)
             score = score + teamD["sl" .. i]*8
         end
     end
+    local specialSkill = teamD["ss"]
+    if specialSkill then
+         score = score + teamD["sl" .. specialSkill] * 8
+    end
+
     return score
 end
 
@@ -2198,9 +2330,10 @@ function TeamModel:getBoostAllTeamData()
     local tempTeam = {}
     local sysTeam
     local formationModel = self._modelMgr:getModel("FormationModel")
-    local tempTeamLoad = formationModel:getTeamLoadedMap()
+    local tempTeamLoad, backupLoadMap = formationModel:getTeamLoadedMap()
     for k,v in pairs(self:getData()) do
         v.isInFormation = tempTeamLoad[v.teamId]
+        v.isInBackup = backupLoadMap[v.teamId]
         v.showType = 1
         table.insert(tempTeam, v)
     end
@@ -3427,7 +3560,7 @@ function TeamModel:getStoneAttrByParam(rune,runes)
             local indexId = tostring(i)
             local stoneId = rune[indexId]
             if stoneId and stoneId ~= 0 then
-                local stoneData = runes[tostring(stoneId)]
+                local stoneData = runes[tostring(stoneId)] or runes[stoneId]
                 local propertyData = stoneData.p or {}
                 if stoneData.p and type(stoneData.p) == "string" then
                     propertyData = json.decode(stoneData.p)
@@ -3513,6 +3646,151 @@ function TeamModel:getTeamHolyInlayCountBySuitId(teamId, suitId)
 		end
 	end
 	return count
+end
+
+function TeamModel:getHolyNumByLvlQuality(lvl, quality)
+	if not lvl or not quality then
+		return nil
+	end
+	local count = 0
+	for i, v in pairs(self._holyData) do
+		if v.lv >= lvl and v.quality == quality then
+			count = count + 1
+		end
+	end
+	return count
+end
+
+function TeamModel:updateTeamSkinId(teamId,id)
+    if teamId == nil or id == nil then return end
+    for k,v in pairs(self._data) do
+        if tonumber(k) == tonumber(teamId) then
+            v.sId = id
+        end
+    end
+end
+--检查兵团皮肤是否存在
+function TeamModel:checkTeamSkin(teamId)
+    if teamId == nil then return end
+    local teamSkinTab = tab.teamSkin
+    for i,v in pairs(teamSkinTab) do
+        if v.teamid == teamId then
+            return true
+        end
+    end
+    
+    return false
+end
+
+function TeamModel:getTeamDataById(teamId)
+    for i,v in ipairs(self._data) do
+        if v.teamId == teamId then
+            return v
+        end
+    end
+    return nil
+end
+
+function TeamModel:checkTeamRedSKillRedPoint(inData)
+    if not inData or not inData["stage"] then
+        return false
+    end
+
+    local quality = self:getTeamQualityByStage(inData["stage"])   --红色品质
+    if quality[1] == 6 and not inData["ss"] then   --可解锁且没有选择特技
+        return true
+    end
+
+    return false
+end
+
+-- 招募兵团后 手动初始化红色品质的特技数据
+function TeamModel:initSKillRedDataById(inId)
+    if not inId then
+        return
+    end
+
+    local teamData = self:getTeamDataById(inId)
+    if not teamData then
+        return
+    end
+
+    if not teamData["sl5"] then teamData["sl5"] = -1 end
+    if not teamData["sl6"] then teamData["sl6"] = -1 end
+    if not teamData["sl7"] then teamData["sl7"] = -1 end
+    if not teamData["se5"] then teamData["se5"] = 0 end
+    if not teamData["se6"] then teamData["se6"] = 0 end
+    if not teamData["se7"] then teamData["se7"] = 0 end
+end
+
+function TeamModel:getTeamSkillShowSort( teamData, isDetail )
+    local res = {1, 2, 3, 4}
+    if teamData == nil or teamData.teamId == nil then
+        return res
+    end
+    local sysTeamData = tab:Team(teamData.teamId)
+
+    -- 16资质兵团添加一个常规技能
+    local skill = sysTeamData.skill or {}
+    if sysTeamData.zizhi == 4 and #skill >= 7 then
+        table.insert(res, 7)
+    end
+    if not isDetail then
+        -- 红色兵团特技
+        local specialSkillId = 5
+        if teamData.ss then
+            specialSkillId = teamData.ss
+        end
+        table.insert(res, specialSkillId)
+    end
+
+    return res
+end
+
+
+function TeamModel:getTeamZiZhiText( zizhi )
+    zizhi = zizhi or 1
+    if zizhi ~= 4 then
+        return TeamConst.TEAM_ZIZHI_TYPE["ZIZHI_" .. zizhi]
+    else
+        return  "指挥官"
+    end
+end
+
+-- 获取英雄皮肤属性
+function TeamModel:getTeamSkinAttr(teamId)
+    local attrs = {atk=0,hp=0}
+    local changeMap = {[1] = "atk",[2] = "hp"}
+    local skinData = tSkin or self._userModel:getTeamSkinData()
+    local skinTb = tab.teamSkin
+    local teamSkinData = skinData and skinData[tostring(teamId)] or nil
+    if teamSkinData then
+        for kk , vv in pairs(teamSkinData) do
+            local tempData = skinTb[tonumber(kk)]
+            if tempData and tempData.addteamAttr then
+                for key,value in pairs(tempData.addteamAttr) do                    
+                    local changeType = changeMap[tonumber(value[1])]
+                    if changeType then
+                        attrs[changeType] = attrs[changeType]+tonumber(value[2])
+                    end
+                end
+            end
+        end
+    end
+    -- for k,v in pairs(skinData) do
+    --     for kk,vv in pairs(v) do
+    --         local tempData = skinTb[tonumber(kk)]
+    --         if tempData and tempData.addteamAttr then
+    --             for key,value in pairs(tempData.addteamAttr) do                    
+    --                 local changeType = changeMap[tonumber(value[1])]
+    --                 if changeType then
+    --                     attrs[changeType] = attrs[changeType]+tonumber(value[2])
+    --                 end
+    --             end
+    --         end
+    --     end
+    -- end
+    return attrs
 end
 
 return TeamModel

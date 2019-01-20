@@ -23,7 +23,10 @@ function DirectBatchBuyDialog:ctor(param)
     _callBack = param.callBack
     self:calMaxNum()
 end
-
+local costImg = {
+    gem = "globalImageUI_diamond.png",
+    luckyCoin = "globalImageUI_luckyCoin.png",
+}
 function DirectBatchBuyDialog:onInit()
     self._closeBtn = self:getUI("bg.closeBtn")
     self:registerClickEvent(self._closeBtn, function ()
@@ -36,13 +39,27 @@ function DirectBatchBuyDialog:onInit()
         self:buyItem()
     end)
 
+    self._costPanle = self:getUI("bg.costPanel")
     self._curCount  = self:getUI("bg.detailPanel.useNum")
     self._label1    = self:getUI("bg.costPanel.label1")
     self._label2    = self:getUI("bg.costPanel.label2")
     self._label3    = self:getUI("bg.costPanel.label3")
     self._label4    = self:getUI("bg.costPanel.label4")
     self._gemImage  = self:getUI("bg.costPanel.image")
-    self._costPanle = self:getUI("bg.costPanel")
+    local costType = _data.costType or "gem" 
+    if costType == "tool" then
+        self._gemImage:setOpacity(0)
+        local toolD = tab:Tool(_data.costId)    
+        local icon = IconUtils:createItemIconById({itemId = _data.costId,itemData = toolD,eventStyle = 0})
+        icon:setContentSize(100, 100)
+        icon:setPosition(0, 0)
+        icon:setScale(0.3)
+        icon:setSwallowTouches(true)
+        self._gemImage:addChild(icon)
+    else
+        self._gemImage:setOpacity(255)
+        self._gemImage:loadTexture(costImg[costType],1)
+    end
     ------------------头像，名字---------------------------------
     local itemNode = self:getUI("bg.titlePanel.itemNode") 
     local nameNode = self:getUI("bg.titlePanel.itemName")
@@ -76,6 +93,10 @@ function DirectBatchBuyDialog:onInit()
     self._slider:setPercent(0)
     -- self:setSliderPercent(self._minNum/self._maxNum*100)
     self._greenPro:setScaleX((self._minNum~=1 and self._minNum or 0)/self._maxNum)
+    if self._minNum == 1 and self._maxNum == 1 then
+        self._greenPro:setScaleX(1)
+        self:setSliderPercent(100)
+    end
     self._slider:addEventListener(function(sender, eventType)
         local event = {}
         if eventType == 0 then
@@ -149,8 +170,8 @@ function DirectBatchBuyDialog:refreshCountAndCost()
     self._label1:setPositionX(0)
     self._label2:setPositionX(self._label1:getPositionX() + self._label1:getContentSize().width)
     self._label3:setPositionX(self._label2:getPositionX() + self._label2:getContentSize().width)
-    self._gemImage:setPositionX(self._label3:getPositionX() + self._label3:getContentSize().width)
-    self._label4:setPositionX(self._gemImage:getPositionX() + self._gemImage:getContentSize().width)
+    self._gemImage:setPositionX(self._label3:getPositionX() + self._label3:getContentSize().width+2)
+    self._label4:setPositionX(self._gemImage:getPositionX() + self._gemImage:getContentSize().width+5)
 
 end
 
@@ -196,15 +217,31 @@ function DirectBatchBuyDialog:sliderValueChange( ... )
 end
 
 function DirectBatchBuyDialog:buyItem()
-    local userGem = self._modelMgr:getModel("UserModel"):getData().gem
+    
+    local costType = _data.costType or "gem" 
+    local userData = self._modelMgr:getModel("UserModel"):getData()
+    local userGem = userData[costType]
+    if costType == "tool" then
+        local items,_itemNum = self._modelMgr:getModel("ItemModel"):getItemsById(_data.costId)
+        userGem = _itemNum
+    end
     local totalCostGem = self._minNum*_data.price
-    if totalCostGem > userGem then
+    if totalCostGem > userGem and costType == "gem" then
         DialogUtils.showNeedCharge({desc = lang("TIP_GLOBAL_LACK_GEM"),callback1=function( )
             self._viewMgr:showView("vip.VipView", {viewType = 0})
         end})
         return
     end
-    self._serverMgr:sendMsg("ShopServer", "buyShopItem", {id = _data.id,["type"] = "zhigou",num = self._minNum}, true, {}, function(result)
+
+    if totalCostGem > userGem and costType == "luckyCoin" then
+        DialogUtils.showNeedCharge({desc = lang("TIP_GLOBAL_LACK_LUCKYCOIN"),button1 = "前往",title = "幸运币不足",callback1=function( )
+            DialogUtils.showBuyRes({goalType = "luckyCoin",inputNum = totalCostGem - userGem })
+        end})
+        return
+    end
+
+    local shopType = _data.shopType or "zhigou"
+    self._serverMgr:sendMsg("ShopServer", "buyShopItem", {id = _data.id,itemId = _data.itemId,["type"] = shopType,num = self._minNum}, true, {}, function(result)
         self:close()
         audioMgr:playSound("consume")
         if _callBack then

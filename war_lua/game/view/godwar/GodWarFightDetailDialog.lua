@@ -313,6 +313,8 @@ function GodWarFightDetailDialog:updatePanel(inView, data, indexId, win)
             detailData.talentData = data.talentData or data.talent
             detailData.uMastery = data.uMastery
             detailData.hSkin = data.hSkin
+            detailData.backups = data.backups
+            detailData.pTalents = data.pTalents
             -- ViewManager:getInstance():showDialog("formation.NewFormationDescriptionView", { iconType = NewFormationIconView.kIconTypeArenaHero, iconId = data.formation.heroId}, true)
             ViewManager:getInstance():showDialog("rank.RankHeroDetailView", {data=detailData}, true)
         end)
@@ -388,6 +390,8 @@ function GodWarFightDetailDialog:createTeams(teamBg, teamId, teamData, heroData,
         detailData.treasures = data.treasures
         detailData.runes = data.runes
         detailData.heros = data.heros
+        detailData.battleArray = data.battleArray
+        detailData.pTalents = data.pTalents
         ViewManager:getInstance():showDialog("rank.RankTeamDetailView", {data=detailData}, true)
         -- ViewManager:getInstance():showDialog("formation.NewFormationDescriptionView", { iconType = NewFormationIconView.kIconTypeArenaTeam, iconId = teamId}, true)
     end}

@@ -13,7 +13,7 @@ function PurgatoryServer:onGetPurInfo( result, error)
 	if error ~= 0 then 
 		return
 	end
-	dump(result)
+	-- dump(result)
 	if result["d"] and result["d"]["formations"] ~= nil then 
         local formationModel = self._modelMgr:getModel("FormationModel")
         formationModel:updateAllFormationData(result["d"]["formations"])

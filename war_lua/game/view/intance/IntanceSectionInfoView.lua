@@ -87,15 +87,7 @@ function IntanceSectionInfoView:tabButtonClick(sender)
     if sender == nil then
         return
     end
-    if sender:getName()== "tab1" then 
-    	self:showTaskNode()
-    else
-    	local sysSectionInfo = tab:SectionInfo(self._curSectionId)
-		if sysSectionInfo == nil or sysSectionInfo.openBranch == 0 then self._viewMgr:showTip("无支线目标") return end
-        self:showInfoNode()
-    end   
-
-
+    
    for k,v in pairs(self._btnList) do
         if v ~= sender then 
             local text = v:getTitleRenderer()
@@ -105,11 +97,13 @@ function IntanceSectionInfoView:tabButtonClick(sender)
             v:stopAllActions()
             v:setBright(true)
             v:setEnabled(true)
+
+            if self._preBtn and self._preBtn == v then
+		        UIUtils:tabChangeAnim(self._preBtn,nil,true,true)
+		    end
         end
     end
-    if self._preBtn then
-        UIUtils:tabChangeAnim(self._preBtn,nil,true,true)
-    end
+    
     self._preBtn = tabBtn     
     self._curChannel = sender:getName()
     UIUtils:tabChangeAnim(sender,function( )
@@ -120,6 +114,13 @@ function IntanceSectionInfoView:tabButtonClick(sender)
         sender:setEnabled(false)
     end)
 
+    if sender:getName()== "tab1" then 
+    	self:showTaskNode()
+    else
+    	local sysSectionInfo = tab:SectionInfo(self._curSectionId)
+		if sysSectionInfo == nil or sysSectionInfo.openBranch == 0 then self._viewMgr:showTip("无支线目标") return end
+        self:showInfoNode()
+    end   
 end
 
 function IntanceSectionInfoView:showTaskNode()

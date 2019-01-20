@@ -265,7 +265,7 @@ function CrossRankDialog:updateCell(inView, indexId)
 
     local iconBg = inView:getChildByFullName("headNode")
     if iconBg then
-        local param1 = {avatar = data.avatar, tp = 4,avatarFrame = data["avatarFrame"], level = data.lv}
+        local param1 = {avatar = data.avatar, tp = 4,avatarFrame = data["avatarFrame"], level = data.lv, plvl = data.plvl}
         local icon = iconBg:getChildByName("icon")
         if not icon then
             icon = IconUtils:createHeadIconById(param1)

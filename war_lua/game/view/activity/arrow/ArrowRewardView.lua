@@ -10,6 +10,7 @@ local ArrowRewardView = class("ArrowRewardView", BasePopView)
 function ArrowRewardView:ctor(param)
 	ArrowRewardView.super.ctor(self)
 	self._callBack = param.callback
+	self._callBack2 = param.callback2
 	self._data = param.data
 end
 
@@ -17,6 +18,9 @@ function ArrowRewardView:onInit()
 	UIUtils:setTitleFormat(self:getUI("bg.title"), 1)
 
 	self:registerClickEventByName("bg.closeBtn", function()
+		if self._callBack2 then
+			self._callBack2()
+		end
 		self:close()
 		end)
 

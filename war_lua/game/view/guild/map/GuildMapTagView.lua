@@ -68,4 +68,10 @@ function GuildMapTagView:onInit()
     end)
 end
 
+function GuildMapTagView:detachKeyBoard()
+	if self._contextTextField then
+		self._contextTextField:detachWithIME()
+	end
+end
+
 return GuildMapTagView

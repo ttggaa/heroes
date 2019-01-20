@@ -36,6 +36,9 @@ RankModel.kRankTypeSiegeAttack = 28
 RankModel.kRankTypeSiegeDefend = 29
 RankModel.kRankTypeCloudCity_NEW_fight = 31 -- 云中城最近通关时间榜
 RankModel.happyPopRank = 32
+RankModel.kRankTypeStakeDamage = 34
+RankModel.worldCupRank = 35
+
 
 function RankModel:ctor()
     RankModel.super.ctor(self)
@@ -73,6 +76,12 @@ function RankModel:ctor()
         {}, --   31   // 云中城最近通关时间排行榜
         {}, --   32   // 法术特训小游戏排行版
         {}, --   33    //爬塔排行榜
+        {}, --   34    //........未知
+        {}, --   35    //世界杯竞猜排行
+        {}, --   34    //木桩排行榜
+        {}, --   35    //XX
+        {}, --   36    //终极降临活动 联盟榜
+        {}, --   37    //终极降临活动 个人榜
     }
     self._selfRankInfo = {}
 end
@@ -251,6 +260,12 @@ function RankModel:clearRankList()
         {}, --   31   // 云中城最近通关时间排行榜
         {}, --   32   // 法术特训小游戏排行版
         {}, --   33    //爬塔排行榜
+        {}, --   34    //........未知
+        {}, --   35    //世界杯竞猜排行
+        {}, --   34    //木桩排行榜
+        {}, --   35    //XX
+        {}, --   36    //终极降临活动 联盟榜
+        {}, --   37    //终极降临活动 个人榜
     }
     self._selfRankInfo = {}
 end

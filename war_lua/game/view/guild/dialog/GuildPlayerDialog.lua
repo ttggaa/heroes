@@ -170,7 +170,7 @@ function GuildPlayerDialog:reflashUI(data)
     local iconBg = self:getUI("bg.panel.iconBg")
     if iconBg then
         local tencetTp = data.detailData["qqVip"]
-        local param1 = {avatar = detailData.avatar, level = detailData.lvl ,tp = 4,avatarFrame = detailData["avatarFrame"], tencetTp = tencetTp}
+        local param1 = {avatar = detailData.avatar, level = detailData.lvl ,tp = 4,avatarFrame = detailData["avatarFrame"], tencetTp = tencetTp, plvl = detailData.plvl}
         local icon = iconBg:getChildByName("icon")
         if not icon then
             icon = IconUtils:createHeadIconById(param1)
@@ -615,6 +615,11 @@ function GuildPlayerDialog:getTargetUserBattleInfo(teamId, teamData, rid, isHero
             result["spTalent"] = nil
         end
 
+        if result["backups"] then
+            self._backups = result["backups"]
+            result["backups"] = nil
+        end
+
         if result["runes"] then
             self._runes = result["runes"]
             result["runes"] = nil
@@ -624,7 +629,15 @@ function GuildPlayerDialog:getTargetUserBattleInfo(teamId, teamData, rid, isHero
             self._heros = result["heros"]
             result["heros"] = nil
         end
-        
+        if result["battleArray"] then
+            self._battleArray = result["battleArray"]
+            result["battleArray"] = nil
+        end
+
+        if result["pTalents"] then
+            self._pTalents = result["pTalents"]
+            result["pTalents"] = nil
+        end
 
         -- if result["globalSpecial"] then
         --     self._globalSpecial = result["globalSpecial"]
@@ -650,6 +663,8 @@ function GuildPlayerDialog:rankTeamDetailView(teamId, teamData)
     detailData.treasures = self._treasures
     detailData.runes = self._runes
     detailData.heros = self._heros
+    detailData.battleArray = self._battleArray
+    detailData.pTalents = self._pTalents
     ViewManager:getInstance():showDialog("rank.RankTeamDetailView", {data=detailData}, true)
 end
 
@@ -667,6 +682,8 @@ function GuildPlayerDialog:rankHeroDetailView(teamId, teamData)
     detailData.uMastery = self._uMastery
     detailData.hSkin = self._hSkin
     detailData.spTalent = self._spTalent
+    detailData.backups = self._backups
+    detailData.pTalents = self._pTalents
     ViewManager:getInstance():showDialog("rank.RankHeroDetailView", {data=detailData}, true)
 end
 

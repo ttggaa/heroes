@@ -52,13 +52,17 @@ function GlobalPromptDialog:reflashUI(data)
     self._label1:setString(str)
     self._label2:setString(lang(promptTab["lang2"]))
     self._gName:setString(lang(promptTab["lang3"]))
-    self._gotoBtn:loadTexture(promptTab["pic"] .. ".png", 1)
+    if promptTab["pic"] then
+        self._gotoBtn:loadTexture(promptTab["pic"] .. ".png", 1)
 
-    self:registerClickEvent(self._gotoBtn, function()
-        local prompt = promptTab["link"]
-        self["gotoView" .. prompt](self)
-        self:close()
-    end) 
+        self:registerClickEvent(self._gotoBtn, function()
+            local prompt = promptTab["link"]
+            self["gotoView" .. prompt](self)
+            self:close()
+        end) 
+    else
+        self._gotoBtn:setVisible(false)
+    end
     self._gName:setPositionX(self._gotoBtn:getContentSize().width*0.5)
 end
 
@@ -144,6 +148,12 @@ function GlobalPromptDialog:gotoView13()
 		UIUtils:reloadLuaFile("team.TeamHolyShopView")
 		self._viewMgr:showView("team.TeamHolyShopView")
 	end)
+end
+
+function GlobalPromptDialog:gotoView14()
+    self._serverMgr:sendMsg("AlchemyServer", "getInfo", {}, true, {}, function(result)
+        self._viewMgr:showView("MF.MFAlchemyView")
+    end)
 end
 
 return GlobalPromptDialog

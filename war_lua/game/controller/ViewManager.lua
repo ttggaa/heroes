@@ -187,6 +187,8 @@ function ViewManager:startup()
     self._rootLayer = cc.Scene:create()
     
     cc.Director:getInstance():replaceScene(self._rootLayer)
+    
+
     self:onWinSizeEx()
     self._bgLayer = cc.Node:create()
     self._rootLayer:addChild(self._bgLayer)
@@ -465,9 +467,10 @@ local keyTab =
     {128, "E", "[1:色相-]", "[2:色相+]", "[3:饱和度-]", "[4:饱和度+]", "[5:亮度-]", "[6:亮度+]", "[7:对比度-]", "[8:对比度+]"},
     {141, "R", "[1:FPS-]", "[2:FPS+]", "[3:清屏]"},
     {143, "T", "[1:设备引导.开]", "[2:设备引导.关]", "[3:设备引导.1-2]"},
-    {148, "Y", "[1:FPS开关]", "[2:战斗debug开关]", "[3:登录解锁]", "[4:右下角时间开关]"},
+    {148, "Y", "[1:FPS开关]", "[2:战斗debug开关]", "[3:登录解锁]", "[4:右下角时间开关]", "[5:战斗debug显示所有士兵开关]","[6:登录升级序列开关]"},
     {124, "A", "[1:删除本地记录]", "[2:删除本地log]", "[3:删除帐号]", "[4:重启客户端]", "[5:返回主界面]"},
     {142, "S", "[1:打开log文件夹]"},
+    {127, "D", "[1:停止战斗]", "[2:恢复战斗]", "[3:结束战斗失败]", "[4:杀死选中的兵团]", "[5:是否保存复盘数据]", "[6:显示攻击范围]", "[7:GM指令]"},
 }
 function ViewManager:onKeyboardDown(keyid)
     if isInputBoxEnable and isInputBoxEnable() then return end
@@ -648,9 +651,7 @@ function ViewManager:onWinSize(width, height)
     end
     SCREEN_X_OFFSET = (MAX_SCREEN_REAL_WIDTH - MAX_SCREEN_WIDTH) * 0.5
 
-    -- iphoneX
-    ADOPT_IPHONEX = MAX_SCREEN_WIDTH > 1300
-
+    self:setAdoptValue()
     self:onWinSizeEx()
 
     -- 背景全局缩放比例
@@ -731,7 +732,9 @@ function ViewManager:onWinSizeEx()
     end
     self._rootLayer.right:addChild(rightBar,100)
 end
-
+--[[
+    参数 isAdjustXMM2:  是否适配小米MAX2
+]]
 function ViewManager:enableScreenWidthBar()
     if not ADOPT_IPHONEX then return end
     local screen_x_offset = (MAX_SCREEN_REAL_WIDTH - 1136) * 0.5
@@ -784,9 +787,20 @@ function ViewManager:enableScreenWidthBar()
     end
     self._rootLayer.right:addChild(rightBar)
 end
+--设置适配变量值
+function ViewManager:setAdoptValue()
+    -- iphoneX
+    ADOPT_IPHONEX = MAX_SCREEN_WIDTH > 1300
+    --适配小米MAX2
+    ADOPT_XIAOMIM2 = false
+    if MAX_SCREEN_WIDTH >= 1280 and MAX_SCREEN_WIDTH <= 1300 then
+        ADOPT_XIAOMIM2 = true
+    end
+end
 
 function ViewManager:disableScreenWidthBar()
-    if not ADOPT_IPHONEX then return end
+    self:setAdoptValue()
+    if not ADOPT_IPHONEX and not ADOPT_XIAOMIM2 then return end
     if self._rootLayer.left then
         self._rootLayer.left:removeFromParent()
         self._rootLayer.left = nil
@@ -1700,6 +1714,17 @@ function ViewManager:showNotificationDialog(desc)
     local node = self._viewLayer:getChildren()[count]
     return node.view:showDialog("global.GlobalMessageDialog", {desc = desc}, true)
 end
+
+function ViewManager:showSecondConfirmDialog(desc, btn1name, callback1, btn2name, callback2)
+	local count = #self._viewLayer:getChildren()
+	local node = self._viewLayer:getChildren()[count]
+	if OS_IS_WINDOWS then
+		UIUtils:reloadLuaFile("global.GlobalSecondConfirmDialog")
+	end
+	return node.view:showDialog("global.GlobalSecondConfirmDialog", {desc = desc, button1 = btn1name, callback1 = callback1, 
+			button2 = btn2name, callback2 = callback2}, true)
+end
+
 -- 资源管理 --
 local fu = cc.FileUtils:getInstance()
 local sfc = cc.SpriteFrameCache:getInstance()
@@ -3916,6 +3941,18 @@ function ViewManager:sdk_need_login(data)
         self:restart()
     end
 end
+
+
+function ViewManager:walleUpgradeUI(viewname, param)
+    if self._disableChangeView then return end
+    local popView = false
+    if viewname == nil then
+        if self._viewLayer:getChildren()[1].view:getClassName() == "login.LoginView" then
+            self._viewLayer:getChildren()[1].view:changeWallUpUIState()
+        end
+    end
+end
+
 
 function ViewManager.dtor()
     HOTKEY_LABEL = nil

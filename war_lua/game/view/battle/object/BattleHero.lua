@@ -37,6 +37,20 @@ function BattleHero:ctor(objLayer, playerInfo, camp)
     local qhab = playerInfo.qhab 
     local starCharts = hero.sc
     local hStar = playerInfo.hStar 
+    local hformationId = playerInfo.hformationId
+    local backups = playerInfo.backups or {}
+    local hformationData
+    local backupData = {}
+    if hformationId and hformationId > 0 then
+        hformationData = tab.backupMain[hformationId]
+    end
+
+    for key, var in pairs(backups) do
+        if var then
+            backupData[tonumber(key)] = var
+        end
+    end
+
 
     BATTLE_3D_ANGLE = BC.BATTLE_3D_ANGLE
     _3dVertex1 = cc.Vertex3F(BATTLE_3D_ANGLE, 0, 0)
@@ -62,7 +76,7 @@ function BattleHero:ctor(objLayer, playerInfo, camp)
         end
     else
         -- 玩家英雄
-	    heroD = tab.hero[id]
+        heroD = tab.hero[id]
         self.level = level
         local isBattleData = true
         values = BattleUtils.getHeroBaseAttr(
@@ -86,7 +100,10 @@ function BattleHero:ctor(objLayer, playerInfo, camp)
             qhab,
             starCharts,
             hStar,
-            isBattleData and BattleUtils.CUR_BATTLE_TYPE
+            isBattleData and BattleUtils.CUR_BATTLE_TYPE,
+            hformationData,
+            backupData,
+            playerInfo.pTalents
             )
 
         -- 获得叠加魔法天赋值
@@ -137,6 +154,7 @@ function BattleHero:ctor(objLayer, playerInfo, camp)
     self.attr2 = values.monsterAttr2
     self.attr3 = values.monsterAttr3
     self.attr4 = values.monsterAttr4
+    self.attr5 = values.monsterAttr5
 
     self.revivePro = values.revivePro
     self.reviveBuff = values.reviveBuff
@@ -146,6 +164,8 @@ function BattleHero:ctor(objLayer, playerInfo, camp)
     self.autoSkills = values.autoSkills
     self.skillBookPassive = values.skillBookPassive
     self.weaponSkills = values.weaponSkills
+    self.specialSkills = values.specialSkills
+    self.conditionSkills = values.conditionSkills
 
     self.teamReplace = values.teamReplace
 
@@ -159,14 +179,16 @@ function BattleHero:ctor(objLayer, playerInfo, camp)
     self.monsterSkill3 = values.monsterSkill3
     self.monsterSkill4 = values.monsterSkill4
     self.monsterSkill5 = values.monsterSkill5
+    self.monsterSkill6 = values.monsterSkill6
 
     self.summonDie_RecMana = values.summonDie_RecMana
     self.summonDie_DecCd = values.summonDie_DecCd
     self.summonCount_ApPro = values.summonCount_ApPro
 
+    self.shadow = playerInfo.shadow
+
     -- 显示宝物特效的宝物ID
     self.treasureEff = values.treasureEff
-
     self.attrValues = values
 
     self.skillBookTalent = values.skillBookTalent
@@ -192,6 +214,7 @@ function BattleHero:ctor(objLayer, playerInfo, camp)
                     [BattleUtils.BATTLE_TYPE_GVG]                   = 1,
                     [BattleUtils.BATTLE_TYPE_GVGSiege]              = 1,
                     [BattleUtils.BATTLE_TYPE_GodWar]                = 1,
+                    [BattleUtils.BATTLE_TYPE_CrossGodWar]           = 1,
                 }
 
                 local modeReport = {
@@ -231,8 +254,10 @@ function BattleHero:ctor(objLayer, playerInfo, camp)
                 self.skills[i][3] = true
             end
         end
-
+        --英雄
         self._sp = nil
+        --英雄法相
+        self._fx = nil
         self._node = nil
         if self.skin then
             local heroSkinD = tab.heroSkin[self.skin]
@@ -343,6 +368,19 @@ function BattleHero:initSprite(heroart)
             end
         end
     end
+
+    if self._sp and self.shadow then
+        --英雄法相动画
+        local art = tab.heroShadow[self.shadow]["art"]
+        HeroAnim.new(self._node, art, {MOTION_IDLE, MOTION_RUN, MOTION_WALK, MOTION_CAST, MOTION_WIN}, function (fx)
+            self._fx = fx
+            self._fx:setScale(0.2)
+            self._fx:setScaleX(-0.2)
+            self._fx:changeMotion(MOTION_IDLE, BC.BATTLE_DISPLAY_TICK)
+            self._fx:setLocalZOrder(1)
+            self._fx:setPosition(30,30)
+        end, false, nil, nil, true)
+    end
 end
 
 local red = cc.c3b(162, 13, 20)
@@ -350,7 +388,7 @@ local blue = cc.c3b(0, 107, 189)
 local black = cc.c4b(0, 0, 0, 255)
 local brown = cc.c3b(70, 40, 10)
 function BattleHero:showSkillName(name)
-    if not self._sp.visible then return end
+    if self._sp == nil or not self._sp.visible then return end
     local clear = self._chatType ~= 1
     self._chatType = 1
     local chatBg = self._chatBg
@@ -486,6 +524,9 @@ function BattleHero:displayUpdate(tick)
     if self._sp then
         self._sp:update(tick)
     end
+    if self._fx then
+        self._fx:update(tick)
+    end
 end
 
 function BattleHero:clear()
@@ -494,6 +535,7 @@ function BattleHero:clear()
         self._node:removeFromParent()
         self._node = nil
         self._sp = nil
+        self._fx = nil
     end
 end
 
@@ -502,15 +544,22 @@ function BattleHero:BattleBegin()
     self._sp:changeMotion(MOTION_WIN, BC.BATTLE_DISPLAY_TICK, function ()
         self:onStop()
     end)
+    if self._fx == nil then return end
+    self._fx:changeMotion(MOTION_WIN, BC.BATTLE_DISPLAY_TICK, function ()
+        self:onStop()
+    end)
 end
 
 function BattleHero:Win()
     if self._sp == nil then return end
     self._sp:changeMotion(MOTION_WIN, BC.BATTLE_DISPLAY_TICK)
+    if self._fx == nil then return end
+    self._fx:changeMotion(MOTION_IDLE, BC.BATTLE_DISPLAY_TICK)
 end
 
 function BattleHero:Lose()
     if self._sp == nil then return end
+    if self._fx == nil then return end
 end
 
 function BattleHero:Cast()
@@ -519,26 +568,41 @@ function BattleHero:Cast()
     self._sp:changeMotion(MOTION_CAST, BC.BATTLE_DISPLAY_TICK, function ()
         self:onStop()
     end, true, nil, 8)
+
+
+    if self._fx == nil then return end
+    if self._fx:getMotion() == MOTION_CAST then return end
+    self._fx:changeMotion(MOTION_CAST, BC.BATTLE_DISPLAY_TICK, function ()
+        self:onStop()
+    end, true, nil, 8)
 end
 
 function BattleHero:onMove()
     if self._sp == nil then return end
     self._sp:changeMotion(MOTION_WALK, BC.BATTLE_DISPLAY_TICK)
+    if self._fx == nil then return end
+    self._fx:changeMotion(MOTION_WALK, BC.BATTLE_DISPLAY_TICK)  
 end
 
 function BattleHero:onStop()
     if self._sp == nil then return end
-    self._sp:changeMotion(MOTION_IDLE, BC.BATTLE_DISPLAY_TICK)
+    self._sp:changeMotion(MOTION_IDLE, BC.BATTLE_DISPLAY_TICK)  
+    if self._fx == nil then return end
+    self._fx:changeMotion(MOTION_IDLE, BC.BATTLE_DISPLAY_TICK)  
 end
 
 function BattleHero:pause()
     if self._sp == nil then return end
     self._sp:pause()
+    if self._fx == nil then return end
+    self._fx:pause()
 end
 
 function BattleHero:resume()
     if self._sp == nil then return end
     self._sp:resume()
+    if self._fx == nil then return end
+    self._fx:resume()
 end
 
 function BattleHero:setPos(x, y)

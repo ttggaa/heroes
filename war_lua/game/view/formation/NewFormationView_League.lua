@@ -40,9 +40,13 @@ function NewFormationView:switchLayerList(iconType, force)
     self._layerLeft._layerList._btnTabHero:setEnabled(NewFormationView.kGridTypeHero ~= iconType)
     self._layerLeft._layerList._btnTabHero:setBright(NewFormationView.kGridTypeHero ~= iconType)
 
-    self._layerLeft._layerList._btnFilter:setEnabled(NewFormationView.kGridTypeTeam == iconType)
-    self._layerLeft._layerList._btnFilter:setSaturation(NewFormationView.kGridTypeTeam == iconType and 0 or -100)
-
+    self._layerLeft._layerList._btnFilter:setEnabled((NewFormationView.kGridTypeTeam == iconType or NewFormationView.kGridTypeHero == iconType))
+    self._layerLeft._layerList._btnFilter:setSaturation((NewFormationView.kGridTypeTeam == iconType or NewFormationView.kGridTypeHero == iconType) and 0 or -100)
+    if NewFormationView.kGridTypeTeam == iconType then
+        self:updateFilterType()
+    elseif NewFormationView.kGridTypeHero == iconType then
+        self:updateHeroFilterType()
+    end
     if self:isShowInsFormation() then
         self._layerLeft._layerList._btnTabIns:setEnabled(NewFormationView.kGridTypeIns ~= iconType)
         self._layerLeft._layerList._btnTabIns:setBright(NewFormationView.kGridTypeIns ~= iconType)
@@ -189,6 +193,11 @@ function NewFormationView:initHeroListData()
     end
     data = clone(self._extend.heroes)
 
+    if not self._layerLeft._layerList._allHeroInit then
+        self._layerLeft._layerList._allHerosData = clone(data)
+        self._layerLeft._layerList._allHeroInit = true
+    end
+
     -- sort edit by yuxiaojing 2018/04/19 bug#21708
     local leagueHeroOrder = tab.leagueHeroOrder
     local function isLeagueHeroOrder( id )
@@ -202,6 +211,7 @@ function NewFormationView:initHeroListData()
     local ts1, t1, t2 = {}, {}, {}
     for k, v in pairs(data) do
         repeat
+            if self:isHeroTypeFiltered(v) then break end
             if self:isLoaded(NewFormationView.kGridTypeHero, tonumber(k)) then break end
             if not self:isFiltered(tonumber(k)) then
                 v.id = tonumber(k)
@@ -239,10 +249,6 @@ function NewFormationView:initHeroListData()
 
     for i = 1, #t1 do
         self._layerLeft._layerList._heroData[#self._layerLeft._layerList._heroData + 1] = t1[i]
-    end
-
-    for k, v in pairs(self._layerLeft._layerList._heroData) do
-        print(v.id)
     end
 
     -- local ts2, ts1, t0, t1, t2 = {}, {}, {}, {}, {}
@@ -348,13 +354,18 @@ end
 function NewFormationView:itemsTableViewCellAtIndex(tableView, idx)
     local cell = tableView:dequeueCell()
     local data = self:getCurrentIconData()
+    local iconType = self._context._gridType[self._context._formationId]
+    local iconId = data[idx + 1].id
     if nil == cell then
         cell = cc.TableViewCell:new()
-        local item = NewFormationIconView.new({iconType = self._context._gridType[self._context._formationId], iconId = data[idx + 1].id, iconSubtype = data[idx + 1].teamSubtype, iconState = NewFormationIconView.kIconStateImage, formationType = self._formationType, isCustom = data[idx + 1].custom, container = self})
+        local item = NewFormationIconView.new({iconType = iconType, iconId = iconId, iconSubtype = data[idx + 1].teamSubtype, iconState = NewFormationIconView.kIconStateImage, formationType = self._formationType, isCustom = data[idx + 1].custom, container = self})
         item:setPosition(self._context._gridType[self._context._formationId] == NewFormationView.kGridTypeHero and cc.p(50, 60) or cc.p(50, 50))
         item:setTag(NewFormationView.kItemTag)
         item:showFilter(self:isFiltered(data[idx + 1].id))
         item:showRecommand(self:isRecommend(data[idx + 1].id))
+        if not self:isFiltered(iconId) then
+            item:showBackupTag(self:isShowBackupTag(iconId, iconType))
+        end
         self:showItemFlag(item)
         item:updateState(NewFormationIconView.kIconStateImage, true)
         item:setName("item_"..idx)
@@ -365,6 +376,9 @@ function NewFormationView:itemsTableViewCellAtIndex(tableView, idx)
         item:setIconId(data[idx + 1].id)
         item:showFilter(self:isFiltered(data[idx + 1].id))
         item:showRecommand(self:isRecommend(data[idx + 1].id))
+        if not self:isFiltered(iconId) then
+            item:showBackupTag(self:isShowBackupTag(iconId, iconType))
+        end
         self:showItemFlag(item)
         item:setCustom(data[idx + 1].custom)
         item:updateState(NewFormationIconView.kIconStateImage, true)

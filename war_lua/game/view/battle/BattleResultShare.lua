@@ -106,21 +106,23 @@ function BattleResultShareWin:onInit()
 
     self._name1:setString(info1.name or "无名氏1")
     self._name2:setString(info2.name or "无名氏2")
-    self._level1:setString(info1.lv or "100")
-    self._level2:setString(info2.lv or "100")
+
+    local inParam = {lvlStr = info1.lv or "100", lvl = info1.lv or 100, plvl = info1.plvl}  
+    local tempLev1 = UIUtils:adjustLevelShow(self._level1, inParam, 1)
+    local inParam = {lvlStr = info2.lv or "100", lvl = info2.lv or 100, plvl = info2.plvl}  
+    local tempLev2 = UIUtils:adjustLevelShow(self._level2, inParam, 1)
 
     local scoreLab = ccui.TextBMFont:create("a"..(info1.curScore or "1000000"), UIUtils.bmfName_zhandouli)
     scoreLab:setAnchorPoint(0, 0)
-    scoreLab:setPosition(510, 101)
+    scoreLab:setPosition(tempLev1:getPositionX() + tempLev1:getContentSize().width + 10, 101)
     scoreLab:setScale(0.55)
     bg1:addChild(scoreLab)
 
     local scoreLab = ccui.TextBMFont:create("a"..(info2.curScore or "1000000"), UIUtils.bmfName_zhandouli)
     scoreLab:setAnchorPoint(0, 0)
-    scoreLab:setPosition(454, 100)
+    scoreLab:setPosition(tempLev2:getPositionX() + tempLev2:getContentSize().width + 10, 100)
     scoreLab:setScale(0.55)
     bg2:addChild(scoreLab)
-
 
     local id = info1.hero.id
     local heroD = tab.hero[id]
@@ -220,7 +222,7 @@ function BattleResultShareWin:onInit()
     for i = 1, #teams do
         data = teams[i]
         local quality = BattleUtils.TEAM_QUALITY[data.stage]
-        local icon = IconUtils:createTeamIconById({teamData = {id = data.id, star = data.star, level = data.level, ast = data.jx and 3 or 0},
+        local icon = IconUtils:createTeamIconById({teamData = {id = data.id, star = data.star,sId = data.sId, level = data.level, ast = data.jx and 3 or 0},
         sysTeamData = tab.team[data.id], quality = quality[1], quaAddition = quality[2], eventStyle = 0})        
         icon:setScale(0.6)
         icon:setPosition(175 + (i - 1) * 66, 15)

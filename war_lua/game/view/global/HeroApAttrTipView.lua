@@ -37,17 +37,17 @@ function HeroApAttrTipView:setAttrs( totalAttrs )
 		self._attImg:loadTexture(totalAttrs.art,1)
 	end
 	local attrs = {}
-	for i=1,5 do
+	for i=1,6 do
 		attrs["attr" .. i] = totalAttrs["attr" .. i]
 	end
-	attrs["attr5"] = totalAttrs["attr"] or totalAttrs["attr6"]
-	for k=1,5 do
+	-- attrs["attr5"] = totalAttrs["attr"]
+	for k=1,6 do
 		local attrLab = self:getUI("bg.attrCell" .. k .. ".attr1")
 		local attrNum = tonumber(attrs["attr" .. k]) or 0
 		if attrNum and attrNum < 0.01 then attrNum = 0 end
 		attrNum = string.format("%.2f",attrNum*0.1)
 		attrNum = attrNum*10
-		if k ~= 1 and k ~= 6 and attrNum and attrNum > 0 then
+		if k ~= 1 and attrNum and attrNum > 0 then
 			attrLab:setString((totalAttrs.negative or "") .. (attrNum or "0") .. (totalAttrs.unit or ""))
 		else
 			attrLab:setString((attrNum or "0") .. (totalAttrs.unit or ""))
@@ -118,12 +118,16 @@ function HeroApAttrTipView:setAttrs( totalAttrs )
 		local cell5 = self:getUI("bg.attrCell5")
 		cell5:setPositionY(cell5:getPositionY()+33)
 
+		local cell6 = self:getUI("bg.attrCell6")
+		cell6:setPositionY(cell6:getPositionY()+32)
+		cell6:setBackGroundImageOpacity(0)
+
 		local col_1 = self:getUI("bg.basicInfo.col_1")
-		col_1:setContentSize(cc.size(2,234))
-		self._bg:setContentSize(cc.size(290,286))
+		col_1:setContentSize(cc.size(2,268))
+		self._bg:setContentSize(cc.size(290,302))
 		local roundBounder = self:getUI("bg.roundBounder")
-		roundBounder:setContentSize(cc.size(240,236))
-		roundBounder:setPositionY(26)
+		roundBounder:setContentSize(cc.size(240,273))
+		roundBounder:setPositionY(19)
 	else
 		local children = self:getUI("bg"):getChildren()
 		for k,v in pairs(children) do
@@ -137,11 +141,11 @@ function HeroApAttrTipView:setAttrs( totalAttrs )
 		cell4:setBackGroundImageOpacity(0)
 
 		local roundBounder = self:getUI("bg.roundBounder")
-		roundBounder:setContentSize(cc.size(240,270))
-		roundBounder:setPositionY(26)
+		roundBounder:setContentSize(cc.size(240,305))
+		roundBounder:setPositionY(19)
 
 		local col_1 = self:getUI("bg.basicInfo.col_1")
-		col_1:setContentSize(cc.size(2,268))
+		col_1:setContentSize(cc.size(2,302))
 	end
 end
 return HeroApAttrTipView

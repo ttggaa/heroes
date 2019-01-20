@@ -625,6 +625,8 @@ function TreasureView:onClickUpBtn( )
                     [31] = {x=-30,y=0,scale = 1},
                     [41] = {x=0,y=0,scale = 1},
                     [43] = {x=-0,y=0,scale = 1},
+                    [44] = {x=-0,y=0,scale = 1},
+                    [45] = {x=-0,y=0,scale = 1},
                 }
 
                 local activeMcFileName = "baowuguang"
@@ -636,6 +638,15 @@ function TreasureView:onClickUpBtn( )
                 elseif self._curComData.id == 41 then
                     activeMcFileName = "treasuretianshilianmeng"
                     mcPreName = "tianshilianmengfaguang"
+                elseif self._curComData.id == 46 then 
+                    activeMcFileName = "mofamaozi"
+                    mcPreName = "mofamaofaguang"
+                elseif self._curComData.id == 44 then 
+                    activeMcFileName = "morizhiren"
+                    mcPreName = "morizhirenfaguang"
+                elseif self._curComData.id == 45 then 
+                    activeMcFileName = "jinmoqiu"
+                    mcPreName = "jimoqiufaguang"
                 end
 
                 local mcName = mcPreName .. "_" .. activeMcFileName
@@ -979,23 +990,41 @@ end
 -- 刷新技能描述
 function TreasureView:refreshTreasureDes( )
     if not self._skillDesPanel then self._skillDesPanel = self:getUI("bg.rightInfo.skillDesPanel") end
-    local rtx = self._skillDesPanel:getChildByFullName("skillDes")
-    if rtx then rtx:removeFromParent() end
+    -- local rtx = self._skillDesPanel:getChildByFullName("skillDes")
+    -- if rtx then rtx:removeFromParent() end
+
+
+    if self._skillDesPanel.scrollView then
+        self._skillDesPanel.scrollView:removeFromParentAndCleanup()
+    end
+    local scrollView = ccui.ScrollView:create()
+    scrollView:setDirection(cc.SCROLLVIEW_DIRECTION_VERTICAL)
+    scrollView:setContentSize(cc.size(180,100))
+    scrollView:setAnchorPoint(0,0)
+    scrollView:setPosition(5,-5)
+    scrollView:setBounceEnabled(true)
+    self._skillDesPanel.scrollView = scrollView
+    self._skillDesPanel:addChild(scrollView)
+    local sWidth = scrollView:getContentSize().width
+    local sHeight = scrollView:getContentSize().height
+
     local stage = self._curComInfo and self._curComInfo.stage or 0
     local skillDes = self:generateDes(math.max(stage,1))
     -- print("skillDes,,,,,",skillDes)
-    rtx = RichTextFactory:create("[color = 8a5c1d,fontsize=16]" .. skillDes ..  "[-]", 180, 100)
+    rtx = RichTextFactory:create("[color = 8a5c1d,fontsize=16]" .. skillDes ..  "[-]", 170,100)
     -- rtx:setVerticalSpace(-2)
     rtx:formatText()
     rtx:setName("skillDes")
-    local w = rtx:getInnerSize().width
-    local h = rtx:getInnerSize().height
-    -- local realW,realH = rtx:getRealSize().width,rtx:getRealSize().height
-    -- print("···",h,realH)
-    rtx:setPosition(w/2, 50)
-    self._skillDesPanel:addChild(rtx, 99)
     if stage == 0 then UIUtils:setGray(rtx,true) end
-    UIUtils:alignRichText(rtx, { hAlign = "center"})
+
+    local w = rtx:getRealSize().width
+    local h = rtx:getRealSize().height
+    rtx:setPosition(sWidth/2 - 5, h/2)
+    scrollView:addChild(rtx, 99)
+    scrollView:getInnerContainer():setContentSize(cc.size(sWidth,h))
+    scrollView:getInnerContainer():setPositionY(sHeight  - h)
+    scrollView:setTouchEnabled(h > sHeight)
+
 end
 
 -- 初始化常态的mc动画

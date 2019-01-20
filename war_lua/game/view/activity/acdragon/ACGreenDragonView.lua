@@ -709,7 +709,7 @@ function ACGreenDragonView:createItem3( data,awardData,index )
 	    layer:addChild(rankTxt, 2)
 	end
 
-	local icon = IconUtils:createHeadIconById({avatar = data.avatar,level = data.lvl,tp = 4, eventStyle=1, tencetTp = tencetTp})   --,tp = 2
+	local icon = IconUtils:createHeadIconById({avatar = data.avatar,level = data.lvl,tp = 4, eventStyle=1, tencetTp = tencetTp, plvl = data.plvl})   --,tp = 2
     icon:setPosition(140, 15)
     icon:setScale(0.8)
     layer:addChild(icon)

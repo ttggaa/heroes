@@ -25,7 +25,8 @@ function DialogFlashLTResult:ctor(data)
     self.buyNum = data.buyNum               --一次/十次
     self._costType = data.costType          --金币/钻石
     self._curData = data.curData            --活动结束时间
-    self._acId = tonumber(data.acId)        --兵团id
+    self._acId = tonumber(data.acId)        --活动activ_id
+    self._id = data.id                      --活动id
     local uiInfo = {   --新活动修改处
         [1001] = {
             titleAnim = "gongxihuodetianshi_huodetitleanim",
@@ -57,6 +58,21 @@ function DialogFlashLTResult:ctor(data)
         [1010] = {
             titleAnim = "manniuzhaomu_manniuzhaomu",
             itemId = 3805},
+        [1011] = {
+            titleAnim = "jiutoushezhaomu_jiutoushezhaomu",
+            itemId = 3807},
+        [1012] = {
+            titleAnim = "kuangzhanshizhaomu_kuangzhanshizhaomu",
+            itemId = 3408},
+        [1013] = {
+            titleAnim = "baozanglierenzhaomu_baozanglierenzhaomu",
+            itemId = 39902},
+        [1014] = {
+            titleAnim = "longguizhaomu_longguizhaomu",
+            itemId = 39906},
+        [1015] = {
+            titleAnim = "honglongzhaomu_honglongzhaomu",
+            itemId = 3708},
         }
 
     self._uiInfo = uiInfo[self._acId]
@@ -300,7 +316,7 @@ function DialogFlashLTResult:createItem( data,x,y,index,callfunc,scale )
     end
     local item 
     if data.isChange == 0 then
-        local teamId  = itemId-3000
+        local teamId  = TeamUtils:getTeamIdByItemId(itemId)
         local teamD = tab:Team(teamId)
         itemData = teamD
         item = IconUtils:createSysTeamIconById({sysTeamData = teamD })
@@ -340,7 +356,8 @@ function DialogFlashLTResult:createItem( data,x,y,index,callfunc,scale )
 
         --itemNum
         if tonumber(itemId) == tonumber(self._uiInfo["itemId"]) then
-            local teamData = self._modelMgr:getModel("TeamModel"):getTeamAndIndexById(self._uiInfo["itemId"] - 3000)
+            local tempId = TeamUtils:getTeamIdByItemId(self._uiInfo["itemId"])
+            local teamData = self._modelMgr:getModel("TeamModel"):getTeamAndIndexById(tempId)
             if teamData == nil then --未招募
                 local haveNum = ccui.Text:create()
                 haveNum:setFontName(UIUtils.ttfName)
@@ -504,7 +521,7 @@ function DialogFlashLTResult:closeView()
             self.callback()
         end
         self:close(true)
-        UIUtils:reloadLuaFile("flashcard.DialogFlashLTResult")
+        UIUtils:reloadLuaFile("activity.acLimit.DialogFlashLTResult")
     end
 end
 
@@ -586,7 +603,7 @@ function DialogFlashLTResult:buyItemByGem(cost,num)
     else
         self._backBtn:runAction(cc.FadeOut:create(0.1))
         self._tenAginBtn:runAction(cc.FadeOut:create(0.1))
-        self._serverMgr:sendMsg("LimitTeamsServer", "limitTeamLottery", {num = 10}, true, {}, function(result, errorCode)
+        self._serverMgr:sendMsg("LimitTeamsServer", "limitTeamLottery", {num = 10, acId = self._id}, true, {}, function(result, errorCode)
             audioMgr:playSound("Draw")
         
             for k,v in pairs(self._itemTable) do

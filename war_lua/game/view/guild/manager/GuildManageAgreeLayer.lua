@@ -383,9 +383,8 @@ function GuildManageAgreeLayer:updateCell(inView, data, indexId)
     -- end
 
     local level = inView:getChildByFullName("level")
-    if level then
-        level:setString("Lv. " .. data.lvl)
-    end
+    local inParam = {lvlStr = "Lv." .. (data.lvl or 0), lvl = (data.lvl or 0), plvl = data.plvl}
+    UIUtils:adjustLevelShow(level, inParam, 1)
 
     local applyTime = inView:getChildByFullName("applyTime")
     if applyTime then

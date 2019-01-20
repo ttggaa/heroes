@@ -18,6 +18,7 @@ function ArrowModel:ctor()
         --syncReqId = oldReqId,  -当前同步的id，用于解决弱网时强制退出，重进又重复同步数据问题(同步时获取)
         arrowList = {},     --射箭列表{{普通箭数，大招开始时间},...}
         dieList = {},       --射死列表{{怪表id，{普通箭射中列表},{激光箭射中列表}, 大招最后一箭时间, 对应的大招开始时间, 切后台时间},...}
+        bossData = {{}, {}},      --boss列表{ {{箭消耗数量, 区域},...}, {{箭消耗数量, 区域},...},...}, {{boss开始时间，是否死亡，是否减次数}, ...} }
         mStatis = {-1, 0, 0},--{当前能量值, 命中数，爆头数}
     }
     self:initData()
@@ -78,6 +79,17 @@ function ArrowModel:initData()
     self._data["friend"] = {}
     --guildMember 排行
     self._data["guildMember"] = {}
+
+    ----------------------------------------bosss
+    --击杀boss次数累计 
+    self._data["arrow"]["killBossNum"] = 0
+    --对boss造成的伤害累计
+    self._data["arrow"]["bossDamage"] = 0
+    --boss召唤更新时间
+    self._data["arrow"]["upBossTime"] = nil
+    --boss可召唤次数
+    self._data["arrow"]["bossNum"] = nil
+    self:refreshBossNum()
 end
 
 function ArrowModel:getData()
@@ -113,6 +125,12 @@ function ArrowModel:updateData(data)
     for k,v in pairs(data) do
         local backData = updateSubData(self._data["arrow"][k], v)
         self._data["arrow"][k] = backData
+    end
+
+    --boss未结束，期间同步的宝箱数据 显示上不增加
+    if self._isBossStart and not self._isBossEnd and self._oldBoxReward then
+        self._data["arrow"]["rewards"] = self._oldBoxReward
+        self._oldBoxReward = nil
     end
 end
 
@@ -178,11 +196,32 @@ end
 
 --校验  重置本地数据
 function ArrowModel:resetArrowLocalData(inData)
+    --记录同步之前 boss状态是否结束
+    local bossData = self._syncData
+    local lastTime = nil
+    if self._syncData and self._syncData["bossData"] and self._syncData["bossData"][2] then
+        local bossTime = self._syncData["bossData"][2]
+        if next(bossTime) then
+            lastTime = bossTime[#bossTime][1]
+        end
+    end
+
     self._syncData = {
         arrowList = {},
         dieList = {},
+        bossData = {{}, {}},
         mStatis = {-1, 0, 0},
     }
+
+    --同步时如果上一次射boss没有结束，保存当前下标和开始时间
+    if self._isBossStart and not self._isBossEnd and lastTime then
+        self._curBossNum = 1   
+        self._syncData["bossData"][2][1] = {}
+        self._syncData["bossData"][2][1][1] = lastTime
+    else
+        self._curBossNum = 0
+    end
+
     SystemUtils.saveAccountLocalData("syncArrowData", nil)
     local oldReqId = SystemUtils.loadAccountLocalData("SYNC_ARROW_REQUEST_ID") or 1  --上次同步id
     SystemUtils.saveAccountLocalData("SYNC_ARROW_REQUEST_ID", oldReqId + 1)
@@ -194,7 +233,6 @@ end
 function ArrowModel:handleShootDieMonsters(inData, inId)
     self._data["arrow"]["rewards"][tostring(inData)] = self._data["arrow"]["rewards"][tostring(inData)] + 1
     self._data["arrow"]["mStatis"][tostring(inId)] = self._data["arrow"]["mStatis"][tostring(inId)] + 1
-
 end
 
 --校验  [sync: 能量值] + [model：能量值]
@@ -226,6 +264,95 @@ end
 function ArrowModel:arrowNumRecover(inArrowNum)
     local arrowNum = (inArrowNum + 1) / 111
     return arrowNum
+end
+
+function ArrowModel:refreshBossNum()   --方法对num只加不减
+    if not self._data or not self._data["arrow"] then
+        return
+    end
+
+    --初始化
+    if not self._data["arrow"]["bossNum"] then
+        self._data["arrow"]["bossNum"] = 0
+    end
+
+    local sysBossT = tab.setting["BOSS_UPDATE_TIME "].value
+    local startT = TimeUtils.getIntervalByTimeString(sysBossT)
+    if not self._data["arrow"]["upBossTime"] then
+        self._data["arrow"]["upBossTime"] = startT
+    end
+
+    local curNum = self._data["arrow"]["bossNum"]
+    if curNum >= 3 then
+        return
+    end
+
+    local curT = self._userModel:getCurServerTime()
+    local startT = self._data["arrow"]["upBossTime"] or curT
+    local tempNum = math.modf((curT - startT) / (8 * 60 * 60))
+
+    local addNum = math.max(0, math.min(3, tempNum))
+    local times = math.max(0, math.min(3, tempNum + curNum))
+
+    self._data["arrow"]["upBossTime"] = (8 * 60 * 60) * addNum + self._data["arrow"]["upBossTime"]
+    self._data["arrow"]["bossNum"] = times
+
+    return times
+end
+
+------------------------boss
+function ArrowModel:startBossState()
+    --boss可召唤次数
+    self._data["arrow"]["bossNum"] = math.max(0, self._data["arrow"]["bossNum"] - 1)
+    --boss召唤更新时间
+    local curTime = self._userModel:getCurServerTime()
+    self._data["arrow"]["upBossTime"] = curTime
+    
+    --boss校验下标
+    if not self._curBossNum then
+        self._curBossNum = 0
+    end
+    self._curBossNum = self._curBossNum + 1
+    --boss校验模板开始时间
+    self._syncData["bossData"][2][self._curBossNum] = {}
+    self._syncData["bossData"][2][self._curBossNum][1] = curTime   --1代表此次校验，后端需要扣除boss次数
+    self._syncData["bossData"][2][self._curBossNum][3] = 1
+    SystemUtils.saveAccountLocalData("syncArrowData", self._syncData)
+end
+
+--校验  [sync: bossData]
+function ArrowModel:setSyncBossList(inData)
+    if not self._curBossNum then
+        self._curBossNum = 1
+    end
+    if not self._syncData["bossData"][1][self._curBossNum] then
+        self._syncData["bossData"][1][self._curBossNum] = {}
+    end
+    table.insert(self._syncData["bossData"][1][self._curBossNum], inData)
+    SystemUtils.saveAccountLocalData("syncArrowData", self._syncData)
+end
+
+function ArrowModel:handleShootBossReward(inRwdId, inNum, isDie)
+    if not self._curBossNum then
+        self._curBossNum = 1
+    end
+
+    if isDie and self._syncData and self._syncData["bossData"] and self._syncData["bossData"][2][self._curBossNum] then
+        self._syncData["bossData"][2][self._curBossNum][2] = true
+        SystemUtils.saveAccountLocalData("syncArrowData", self._syncData)
+    end
+    
+    self._data["arrow"]["rewards"][tostring(inRwdId)] = self._data["arrow"]["rewards"][tostring(inRwdId)] + inNum
+end
+
+--boss状态是否结束（结束后才清掉校验用的时间字段）
+function ArrowModel:setIsBossEnd(inState)
+    self._isBossStart = not inState
+    self._isBossEnd = inState
+end
+
+function ArrowModel:setBeforeSyncBoxData(inData)
+    self._oldBoxReward = inData or {}
 end
 
 --------------------------------------校验end--------------------------------------------------
@@ -316,6 +443,8 @@ function ArrowModel:getArrowRankData()
         local num1 = self._data["arrow"]["tHit"] / self._data["arrow"]["tArrow"]
         local num2 = self._data["arrow"]["tHeadShot"] / self._data["arrow"]["tHit"] 
         myScore = math.ceil(myScore * (1+ num1*0.3 + num2))
+
+        myScore = myScore + self._data["arrow"]["killBossNum"] + tonumber(self._data["arrow"]["bossDamage"])  --加上boss伤害和死亡次数
     end
 
     return hitPer, hitHPer, myScore

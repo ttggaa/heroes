@@ -43,6 +43,10 @@ function GlobalSelectAwardDialog:onInit()
         end
         self:close()
     end)
+    self._itemModel = self._modelMgr:getModel("ItemModel")
+    self._teamModel = self._modelMgr:getModel("TeamModel")
+    self._treasureModel = self._modelMgr:getModel("TreasureModel")
+
 
     dump(self._gift, "data ===", 10)
     self._itemCell = self:getUI("itemCell")
@@ -163,7 +167,11 @@ function GlobalSelectAwardDialog:updateCell(inView, data, indexId)
         itemId = IconUtils.iconIdMap[data[1]]
         num = data[3]
     end
-
+    local isDisTreasure = false
+    if itemId and tab:DisTreasure(itemId) then
+        isDisTreasure = true
+    end
+    print(" isDisTreasure  ",tostring(isDisTreasure))
     local itemIcon = inView:getChildByName("itemIcon")
     local teamIcon = inView:getChildByName("teamIcon")
     local heroIcon = inView:getChildByName("heroIcon")
@@ -288,7 +296,69 @@ function GlobalSelectAwardDialog:updateCell(inView, data, indexId)
         tname:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
         tname:setLineBreakWithoutSpace(true)
     end
+    local tnum = inView:getChildByFullName("tnum")
+    local iconStage = inView:getChildByName("iconStage")
+    if iconStage then
+        iconStage:removeFromParent()
+        iconStage = nil
+    end
 
+    if data[1] == "tool" or data[1] == "rune" then
+        tname:setPositionY(55)
+        tnum:setVisible(true)
+        if tnum then
+            local _ , nums
+            print(" itemId ",itemId)
+            if itemId then
+                _ , nums = self._itemModel:getItemsById(itemId)
+            elseif runeId then
+                _ , nums = self._teamModel:getRunesById(runeId)
+            end
+            tnum:setColor(cc.c4b(140, 92, 48, 255))
+            if isDisTreasure then
+                local disTreasureData = tab:DisTreasure(itemId)
+                local comId = self._treasureModel:getComIdByDisId(itemId)
+                local ComInfo = self._treasureModel:getComTreasureById(comId)
+                dump(ComInfo)
+                local stage = (ComInfo and ComInfo.treasureDev) and ComInfo.treasureDev[tostring(itemId)].s or 0
+                local need = tab:DevDisTreasure(stage) and tab:DevDisTreasure(stage).treasureNum or 0
+                local iconStage = ccui.ImageView:create()
+                iconStage:setName("iconStage")
+                iconStage:loadTexture("globalImageUI4_iquality" .. (disTreasureData.quality or 2) ..".png",1)
+                iconStage:setAnchorPoint(cc.p(0,1))
+                iconStage:setPosition(80,40)
+                inView:addChild(iconStage,100)
+
+                local stageTxt = ccui.Text:create()
+                stageTxt:setString("+" .. stage)
+                stageTxt:setFontName(UIUtils.ttfName)
+                if tonumber(stage) < 10 then
+                    stageTxt:setFontSize(20)
+                else
+                    stageTxt:setFontSize(18)
+                end
+                stageTxt:setColor(UIUtils.colorTable.ccUIBaseColor1)
+                stageTxt:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor,2)
+                stageTxt:setAnchorPoint(cc.p(0.5,0.5))
+                stageTxt:setPosition(iconStage:getContentSize().width/2, iconStage:getContentSize().height/2+2)
+                iconStage:addChild(stageTxt,1)
+                local x = iconStage ~= nil and iconStage:getPositionX() + 36 or 84
+                tnum:setPositionX(x)
+                local needNum = (need == 0 and stage > 0) and "--" or need
+                if stage == 0 then needNum = 1 end   --未激活默认显示1
+                tnum:setString("("..nums.."/"..needNum..")")
+                if nums >= need and stage < 20 and nums ~= 0 then
+                    tnum:setColor(UIUtils.colorTable["ccUIBaseColor9"])
+                end
+            else
+                tnum:setString("已拥有:".. nums)
+            end
+        end
+    else
+        tname:setPositionY(38)
+        tnum:setVisible(false)
+    end
+    
     local selectBg = inView:getChildByFullName("selectBg")
     local pitch = inView:getChildByFullName("selectBg.pitch")
     if pitch then

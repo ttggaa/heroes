@@ -94,6 +94,10 @@ function BattleSkillLogic:initLogic(mapInfo, stageInfo, playerInfo)
             [17] = {},  --己方飞行方阵
             [18] = {},  --敌方方阵+建筑
             [19] = {},  --己方龙单位
+            [20] = {},  --己方后援单位
+            [21] = {},  --敌方后援单位
+            [22] = {},  --己方后援方阵
+            [23] = {},  --敌方后援方阵
         }
 
         self.targetCacheClass[i] = {{}, {}, {}, {}, {}}
@@ -117,24 +121,30 @@ function BattleSkillLogic:initLogic(mapInfo, stageInfo, playerInfo)
         self.EnemyMana,
         self.PlayerManaRec,
         self.EnemyManaRec,
+        self.PlayerExternalInt,
+        self.EnemyExternalInt,
+        self.PlayerSkillCD,
+        self.EnemySkillCD,
+        self.PlayerManaPrcRec,
+        self.EnemyManaPrcRec,
     }
 
     -- 选圆心方法表
-    local funcCount = 59
+    local funcCount = 64
     self._getSkillPointFunc = {}
     for i = 1, funcCount do
         self._getSkillPointFunc[i] = self["getSkillPoint"..i]
     end
 
     -- 技能作用方法表
-    funcCount = 10
+    funcCount = 11
     self._skillActionFunc = {}
      for i = 1, funcCount do
         self._skillActionFunc[i] = self["skillAction"..i]
     end   
 
     -- 技能目标选择方法表
-    funcCount = 13
+    funcCount = 17
     self._getSkillTargetFunc = {}
     for i = 1, funcCount do
         self._getSkillTargetFunc[i] = self["getSkillTarget"..i]
@@ -149,6 +159,10 @@ function BattleSkillLogic:initLogic(mapInfo, stageInfo, playerInfo)
 
     self.onSoldierDieFunc = {self.onSoldierDie1, self.onSoldierDie2}
     self.onTeamDieFunc = {self.onTeamDie1, self.onTeamDie2}
+    self.onTeamReviveFunc = {self.onTeamRevive1, self.onTeamRevive2}
+
+    -- 地图切换的table(现在只支持子物体 {子物体id，地图id})
+    self._switchMapTable = {}
 end
 
 -- 战斗结算弹出的时候 关闭图特
@@ -193,6 +207,10 @@ function BattleSkillLogic:clear()
 
     self.onSoldierDieFunc = nil
     self.onTeamDieFunc = nil
+    self.onTeamReviveFunc = nil
+
+    self._switchMapTable = nil
+    
     objLayer = nil
     super.clear(self)
     self:clearSkill()
@@ -203,6 +221,119 @@ function BattleSkillLogic:clearSkill()
     super.clearSkill(self)
 
 end
+ 
+
+--额外修改智力相关 start
+function BattleSkillLogic:PlayerExternalInt(value)
+    if self._heros and self._heros[1] then
+        self._heros[1].int = self._heros[1].int + value * 0.01
+        local _int = self._heros[1].int
+        local _ack = self._heros[1].ack
+        if _int < -300 then
+            _int = -300
+        end
+        BC.formula_hero_intack[1] = (1 + 0.0025 * _int) / (1 + 0.0025 * _ack)
+    end
+end
+
+function BattleSkillLogic:EnemyExternalInt(value)
+    if self._heros and self._heros[2] then
+        self._heros[2].int = self._heros[2].int + value * 0.01
+        local _int = self._heros[2].int
+        local _ack = self._heros[2].ack
+        if _int < -300 then
+            _int = -300
+        end
+        BC.formula_hero_intack[2] = (1 + 0.0025 * _int) / (1 + 0.0025 * _ack)
+    end
+end
+--外修改智力相关 end
+
+
+--修改技能英雄CD start
+
+function BattleSkillLogic:PlayerSkillCD(value, camp, nType)
+    if nType then
+        local skillArr = {}
+        local tick = self.battleTime
+        for k,v in pairs(self._playAutoSkills[1]) do
+            if v then
+                local skill = self._playSkills[1][v.index]
+                if skill then
+                    if nType == 1 then
+                        if skill.castTick > tick then
+                            skillArr[#skillArr + 1] = v.index
+                        end
+                    elseif nType == 2 then
+                        --英雄大招
+                        if skill.castTick > tick and skill.dazhao > 0 then
+                            skillArr[#skillArr + 1] = v.index
+                        end
+                    end
+                end
+            end
+        end
+--        dump(skillArr)
+        if #skillArr > 0 then
+            local res = BC.randomSelect(#skillArr, 1)
+            local index = skillArr[res[1]]
+            local skill = self._playSkills[1][index]
+            skill.castTick = skill.castTick - value
+            if skill.castTick < tick then
+                skill.castTick = tick
+            end
+            if XBW_SKILL_DEBUG then
+                print("修改英雄技能 CD1 ", skill.id, value, nType)
+            end
+        else
+            if XBW_SKILL_DEBUG then
+                print("修改英雄技能 CD1 失败")
+            end
+        end
+    end
+end
+
+function BattleSkillLogic:EnemySkillCD(value, camp, nType)
+    if nType then
+        local skillArr = {}
+        local tick = self.battleTime
+        for k,v in pairs(self._playAutoSkills[2]) do
+            if v then
+                local skill = self._playSkills[2][v.index]
+                if skill then
+                    if nType == 1 then
+                        if skill.castTick > tick then
+                            skillArr[#skillArr + 1] = v.index
+                        end
+                    elseif nType == 2 then
+                        --英雄大招
+                        if skill.castTick > tick and skill.dazhao > 0 then
+                            skillArr[#skillArr + 1] = v.index
+                        end
+                    end
+                end
+            end
+        end
+        if #skillArr > 0 then
+            local res = BC.randomSelect(#skillArr, 1)
+            local index = skillArr[res[1]]
+            local skill = self._playSkills[2][index]
+            skill.castTick = skill.castTick - value
+            if skill.castTick < tick then
+                skill.castTick = tick
+            end
+            if XBW_SKILL_DEBUG then
+                print("修改英雄技能 CD2", skill.id, value, nType)
+            end
+        else
+            if XBW_SKILL_DEBUG then
+                print("修改英雄技能 CD2 失败")
+            end
+        end
+    end
+end
+
+--修改技能英雄CD end
 
 if BATTLE_PROC or not GameStatic.checkZuoBi_5 then
 function BattleSkillLogic:PlayerMana(value)
@@ -296,15 +427,38 @@ function BattleSkillLogic:EnemyManaRec(value)
     end
 end
 
+function BattleSkillLogic:PlayerManaPrcRec(value)
+    local hero = self._heros[1]
+    if hero and hero.manaRec then
+        local mana = hero.manaRec
+        self.manaRec[1] = mana * value * 0.01 + self.manaRec[1] 
+        if self.manaRec[1] < 0 then
+            self.manaRec[1] = 0
+        end
+    end
+end
+
+function BattleSkillLogic:EnemyManaPrcRec(value)
+    local hero = self._heros[2]
+    if hero and hero.manaRec then
+        local mana = hero.manaRec
+        self.manaRec[2] = mana * value * 0.01 + self.manaRec[2] 
+        if self.manaRec[2] < 0 then
+            self.manaRec[2] = 0
+        end
+    end
+end
+
 -- 士兵释放技能
 -- caster为攻击者的数值容器
 -- attacker为触发受击技能的攻击者
 local initSoldierBuff = BC.initSoldierBuff 
 local initPlayerBuff = BC.initPlayerBuff
+local genRanBuff = BC.genRanBuff
 local updateCaster = BC.updateCaster
 local sqrt = math.sqrt
 local getBulletFlyTime = BC.getBulletFlyTime
-local angerT = {2, 1, 4, 3}
+local angerT = {2, 1, 4, 3, 6, 5, 8, 7, 10, 9}
 local SRTab = {384, 391, 398, 405, 412, 419, 427, 435, 442, 450, 456, 462}
 function BattleSkillLogic:soldierCastSkill(noEff, skillD, level, caster, hitter, useAttackInv)
     -- print(self.battleTime, caster.attacker.ID, skillD["id"])
@@ -457,10 +611,16 @@ function BattleSkillLogic:soldierCastSkill(noEff, skillD, level, caster, hitter,
             -- 挂图腾
             if skillD["objectid"] then
                 local totemD = tab.object[skillD["objectid"]]
+--                totemD._nSkillID = skillD.id      b表中数据不能改    
+                if attacker and attacker.team then
+                    BC.ObjectParentSkillId[attacker.team.ID] = {}
+                    BC.ObjectParentSkillId[attacker.team.ID][skillD["objectid"]] = skillD.id
+                end
                 local _delay = totemD["objectdelay"]
                 if _delay == nil then
                     _delay = 0
                 end
+                local _forceAddTime = totemD["addtime"] -- 强制延时 暂用于开场技能
                 if skillD["kind"] ~= 7 then -- 开场技能不能延迟
                     local __delay = _delay * actionInv
                     if totemD["objecttype"] == 2 then
@@ -477,13 +637,30 @@ function BattleSkillLogic:soldierCastSkill(noEff, skillD, level, caster, hitter,
                         end
                     end
                 else
-                    if totemD["objecttype"] == 2 then
-                        for i = 1, #points do
-                            self:addTotemToSoldier(totemD, level, attacker, points[i])
+                    if _forceAddTime then
+                        local __delay = _forceAddTime * actionInv
+                        if totemD["objecttype"] == 2 then
+                            for i = 1, #points do
+                                delayCall(__delay, self, function()
+                                    self:addTotemToSoldier(totemD, level, attacker, points[i])
+                                end)
+                            end
+                        else
+                            for i = 1, #points do
+                                delayCall(__delay, self, function()
+                                    self:addTotemToPos(totemD, level, attacker, points[i].x, points[i].y)
+                                end)
+                            end
                         end
                     else
-                        for i = 1, #points do
-                            self:addTotemToPos(totemD, level, attacker, points[i].x, points[i].y)
+                        if totemD["objecttype"] == 2 then
+                            for i = 1, #points do
+                                self:addTotemToSoldier(totemD, level, attacker, points[i])
+                            end
+                        else
+                            for i = 1, #points do
+                                self:addTotemToPos(totemD, level, attacker, points[i].x, points[i].y)
+                            end
                         end
                     end
                 end
@@ -496,10 +673,16 @@ function BattleSkillLogic:soldierCastSkill(noEff, skillD, level, caster, hitter,
                         x = -x
                     end
                     local totemD = tab.object[oid]
+--                    totemD._nSkillID = skillD.id
+                    if attacker and attacker.team then
+                        BC.ObjectParentSkillId[attacker.team.ID] = {}
+                        BC.ObjectParentSkillId[attacker.team.ID][skillD["objectid1"]] = skillD.id
+                    end
                     local _delay = totemD["objectdelay"]
                     if _delay == nil then
                         _delay = 0
                     end
+                    local _forceAddTime = totemD["addtime"] -- 强制延时 暂用于开场技能
                     if skillD["kind"] ~= 7 then -- 开场技能不能延迟   
                         local __delay = _delay * actionInv             
                         for k = 1, #points do
@@ -508,8 +691,17 @@ function BattleSkillLogic:soldierCastSkill(noEff, skillD, level, caster, hitter,
                             end)
                         end      
                     else
-                        for k = 1, #points do
-                            self:addTotemToPos(totemD, level, attacker, points[k].x + x, points[k].y + y)
+                        if _forceAddTime then
+                            local __delay = _forceAddTime * actionInv
+                            for k = 1, #points do
+                                delayCall(__delay, self, function()
+                                    self:addTotemToPos(totemD, level, attacker, points[k].x + x, points[k].y + y)
+                                end)
+                            end
+                        else
+                            for k = 1, #points do
+                                self:addTotemToPos(totemD, level, attacker, points[k].x + x, points[k].y + y)
+                            end
                         end
                     end
                 end
@@ -574,8 +766,10 @@ function BattleSkillLogic:soldierCastSkill(noEff, skillD, level, caster, hitter,
 
                     for k = 1, 2 do
                         local targets
+                        -- local tempTargets
                         local rangetype
                         local buffid, buff, pro
+                        local ranbuffids = {}
                         rangetype = skillD["rangetype"..k]
                         if rangetype == nil then 
                             break 
@@ -593,6 +787,15 @@ function BattleSkillLogic:soldierCastSkill(noEff, skillD, level, caster, hitter,
                         -- 目标选择
                         targets = self:getSkillTargets(ptx, pty, point, caster, rangetype, skillD["range"..k], skillD["target"..k], skillD["count"..k], camp, skillD["damagekind"..k] == 5)
                         -- print(skillD["id"], #targets, "targets", ptx, pty)
+                        --[[
+                        -- 规避召唤物
+                        if #targets > 0 and skillD["avoidSummon"] and 0 ~= skillD["avoidSummon"] then
+                            tempTargets = self:filterTargetsBySummon(targets)                            
+                            if tempTargets then
+                                targets = tempTargets
+                            end
+                        end
+                        ]]
                         if #targets > 0 then
                             delayCall(hitTick, self, function()
                                 -- 方阵死亡就取消效果
@@ -727,7 +930,7 @@ function BattleSkillLogic:soldierCastSkill(noEff, skillD, level, caster, hitter,
                                 -- 技能效果 --
                                 -- 为了节约, 第一个受击到达的时候更新数据
                                 if not update then
-                                    caster = updateCaster(attacker, logic)
+                                    caster = updateCaster(attacker, self)
                                 end
                                 -- 受击特效
                                 if not BC.jump then
@@ -805,6 +1008,39 @@ function BattleSkillLogic:soldierCastSkill(noEff, skillD, level, caster, hitter,
                                             self["changeMorale"..morale[1]](self, caster, targets, morale[2] + morale[3] * (level - 1))
                                         end
                                     end
+
+                                    if skillD["ranbuffid"..k] and skillD["ranbuffnum"..k] then
+                                        ranbuffids = BC.genRanBuff(skillD["ranbuffid"..k], skillD["ranbuffnum"..k])
+                                        if ranbuffids then
+                                            local ranbuffid, ranbuff
+                                            for i = 1, #ranbuffids do
+                                                ranbuffid = ranbuffids[i]
+                                                local __count = 0
+                                                for t = 1, #targets do
+                                                    if not targets[t].die then
+                                                        ranbuff = initSoldierBuff(ranbuffid, level, caster, targets[t], skillD.id)
+                                                        targets[t]:addBuff(ranbuff)
+                                                        __count = __count + 1
+                                                    end
+                                                end
+                                                if SRData then
+                                                    if caster.camp == 1 then
+                                                        local sr = tab.skillBuff[ranbuffid].sr
+                                                        if sr and __count > 0 then
+                                                            if sr == 10 then
+                                                                if __count > SRData[452] then SRData[452] = __count end
+                                                            elseif sr == 11 then
+                                                                if __count > SRData[458] then SRData[458] = __count end
+                                                            elseif sr == 12 then
+                                                                if __count > SRData[464] then SRData[464] = __count end
+                                                                if __count < SRData[465] then SRData[465] = __count end
+                                                            end
+                                                        end
+                                                    end
+                                                end
+                                            end
+                                        end
+                                    end
                                 end
                             end, not ing)
                         end
@@ -814,16 +1050,67 @@ function BattleSkillLogic:soldierCastSkill(noEff, skillD, level, caster, hitter,
         end, not ing)
     end
 
-    -- 怒气/士气
+    -- 怒气/士气/智力
     local anger = skillD["anger"]
     if anger then
-        if camp == 1 then
-            self._heroAttrFunc[anger[1]](self, anger[2] + anger[3] * (level - 1), camp)
+        if camp == 1 then  
+            if self._heroAttrFunc[anger[1]] then  
+                self._heroAttrFunc[anger[1]](self, anger[2] + anger[3] * (level - 1), camp, anger[4])
+            end
         else
-            self._heroAttrFunc[angerT[anger[1]]](self, anger[2] + anger[3] * (level - 1), camp)
+            if self._heroAttrFunc[angerT[anger[1]]] then
+                self._heroAttrFunc[angerT[anger[1]]](self, anger[2] + anger[3] * (level - 1), camp, anger[4])
+            end
         end
     end
     return true
+end
+
+-- 添加子物体修改地图
+function BattleSkillLogic:addSwitchMap(objectId, mapId, posIndex)
+    local _table = {objectId, mapId, posIndex}
+    table.insert(self._switchMapTable, 1, _table)
+    local lowerMapId = nil
+--    dump(self._switchMapTable)
+    if self._switchMapTable[2] then
+        lowerMapId = self._switchMapTable[2][2]
+        local totem = self:getTotemId(self._switchMapTable[2][1], self._switchMapTable[2][3])
+        if totem and totem.LoopEffectSet then
+            totem:LoopEffectSet(true)
+        end
+    end
+    self._control:setMapSceneRes(mapId, lowerMapId, true)
+end
+
+-- 添加子物体修改地图
+function BattleSkillLogic:delSwitchMap(objectId, totem)
+    local bisAnim = false
+    for i = #self._switchMapTable, 1, -1 do
+        local var = self._switchMapTable[i]
+        if var and var[1] == objectId then
+            if i == 1 then
+                bisAnim = true
+                totem:endEffect()
+            end
+            table.remove(self._switchMapTable, i)
+            break
+        end
+    end
+    if self._control then
+        if #self._switchMapTable >= 1 then
+            local lowerMapId = nil
+            if self._switchMapTable[1] then
+                lowerMapId = self._switchMapTable[1][2]
+                local totem = self:getTotemId(self._switchMapTable[1][1], self._switchMapTable[1][3])
+                if totem and totem.LoopEffectSet then
+                    totem:LoopEffectSet(false)
+                end
+            end
+            self._control:setMapSceneRes(self._switchMapTable[1][2], lowerMapId, false, bisAnim)
+        else
+            self._control:setMapSceneRes(nil, nil, false, true)
+        end
+    end
 end
 
 -- 图腾放技能
@@ -834,6 +1121,7 @@ function BattleSkillLogic:totemCastSkill(totem, totemD, level, caster, x, y, yun
     local rangetype
     local action
     local buffid, buff, pro 
+    local ranbuffids = {}
     local direct
     if caster.camp == 2 then
         direct = -1
@@ -1095,10 +1383,60 @@ function BattleSkillLogic:totemCastSkill(totem, totemD, level, caster, x, y, yun
                                         BattleUtils.countSkillBookTalent(totemD.id, buff, {3, 4, 7, 8}, _camp)
                                         buff.endTick  = buff.duration * 0.001 + BC.BATTLE_BUFF_TICK
                                     end  
-                                else
-                                    buff = initSoldierBuff(buffid, level, caster, _target, totemD.id)
+                                else    
+                                    local _nSkillId = totemD.id
+                                    if caster and caster.attacker and caster.attacker.team then
+                                        if BC.ObjectParentSkillId[caster.attacker.team.ID] then
+                                            _nSkillId = BC.ObjectParentSkillId[caster.attacker.team.ID][totemD.id] or totemD.id
+                                        end
+                                    end
+                                    buff = initSoldierBuff(buffid, level, caster, _target, _nSkillId)
                                 end
                                 _target:addBuff(buff)
+                            end
+                        end
+                    end
+
+                    if totemD["ranbuffid"..k] and totemD["ranbuffnum"..k] then
+                        ranbuffids = BC.genRanBuff(totemD["ranbuffid"..k], totemD["ranbuffnum"..k])
+                        if ranbuffids then
+                            local ranbuffid, ranbuff
+                            for i = 1, #ranbuffids do
+                                ranbuffid = ranbuffids[i]
+                                local _target
+                                local _camp = totem.camp
+                                for t = 1, #targets do
+                                    _target = targets[t]
+                                    if not _target.die then
+                                        if totem.isHero then
+                                            ranbuff = initPlayerBuff(_camp, ranbuffid, level, _target, 100, totemD["type"] - 1, totem.forceDoubleEffect, totemD.id)
+                                            if totemD["calsstag"] ~= 4 and _target.skillTab[35] and _camp == _target.team.camp then
+                                                -- 一个技能只会触发一次
+                                                local _skillIndex = totem.casterIndex
+                                                if _skillIndex then
+                                                    if _target.team.skillTag_35[_skillIndex] == nil then
+                                                        _target.team.skillTag_35[_skillIndex] = true
+                                                        _target:invokeSkill(35)
+                                                    end
+                                                else 
+                                                    _target:invokeSkill(35)
+                                                end
+                                            end
+                                            -- 魔法天赋 
+                                            -- 3 增加持续时间
+                                            -- 4 增加持续时间百分比
+                                            -- 7 增加护盾效果值
+                                            -- 8 增加护盾效果百分比
+                                            if BC.H_SkillBookTalent[_camp] and BC.H_SkillBookTalent[_camp]["targetSkills"][totemD.id] then
+                                                BattleUtils.countSkillBookTalent(totemD.id, ranbuff, {3, 4, 7, 8}, _camp)
+                                                ranbuff.endTick  = ranbuff.duration * 0.001 + BC.BATTLE_BUFF_TICK
+                                            end  
+                                        else
+                                            ranbuff = initSoldierBuff(ranbuffid, level, caster, _target, totemD.id)
+                                        end
+                                        _target:addBuff(ranbuff)
+                                    end
+                                end
                             end
                         end
                     end
@@ -1124,7 +1462,8 @@ end
 -- soldier 挂载者
 function BattleSkillLogic:addTotemToSoldier(totemD, level, attacker, soldier, rangePro, forceDoubleEffect, yunBuff, index, inSkill)
     -- print(self.battleTime, totemD["id"], attacker.ID, soldier.ID)
-    local totem = BattleTotem.new(totemD, level, attacker, soldier.x, soldier.y, soldier, index, inSkill)
+    local posIndex = #self._totems + 1
+    local totem = BattleTotem.new(totemD, level, attacker, soldier.x, soldier.y, soldier, index, inSkill, posIndex)
     if rangePro then
         totem.rangePro = rangePro
         totem.isHero = true
@@ -1135,7 +1474,7 @@ function BattleSkillLogic:addTotemToSoldier(totemD, level, attacker, soldier, ra
     totem.forceDoubleEffect = forceDoubleEffect
     totem.yunBuff = yunBuff
     totem.casterIndex = attacker.index
-    self._totems[#self._totems + 1] = totem
+    self._totems[posIndex] = totem
     return totem
 end
 
@@ -1147,7 +1486,8 @@ local MAX_SCENE_HEIGHT_PIXEL = BC.MAX_SCENE_HEIGHT_PIXEL
 function BattleSkillLogic:addTotemToPos(totemD, level, attacker, x, y, rangePro, forceDoubleEffect, yunBuff, index, inSkill)
     if x < 0 or x > MAX_SCENE_WIDTH_PIXEL or y < 0 or y > MAX_SCENE_HEIGHT_PIXEL then return end
     -- print(self.battleTime, totemD["id"], x, y)
-    local totem = BattleTotem.new(totemD, level, attacker, x, y, nil, index, inSkill)
+    local posIndex = #self._totems + 1
+    local totem = BattleTotem.new(totemD, level, attacker, x, y, nil, index, inSkill, posIndex)
     if rangePro then
         totem.rangePro = rangePro
         totem.isHero = true
@@ -1158,7 +1498,7 @@ function BattleSkillLogic:addTotemToPos(totemD, level, attacker, x, y, rangePro,
     totem.forceDoubleEffect = forceDoubleEffect
     totem.yunBuff = yunBuff
     totem.casterIndex = attacker.index
-    self._totems[#self._totems + 1] = totem
+    self._totems[posIndex] = totem
     return totem
 end
 
@@ -1173,6 +1513,7 @@ function BattleSkillLogic:updateTotem(canCast)
             if totem == self._selectTotem then
                 self._selectTotem = nil
             end
+            
             table.remove(self._totems, k)
         end
     end
@@ -1180,6 +1521,36 @@ function BattleSkillLogic:updateTotem(canCast)
         local totems = self._totems
         for i = 1, #totems do
             totems[i]:updateTotem(tick)
+        end
+    end
+end
+
+function BattleSkillLogic:getTotemId(totemId, nIndexPos)
+    for k, totem in ipairs(self._totems) do
+--        print(totem._totemD.id, totemId, totem.die)
+        if totem and totem._totemD and totem._totemD.id == totemId and not totem.die and nIndexPos == totem._posIndex then
+            return totem
+        end
+    end
+    return nil
+end
+
+
+--totemId 子物体Id， nTime 通过时间控制显示 , nCount 消失数量-1 就是全部
+function BattleSkillLogic:setDieTotem(totemId, nTime, nCount)
+    if self._totems then
+        local _nTime = nTime or BC.BATTLE_TOTEM_TICK
+        for key, var in ipairs(self._totems) do
+            local _nCount = nCount or -1
+            if var and var._totemD and var._totemD.id == totemId and not var.die then--and _nTime > var._startTick then
+                --下一帧会让这个totem消失
+                var:setDie()
+--                print("setDieTotem " .. totemId .. " _nCount " .. _nCount, " var._startTick " .. var._startTick .. " _nTime " .. _nTime .. " BATTLE_TOTEM_TICK " .. BC.BATTLE_TOTEM_TICK)
+                _nCount = _nCount - 1
+                if _nCount == 0 then
+                    break
+                end
+            end
         end
     end
 end
@@ -1456,7 +1827,16 @@ function BattleSkillLogic:skillAction2(castTick, caster, targets, skillD, k, lev
                     if maxpro > 0 then
                         maxhurt = skillD["maxhurt"..k]
                         if maxhurt then
-                            maxd = floor((maxhurt[1] + maxhurt[2] * (level - 1)) * caster.atk * 0.01)
+                            local _maxHurt = maxhurt[1] + maxhurt[2] * (level - 1)
+                            if target then
+                                local immuneTeamAttackPro = target._immuneTeamAttackPro
+                                if immuneTeamAttackPro and immuneTeamAttackPro > 0 and (_maxHurt + 0.00000001) > immuneTeamAttackPro then
+                                    --这个时候说明是百分比伤害
+                                    _maxHurt = immuneTeamAttackPro
+                                    if XBW_SKILL_DEBUG then print(os.clock(), "限制免疫兵团最高伤害百分比",  immuneTeamAttackPro) end
+                                end
+                            end
+                            maxd = floor(_maxHurt * caster.atk * 0.01)
                             if damage > maxd then
                                 damage = maxd
                             end
@@ -1528,10 +1908,16 @@ function BattleSkillLogic:skillAction2(castTick, caster, targets, skillD, k, lev
                         if not dontCount then
                             -- hurtValue  减伤前
                             -- realDamage 减伤后
-                            BattleTeam_addDamage(team, hurtValue, -realDamage, skillD["id"])
+                            local _nSkillId = skillD["id"]
+                            if attacker and attacker.team then
+                                if BC.ObjectParentSkillId[attacker.team.ID] then
+                                    _nSkillId = BC.ObjectParentSkillId[attacker.team.ID][skillD["id"]] or skillD["id"]
+                                end
+                            end
+                            BattleTeam_addDamage(team, hurtValue, -realDamage, _nSkillId)
                         end
 
-                        if realDamage ~= 0 and team.canDestroy then    
+                        if realDamage < 0 and team.canDestroy  and not attacker._isAntiInjury then    
                             -- 吸血/反弹
                             local damage2, avoidDamage2 = BC.formula_vampire_modifier(caster, attacker, target, -realDamage, avoidDamage)
                             avoidDamage2 = avoidDamage2 or 0
@@ -1755,6 +2141,7 @@ function BattleSkillLogic:skillAction7(castTick, caster, targets, skillD, k, lev
         duplidmg = 0
         dupliatk = targets[1].baseAttr[ATTR_Atk]
     end
+
     
                                                 
     local buff
@@ -1768,7 +2155,12 @@ function BattleSkillLogic:skillAction7(castTick, caster, targets, skillD, k, lev
         soldier:resetAttr()
         buff = initSoldierBuff(10003, 1, soldier.caster, soldier)
         soldier:addBuff(buff)
+        -- if not BC.jump and not BATTLE_PROC and team.isOneBirth and soldier then
+        --     --针对有出生动画的的兵团(这个时候丢弃出生动画)
+        --     objLayer:setVisible(soldier.ID, true)
+        -- end
     end
+    team.isOneBirth = false
     team.summonTick = floor(now)
     team.posDirty = 99
     team.dynamicCD = self.dynamicCD
@@ -1810,6 +2202,15 @@ function BattleSkillLogic:skillAction8(castTick, caster, targets, skillD, k, lev
     self:attackToTarget(team, targetTeam)
     team:setTargetT(targetTeam)
     team:setState(ETeamState.ATTACK)
+    -- print("skillD ", skillD["id"])
+    if skillD and skillD["id"] == 6890006 then
+        --死骑强制位移技能，应策划需求强制修改，死骑突击模式
+        if team then
+            -- print("team.rush ", team.rush)
+            team.rush = 3
+        end
+    end
+
 end
 
 -- 9.复活
@@ -1855,6 +2256,20 @@ function BattleSkillLogic:skillAction10(castTick, caster, targets, skillD, k, le
     team:setState(ETeamState.ATTACK)
 end
 
+-- 11.斩杀(尽量不要使用，避免破话游戏的平衡)
+function BattleSkillLogic:skillAction11(castTick, caster, targets, skillD, k, level)
+    for i = 1, #targets do
+        if targets[i] and not targets[i].die and targets[i].HPChange then
+            -- targets[i]:rap(nil, -9999999999, false, false, 0, 0, true)
+            --世界BOSS 斩杀没有效果
+            if not targets[i]._worldBoss then
+                local damage = ceil(targets[i].HP) * 2 * -1
+                targets[i]:HPChange(nil, damage, false, 1, nil, false)
+            end
+        end
+    end
+end
+
 local getCellByScenePos = BC.getCellByScenePos
 --[[
     101 城堡
@@ -1874,6 +2289,7 @@ local getCellByScenePos = BC.getCellByScenePos
      2 当技能damagekind为空的时候, 且靠子物体实现的时候，会给返回的结果里每一个都加上图腾，然后图腾会单独释放技能
 ]]
 local randomTable = BC.randomTable
+--caster, skillD["pointrange"], skillD["pointkind"], skillD["pointcount"], hitter
 function BattleSkillLogic:getSkillPoint(caster, range, kind, maxcount, attacker)
     if self._getSkillPointFunc[kind] == nil then
         print("圆心类型没有"..kind)
@@ -1888,8 +2304,8 @@ function BattleSkillLogic:getSkillPoint(caster, range, kind, maxcount, attacker)
     if range > 0 then
         local points = {}
         local castx, casty = caster.x, caster.y
-        local x1, y1 = getCellByScenePos(castx - range, casty - range * 0.5)
-        local x2, y2 = getCellByScenePos(castx + range, casty + range * 0.5)
+        -- local x1, y1 = getCellByScenePos(castx - range, casty - range * 0.5)
+        -- local x2, y2 = getCellByScenePos(castx + range, casty + range * 0.5)
 
         local count = 0
         local listCount = #list
@@ -2281,7 +2697,7 @@ function BattleSkillLogic:getSkillPoint35(caster)
     local team
     for i = 1, #teams do
         team = teams[i]
-        if team.original and team.state == ETeamStateDIE and not team.reviveing then
+        if (team.original or team.assistance) and team.state == ETeamStateDIE and not team.reviveing then
             list[#list + 1] = team.soldier[1]
         end
     end
@@ -2638,6 +3054,68 @@ function BattleSkillLogic:getSkillPoint59(caster)
     return list or {}
 end
 
+-- 60.己方所有非地狱单位
+function BattleSkillLogic:getSkillPoint60(caster)
+    return {}
+end
+
+-- 61.己方所有非地狱兵团
+function BattleSkillLogic:getSkillPoint61(caster)
+    local list = {}
+    local teams = self.targetCache[caster.camp][10]
+    for i = 1, #teams do
+        if teams[i].state ~= ETeamStateDIE and teams[i].race1 ~= 105 then
+            list[#list + 1] = teams[i].aliveSoldier[1]
+        end
+    end
+    return list
+end
+
+-- 62.己方所有港口兵团（排除自己）
+function BattleSkillLogic:getSkillPoint62(caster)
+    local list = {}
+    local teams = self.targetCache[caster.camp][10]
+    local attacker = caster.attacker
+    if attacker and attacker.team then
+        for i = 1, #teams do
+            if teams[i] and teams[i].state ~= ETeamStateDIE and teams[i].race1 == 112 and attacker.team.ID ~= teams[i].ID then
+                list[#list + 1] = teams[i].aliveSoldier[1]
+            end
+        end
+    end
+    return list
+end
+
+-- 63.己方所有小于等于4体型的兵团（排除自己）
+function BattleSkillLogic:getSkillPoint63(caster)
+    local list = {}
+    local teams = self.targetCache[caster.camp][10]
+    local attacker = caster.attacker
+    if attacker and attacker.team then
+        for i = 1, #teams do
+            if teams[i] and teams[i].state ~= ETeamStateDIE and teams[i].volume and teams[i].volume <= 4 and attacker.team.ID ~= teams[i].ID then
+                list[#list + 1] = teams[i].aliveSoldier[1]
+            end
+        end
+    end
+    return list
+end
+
+-- 64.己方非自己的兵团（排除自己）
+function BattleSkillLogic:getSkillPoint64(caster)
+    local list = {}
+    local teams = self.targetCache[caster.camp][10]
+    local attacker = caster.attacker
+    if attacker and attacker.team then
+        for i = 1, #teams do
+            if teams[i] and teams[i].state ~= ETeamStateDIE and attacker.team.ID ~= teams[i].ID then
+                list[#list + 1] = teams[i].aliveSoldier[1]
+            end
+        end
+    end
+    return list
+end
+
 -- 
 -- 根据半径和种类,返回目标列表
 local randomSelect = BC.randomSelect
@@ -2700,6 +3178,17 @@ function BattleSkillLogic:getSkillTargets(x, y, point, caster, rangetype, range,
     return targets
 end
 local ETeamStateDIE = BC.ETeamState.DIE
+
+function BattleSkillLogic:filterTargetsBySummon(targets)
+    local tempTargets = {}
+    for i,v in pairs(targets) do
+        local team = v.team
+        if team and team.state ~= ETeamStateDIE and not team.summon then
+            table.insert(tempTargets, v)
+        end
+    end
+    return tempTargets
+end
 -- 1.己方方阵
 function BattleSkillLogic:getSkillTarget1(x, y, caster, rangetype, range, count, camp, targetmovetype)
     return self:getSkillTargetTeam(self.targetCache[camp][10], x, y, caster, rangetype, range, count, nil, targetmovetype)
@@ -2833,6 +3322,24 @@ end
 -- 13.敌方建筑
 function BattleSkillLogic:getSkillTarget13(x, y, caster, rangetype, range, count, camp)
     return self:getSkillTargetTeam(self.targetCache[camp][18], x, y, caster, rangetype, range, count)
+end
+-- 14.己方后援单位
+function BattleSkillLogic:getSkillTarget14(x, y, caster, rangetype, range, count, camp)
+    local targets = self.targetCache[camp][20]
+    return self._getRangeTargetFunc[rangetype](self, targets, caster, x, y, range, count[2], false)
+end
+-- 15.敌方后援单位
+function BattleSkillLogic:getSkillTarget15(x, y, caster, rangetype, range, count, camp)
+    local targets = self.targetCache[camp][21]
+    return self._getRangeTargetFunc[rangetype](self, targets, caster, x, y, range, count[2], false)
+end
+-- 16.己方后援方阵
+function BattleSkillLogic:getSkillTarget16(x, y, caster, rangetype, range, count, camp)
+    return self:getSkillTargetTeam(self.targetCache[camp][22], x, y, caster, rangetype, range, count)
+end
+-- 17.敌方后援方阵
+function BattleSkillLogic:getSkillTarget17(x, y, caster, rangetype, range, count, camp)
+    return self:getSkillTargetTeam(self.targetCache[camp][23], x, y, caster, rangetype, range, count)
 end
 -- 1.圆形
 local sqrt = math.sqrt
@@ -3132,6 +3639,7 @@ function BattleSkillLogic:summonTeam(caster, skillD, npcid, dk, number, level, x
         if self.summonTeamEx then
             self:summonTeamEx(team)
         end
+        self:_raceCountAddSum(camp, team.race1, team.race2)
         return team
     else
         addTeam.number = addTeam.number + number
@@ -3147,6 +3655,7 @@ function BattleSkillLogic:summonTeam(caster, skillD, npcid, dk, number, level, x
         if self.summonTeamEx then
             self:summonTeamEx(addTeam)
         end
+        self:_raceCountAddSum(addTeam.camp, addTeam.race1, addTeam.race2)
         return addTeam
     end
 end 
@@ -3168,6 +3677,7 @@ function BattleSkillLogic:addSoldier(soldier)
     local isSummon = team.summon
     local isBuilding = team.building
     local skilllabel = team.D["x"]
+    local ishelpteam = team.ishelpteam
     for i = ECampLEFT, ECampRIGHT do
         if camp ~= i then
             -- 敌方
@@ -3185,6 +3695,11 @@ function BattleSkillLogic:addSoldier(soldier)
                 if isSummon then
                     count = #self.targetCache[i][14] + 1
                     self.targetCache[i][14][count] = soldier
+                end
+
+                if ishelpteam then
+                    count = #self.targetCache[i][21] + 1
+                    self.targetCache[i][21][count] = soldier
                 end
             end
         else
@@ -3221,6 +3736,11 @@ function BattleSkillLogic:addSoldier(soldier)
                 if isSummon then
                     count = #self.targetCache[i][13] + 1
                     self.targetCache[i][13][count] = soldier
+                end
+
+                if ishelpteam then
+                    count = #self.targetCache[i][20] + 1
+                    self.targetCache[i][20][count] = soldier
                 end
 
                 if type(skilllabel) == "number" then
@@ -3300,6 +3820,11 @@ function BattleSkillLogic:addTeam(team, row)
                     self.targetCache[i][11][count] = team
                 end
 
+                if team.ishelpteam then
+                    count = #self.targetCache[i][23] + 1
+                    self.targetCache[i][23][count] = team
+                end
+
                 -- 敌方建筑+敌方兵团
                 count = #self.targetCache[i][18] + 1
                 self.targetCache[i][18][count] = team  
@@ -3317,6 +3842,11 @@ function BattleSkillLogic:addTeam(team, row)
                 end
                 count = #self.targetCache[i][10] + 1
                 self.targetCache[i][10][count] = team  
+
+                if team.ishelpteam then
+                    count = #self.targetCache[i][22] + 1
+                    self.targetCache[i][22][count] = team
+                end
 
 
                 if team.moveType == 2 then
@@ -3349,6 +3879,15 @@ function BattleSkillLogic:onHPChange(soldier, change, noAnim)
     team.curHP = team.curHP + change
     if not noAnim and self.onHPChangeEx then
         self:onHPChangeEx(soldier, change)
+    end
+
+    if not BATTLE_PROC then
+        local hteams = self._hteams[camp] 
+        if hteams and hteams.havehteams and hteams.diedCount < 1 then
+            local curHP = self._HP[camp]
+            local maxHP = self._MaxHP[camp]
+            self._control:updateBackupInfoNode(camp, 2, maxHP - curHP, maxHP - hteams.diedCount * maxHP)
+        end
     end
 end
 
@@ -3516,7 +4055,7 @@ function BattleSkillLogic:invokeSkill45(camp)
     end
 end
 
--- 46.己方任意方阵死亡
+-- 46.存在相应的buff
 function BattleSkillLogic:invokeSkill46(camp)
     local list = self._teams[camp]
     local team
@@ -3529,7 +4068,7 @@ function BattleSkillLogic:invokeSkill46(camp)
     return false
 end
 
--- 47.己方任意兵团血量到n
+-- 47.获得多个buff类型中的一种
 function BattleSkillLogic:invokeSkill47(camp)
     local list = self._teams[camp]
     local team
@@ -3540,6 +4079,35 @@ function BattleSkillLogic:invokeSkill47(camp)
         end
     end
     return false
+end
+
+-- 48.己方任意方阵死亡(和复活的死亡逻辑分开)
+function BattleSkillLogic:invokeSkill48(camp)
+    local list = self._teams[camp]
+    local team
+    local bIsSucess = false 
+    for i = 1, #list do
+        team = list[i]
+        if team.state ~= ETeamStateDIE and team.skillTab[48] and team.aliveSoldier[1] then
+            local _bIsSucess = team.aliveSoldier[1]:invokeSkill(48)
+            if _bIsSucess then
+                bIsSucess = _bIsSucess
+            end
+        end
+    end
+    return bIsSucess
+end
+
+-- 49.敌方任意单位死亡
+function BattleSkillLogic:invokeSkill49(camp)
+    local list = self._teams[camp]
+    local team
+    for i = 1, #list do
+        team = list[i]
+        if team.state ~= ETeamStateDIE and team.skillTab[49] and team.aliveSoldier[1] then
+            team.aliveSoldier[1]:invokeSkill(49)
+        end
+    end
 end
 
 -- 秒杀全场
@@ -3620,6 +4188,7 @@ function BattleSkillLogic:dtor1()
     ETeamStateNONE = nil
     ETeamStateMOVE = nil
     EMotionBORN = nil
+    BC_EXT_H_APAdd = nil
 end
 
 function BattleSkillLogic:dtor3()

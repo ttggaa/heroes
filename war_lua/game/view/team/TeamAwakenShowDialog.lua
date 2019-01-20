@@ -29,7 +29,6 @@ function TeamAwakenShowDialog:onInit()
     self._teamModel = self._modelMgr:getModel("TeamModel")
 
     self._selectSkill = 0
-
     local raceImg = self:getUI("bg.raceImg")
     local systeam = tab.team[self._selectTeamId]
     local race = tab:Race(systeam["race"][1])
@@ -47,6 +46,8 @@ function TeamAwakenShowDialog:onInit()
         bg:addChild(muyuanyanwu,1)  
     end
 
+    self._tipBg = self:getUI("bg.starTip.tipBg")
+    self.tipBgContentX ,  self.tipBgContentY = self._tipBg:getContentSize().width , self._tipBg:getContentSize().height
     local awakingBtn = self:getUI("bg.leftLayer.awakingBtn")
     if self._showType == 2 then
         awakingBtn:setVisible(false)
@@ -288,6 +289,7 @@ end
 
 function TeamAwakenShowDialog:updateShowTip(param, desEx, nameEx)
     local iconBg = self:getUI("bg.starTip.iconBg")
+    local tipBg = self:getUI("bg.starTip.tipBg")
     local skillIcon = iconBg:getChildByName("skillIcon")
     if not skillIcon then
         skillIcon = self:createSkillIcon(param)
@@ -311,12 +313,21 @@ function TeamAwakenShowDialog:updateShowTip(param, desEx, nameEx)
     if richText then
         richText:removeFromParent()
     end
+
     richText = RichTextFactory:create(desc, richtextBg:getContentSize().width-30, richtextBg:getContentSize().height, false)
     richText:formatText()
     richText:enablePrinter(true)
     richText:setPosition((richText:getInnerSize().width+20)/2, richtextBg:getContentSize().height-richText:getInnerSize().height/2)
     richText:setName("descRichText")
     richtextBg:addChild(richText)
+
+    local richTextH = richText:getInnerSize().height
+    local realHeight = self.tipBgContentY
+    if richTextH > 60 then
+        realHeight = self.tipBgContentY + richTextH - 60
+    end
+    print("=====richTextH========"..richTextH)
+    tipBg:setContentSize(cc.size(self.tipBgContentX,realHeight))
 end
 
 local SKILL_WIDTH, SKILL_HEIGHT = 80, 80

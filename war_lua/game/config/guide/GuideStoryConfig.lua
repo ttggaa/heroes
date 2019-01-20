@@ -1860,6 +1860,209 @@ local guideStoryConfig = {
 			side = 2   -- 1 or 2
 		},
 	},
+	[57] = {	--后援引导
+		{	
+			talk = "XINSHOU_130",
+			roleImg = "zhiyin",		
+			side = 1   -- 1 or 2
+		},
+	},
+	[58] = {	--后援引导
+		{	
+			talk = "XINSHOU_131",
+			roleImg = "zhiyin",		
+			side = 2   -- 1 or 2
+		},
+	},
+	[59] = {	--后援引导
+		{	
+			talk = "XINSHOU_132",
+			roleImg = "zhiyin",		
+			side = 2   -- 1 or 2
+		},
+	},
+	[60] = {	--后援引导
+		{	
+			talk = "XINSHOU_133",
+			roleImg = "zhiyin",		
+			side = 1   -- 1 or 2
+		},
+	},
+	[61] = {	--战阵引导
+		{	
+			talk = "XINSHOU_134",
+			roleImg = "zhiyin",		
+			side = 1   -- 1 or 2
+		},
+	},
+	[62] = {	--战阵引导
+		{	
+			talk = "XINSHOU_135",
+			roleImg = "zhiyin",		
+			side = 2   -- 1 or 2
+		},
+	},
+	[63] = {	--战阵引导
+		{	
+			talk = "XINSHOU_136",
+			roleImg = "zhiyin",		
+			side = 1   -- 1 or 2
+		},
+	},
+	[64] = {	--炼金引导
+		{	
+			talk = "XINSHOU_137",
+			roleImg = "zhiyin",		
+			side = 2   -- 1 or 2
+		},
+	},
+	[65] = {	--炼金引导
+		{	
+			talk = "XINSHOU_138",
+			roleImg = "zhiyin",		
+			side = 1   -- 1 or 2
+		},
+	},
+	[66] = {	--炼金引导
+		{	
+			talk = "XINSHOU_139",
+			roleImg = "zhiyin",		
+			side = 2   -- 1 or 2
+		},
+	},
+	[67] = {	--炼金引导
+		{	
+			talk = "XINSHOU_140",
+			roleImg = "zhiyin",		
+			side = 1   -- 1 or 2
+		},
+	},
+	[68] = {	--炼金引导
+		{	
+			talk = "XINSHOU_141",
+			roleImg = "zhiyin",		
+			side = 1   -- 1 or 2
+		},
+	},
+	[69] = {	--专属引导
+		{	
+			talk = "XINSHOU_143",
+			roleImg = "zhiyin",		
+			side = 1   -- 1 or 2
+		},
+	},
+	[70] = {	--专属引导
+		{	
+			talk = "XINSHOU_144",
+			roleImg = "zhiyin",		
+			side = 2   -- 1 or 2
+		},
+	},
+	[71] = {	--荣耀引导
+		{	
+			talk = "XINSHOU_145",
+			roleImg = "zhiyin",		
+			side = 1   -- 1 or 2
+		},
+	},
+	[72] = {	--荣耀引导
+		{	
+			talk = "XINSHOU_146",
+			roleImg = "zhiyin",		
+			side = 2   -- 1 or 2
+		},
+	},
+	[73] = {	--荣耀引导
+		{	
+			talk = "XINSHOU_147",
+			roleImg = "zhiyin",		
+			side = 1   -- 1 or 2
+		},
+	},
+	[74] = {	--荣耀引导
+		{	
+			talk = "XINSHOU_148",
+			roleImg = "zhiyin",		
+			side = 2   -- 1 or 2
+		},
+	},
+	[75] = {	--藏宝图引导
+		{	
+			talk = "XINSHOU_149",
+			roleImg = "zhiyin",		
+			side = 2   -- 1 or 2
+		},
+	},
+	[76] = {	--藏宝图引导
+		{	
+			talk = "XINSHOU_150",
+			roleImg = "zhiyin",		
+			side = 1   -- 1 or 2
+		},
+	},
+	[77] = {	--藏宝图引导
+		{	
+			talk = "XINSHOU_151",
+			roleImg = "zhiyin",		
+			side = 2   -- 1 or 2
+		},
+	},
+	[78] = {	--巅峰等级引导
+		{	
+			talk = "XINSHOU_152",
+			roleImg = "zhiyin",		
+			side = 2   -- 1 or 2
+		},
+	},
+	[79] = {	--巅峰等级引导
+		{	
+			talk = "XINSHOU_153",
+			roleImg = "zhiyin",		
+			side = 1   -- 1 or 2
+		},
+	},
+	[80] = {	--巅峰等级引导
+		{	
+			talk = "XINSHOU_154",
+			roleImg = "zhiyin",		
+			side = 2   -- 1 or 2
+		},
+	},
+	[81] = {	--巅峰等级引导
+		{	
+			talk = "XINSHOU_155",
+			roleImg = "zhiyin",		
+			side = 1   -- 1 or 2
+		},
+	},
+	[82] = {	--军团试炼引导
+		{	
+			talk = "XINSHOU_156",
+			roleImg = "zhiyin",		
+			side = 1   -- 1 or 2
+		},
+	},
+	[83] = {	--军团试炼引导
+		{	
+			talk = "XINSHOU_157",
+			roleImg = "zhiyin",		
+			side = 1   -- 1 or 2
+		},
+	},
+	[84] = {	--军团试炼引导
+		{	
+			talk = "XINSHOU_158",
+			roleImg = "zhiyin",		
+			side = 1   -- 1 or 2
+		},
+	},
+	[85] = {	--军团试炼引导
+		{	
+			talk = "XINSHOU_159",
+			roleImg = "zhiyin",		
+			side = 1   -- 1 or 2
+		},
+	},
 -------------------------------------------
 	[1004] = {	--演示战斗
 		{	
@@ -7782,6 +7985,458 @@ local guideStoryConfig = {
             name = "Name_10082", 	-- 戏班主安古罗
             namePos = {840,430},      	-- 名字的位置，需要调整
             textOffset = {-70,0}
+		},
+	},
+	[3111] = {	--传记 山德鲁1开始
+		{	
+			talk = "STAGETALK_60501_1_01",
+			side = 2,   -- 1 or 2
+			roleImg1 = "uiother/hero/crusade_Vidomina.png", -- 立汇名字
+			anchor = {-0.15,0},      -- 锚点 调整立汇位置
+			zoom = 1,         -- 缩放
+			name = "Name_10074",  -- 维德尼娜
+			namePos = {120,180},       -- 名字的位置，需要调整
+			textOffset = {-30,0}  -- 文本位置
+		},
+		{	
+			talk = "STAGETALK_60501_1_02",
+            side = 1,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Sandro.png", -- 立汇名字
+            anchor = {1.1,-0.02},      -- 锚点 调整立汇位置
+            zoom = 1,          -- 缩放
+            name = "Name_10075",  -- 山德鲁
+            namePos = {380,175},          -- 名字的位置，需要调整
+            textOffset = {110,0}
+          },
+          {     
+            talk = "STAGETALK_60501_1_03",
+            side = 2,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Vidomina.png", -- 立汇名字
+            anchor = {-0.15,0},      -- 锚点 调整立汇位置
+            zoom = 1,         -- 缩放
+            name = "Name_10074",  -- 维德尼娜
+            namePos = {120,180},       -- 名字的位置，需要调整
+            textOffset = {30,0}  -- 文本位置
+          },
+	},
+	[3112] = {	--传记 山德鲁1结束
+		{	
+            talk = "STAGETALK_60501_1_04",
+            side = 2,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Vidomina.png", -- 立汇名字
+            anchor = {-0.15,0},      -- 锚点 调整立汇位置
+            zoom = 1,         -- 缩放
+            name = "Name_10074",  -- 维德尼娜
+            namePos = {120,180},       -- 名字的位置，需要调整
+            textOffset = {-30,0}  -- 文本位置
+          },
+          { 
+            talk = "STAGETALK_60501_1_05",
+            side = 1,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Sandro.png", -- 立汇名字
+            anchor = {1.1,-0.02},      -- 锚点 调整立汇位置
+            zoom = 1,          -- 缩放
+            name = "Name_10075",  -- 山德鲁
+            namePos = {380,175},          -- 名字的位置，需要调整
+            textOffset = {110,0}
+          },
+	},
+	[3113] = {	--传记 山德鲁2开始
+		{	
+            talk = "STAGETALK_60501_2_01",
+            side = 1,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Sandro.png", -- 立汇名字
+            anchor = {1.1,-0.02},      -- 锚点 调整立汇位置
+            zoom = 1,          -- 缩放
+            name = "Name_10075",  -- 山德鲁
+            namePos = {380,175},          -- 名字的位置，需要调整
+            textOffset = {110,0}
+		},
+	},
+    [3114] = {  --传记 山德鲁2结束
+		{ 
+            talk = "STAGETALK_60501_2_04",
+            side = 2,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Vidomina.png", -- 立汇名字
+            anchor = {-0.15,0},      -- 锚点 调整立汇位置
+            zoom = 1,         -- 缩放
+            name = "Name_10074",  -- 维德尼娜
+            namePos = {120,180},       -- 名字的位置，需要调整
+            textOffset = {-30,0}  -- 文本位置
+		},
+		{ 
+            talk = "STAGETALK_60501_2_05",
+            side = 1,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Sandro.png", -- 立汇名字
+            anchor = {1.1,-0.02},      -- 锚点 调整立汇位置
+            zoom = 1,          -- 缩放
+            name = "Name_10075",  -- 山德鲁
+            namePos = {380,175},          -- 名字的位置，需要调整
+            textOffset = {110,0}
+		},
+		{ 
+            talk = "STAGETALK_60501_2_06",
+            side = 2,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Vidomina.png", -- 立汇名字
+            anchor = {-0.15,0},      -- 锚点 调整立汇位置
+            zoom = 1,         -- 缩放
+            name = "Name_10074",  -- 维德尼娜
+            namePos = {120,180},       -- 名字的位置，需要调整
+            textOffset = {-30,0}  -- 文本位置
+		},
+	},
+	[3115] = {	--传记 山德鲁3开始
+		{	
+            talk = "STAGETALK_60501_3_01",
+            side = 1,   -- 1 or 2
+            roleImg1 = "uiother/guide/guideImage_gelu.png", -- 立汇名字
+            anchor = {1,-0.02},      -- 锚点 调整立汇位置
+            zoom = 1,          -- 缩放
+            name = "Name_10018",    -- 格鲁
+            namePos = {300,168},          -- 名字的位置，需要调整
+            textOffset = {140,0}
+            },
+		{	
+            talk = "STAGETALK_60501_3_02",
+            side = 2,   -- 1 or 2
+            roleImg1 = "uiother/guide/guideImage_Yog.png", -- 立汇名字
+            flip = 1,    -- 水平翻转
+            anchor = {0,0},      -- 锚点 调整立汇位置
+            zoom = 1,         -- 缩放
+            name = "Name_10065",    -- 约克
+            namePos = {80,180},       -- 名字的位置，需要调整
+            textOffset = {-30,0}  -- 文本位置
+            },
+		{	
+            talk = "STAGETALK_60501_3_03",
+            side = 1,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Sandro.png", -- 立汇名字
+            anchor = {1.1,-0.02},      -- 锚点 调整立汇位置
+            zoom = 1,          -- 缩放
+            name = "Name_10075",  -- 山德鲁
+            namePos = {380,175},          -- 名字的位置，需要调整
+            textOffset = {110,0}
+		},
+	},
+	[3116] = {	--传记 山德鲁3结束
+		{	
+            talk = "STAGETALK_60501_3_04",
+            side = 2,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Gem.png", -- 立汇名字
+            flip = 1,    -- 水平翻转
+            anchor = {-0.2,-0.03},      -- 锚点 调整立汇位置
+            zoom = 0.8,         -- 缩放
+            name = "Name_10086",    -- 珍妮
+            namePos = {120,215},       -- 名字的位置，需要调整
+            textOffset = {-30,0}  -- 文本位置
+		},
+		{
+            talk = "STAGETALK_60501_3_05",
+            side = 1,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Sandro.png", -- 立汇名字
+            anchor = {1.1,-0.02},      -- 锚点 调整立汇位置
+            zoom = 1,          -- 缩放
+            name = "Name_10075",  -- 山德鲁
+            namePos = {380,175},          -- 名字的位置，需要调整
+            textOffset = {110,0}
+		},
+		{
+            talk = "STAGETALK_60501_3_06",
+            side = 2,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Gem.png", -- 立汇名字
+            flip = 1,    -- 水平翻转
+            anchor = {-0.2,-0.03},      -- 锚点 调整立汇位置
+            zoom = 0.8,         -- 缩放
+            name = "Name_10086",    -- 珍妮
+            namePos = {120,215},       -- 名字的位置，需要调整
+            textOffset = {-30,0}  -- 文本位置
+		},
+	},
+	[3117] = {	--传记 山德鲁4开始
+		{	
+            talk = "STAGETALK_60501_4_01",
+            side = 1,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Sandro.png", -- 立汇名字
+            anchor = {1.1,-0.02},      -- 锚点 调整立汇位置
+            zoom = 1,          -- 缩放
+            name = "Name_10075",  -- 山德鲁
+            namePos = {380,175},          -- 名字的位置，需要调整
+            textOffset = {110,0}
+		},
+		{
+            talk = "STAGETALK_60501_4_02",
+            side = 2,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Vidomina.png", -- 立汇名字
+            anchor = {-0.15,0},      -- 锚点 调整立汇位置
+            zoom = 1,         -- 缩放
+            name = "Name_10074",  -- 维德尼娜
+            namePos = {120,180},       -- 名字的位置，需要调整
+            textOffset = {-30,0}  -- 文本位置
+		},
+	},
+	[3118] = {	--传记 山德鲁4结束
+		{	
+            talk = "STAGETALK_60501_4_04",
+            side = 1,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Sandro.png", -- 立汇名字
+            anchor = {1.1,-0.02},      -- 锚点 调整立汇位置
+            zoom = 1,          -- 缩放
+            name = "Name_10075",  -- 山德鲁
+            namePos = {380,175},          -- 名字的位置，需要调整
+            textOffset = {110,0}
+		},
+		{ 
+            talk = "STAGETALK_60501_4_05",
+            side = 2,   -- 1 or 2
+            roleImg1 = "uiother/team/ta_kulouzhanshi.png", -- 立汇名字
+            anchor = {-0.2,0.1},     -- 锚点 调整立汇位置
+            zoom = 0.5,         -- 缩放
+            name = "Name_10077",    -- 菲尼斯·威尔玛
+            color = 1,  -- 全黑
+            namePos = {280,440},       -- 名字的位置，需要调整
+            textOffset = {0,0}  -- 文本位置
+		},
+		{ 
+            talk = "STAGETALK_60501_4_06",
+            side = 1,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Sandro.png", -- 立汇名字
+            anchor = {1.1,-0.02},      -- 锚点 调整立汇位置
+            zoom = 1,          -- 缩放
+            name = "Name_10075",  -- 山德鲁
+            namePos = {380,175},          -- 名字的位置，需要调整
+            textOffset = {110,0}
+		},
+	},
+	[3119] = {	--传记 山德鲁5开始
+		{	
+            talk = "STAGETALK_60501_5_01",
+            side = 1,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Sandro.png", -- 立汇名字
+            anchor = {1.1,-0.02},      -- 锚点 调整立汇位置
+            zoom = 1,          -- 缩放
+            name = "Name_10075",  -- 山德鲁
+            namePos = {380,175},          -- 名字的位置，需要调整
+            textOffset = {110,0}
+		},
+		{ 
+            talk = "STAGETALK_60501_5_02",
+            side = 2,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Vidomina.png", -- 立汇名字
+            anchor = {-0.15,0},      -- 锚点 调整立汇位置
+            zoom = 1,         -- 缩放
+            name = "Name_10074",  -- 维德尼娜
+            namePos = {120,180},       -- 名字的位置，需要调整
+            textOffset = {-30,0}  -- 文本位置
+		},
+		{ 
+            talk = "STAGETALK_60501_5_03",
+            side = 1,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Sandro.png", -- 立汇名字
+            anchor = {1.1,-0.02},      -- 锚点 调整立汇位置
+            zoom = 1,          -- 缩放
+            name = "Name_10075",  -- 山德鲁
+            namePos = {380,175},          -- 名字的位置，需要调整
+            textOffset = {110,0}
+        },
+	},
+	[3120] = {	--传记 山德鲁5结束
+		{	
+            talk = "STAGETALK_60501_5_04",
+            side = 1,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Sandro.png", -- 立汇名字
+            anchor = {1.1,-0.02},      -- 锚点 调整立汇位置
+            zoom = 1,          -- 缩放
+            name = "Name_10075",  -- 山德鲁
+            namePos = {380,175},          -- 名字的位置，需要调整
+            textOffset = {110,0}
+		},
+		{ 
+            talk = "STAGETALK_60501_5_05",
+            side = 2,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Vidomina.png", -- 立汇名字
+            anchor = {-0.15,0},      -- 锚点 调整立汇位置
+            zoom = 1,         -- 缩放
+            name = "Name_10074",  -- 维德尼娜
+            namePos = {120,180},       -- 名字的位置，需要调整
+            textOffset = {-30,0}  -- 文本位置
+		},
+		{   
+            talk = "STAGETALK_60501_5_06",
+            side = 1,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Sandro.png", -- 立汇名字
+            anchor = {1.1,-0.02},      -- 锚点 调整立汇位置
+            zoom = 1,          -- 缩放
+            name = "Name_10075",  -- 山德鲁
+            namePos = {380,175},          -- 名字的位置，需要调整
+            textOffset = {110,0}
+        },
+	},
+	[3121] = {	--传记 杰德特1开始
+		{	
+            talk = "STAGETALK_61401_1_01",
+            side = 1,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Jeddite.png", -- 立汇名字
+            anchor = {1.1,-0.02},      -- 锚点 调整立汇位置
+            zoom = 1,          -- 缩放
+            name = "Name_10090",  -- 杰德特
+            namePos = {390,175},          -- 名字的位置，需要调整
+            textOffset = {110,0}
+		},
+		{ 
+            talk = "STAGETALK_61401_1_02",
+            side = 2,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_CragHack.png", -- 立汇名字
+            anchor = {-0.15,0},      -- 锚点 调整立汇位置
+            zoom = 1,         -- 缩放
+            name = "Name_10087",  -- 劫匪强盗
+            namePos = {120,180},       -- 名字的位置，需要调整
+            textOffset = {-30,0}  -- 文本位置
+		},
+		{   
+            talk = "STAGETALK_61401_1_03",
+            side = 1,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Jeddite.png", -- 立汇名字
+            anchor = {1.1,-0.02},      -- 锚点 调整立汇位置
+            zoom = 1,          -- 缩放
+            name = "Name_10090",  -- 杰德特
+            namePos = {390,175},          -- 名字的位置，需要调整
+            textOffset = {110,0}
+        },
+	},
+	[3122] = {	--传记 杰德特1结束
+		{	
+            talk = "STAGETALK_61401_1_04",
+            side = 1,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Jeddite_01.png", -- 立汇名字
+            anchor = {1.1,-0.02},      -- 锚点 调整立汇位置
+            zoom = 1,          -- 缩放
+            name = "Name_10090",  -- 杰德特
+            namePos = {410,175},          -- 名字的位置，需要调整
+            textOffset = {-20,0}
+		},
+	},
+	[3123] = {	--传记 杰德特2开始
+		{	
+            talk = "STAGETALK_61401_2_01",
+            side = 1,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Jeddite.png", -- 立汇名字
+            anchor = {1.1,-0.02},      -- 锚点 调整立汇位置
+            zoom = 1,          -- 缩放
+            name = "Name_10090",  -- 杰德特
+            namePos = {380,175},          -- 名字的位置，需要调整
+            textOffset = {110,0}
+		},
+		{ 
+            talk = "STAGETALK_61401_2_02",
+            side = 2,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_HumanSandro.png", -- 立汇名字
+            anchor = {-0.15,0},      -- 锚点 调整立汇位置
+            zoom = 1,         -- 缩放
+            name = "Name_10075",  -- 山德鲁
+            namePos = {110,180},       -- 名字的位置，需要调整
+            textOffset = {-30,0}  -- 文本位置
+		},
+	},
+	[3124] = {	--传记 杰德特2结束
+		{	
+            talk = "STAGETALK_61401_2_03",
+            side = 1,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Astral.png", -- 立汇名字
+            anchor = {1.1,-0.02},      -- 锚点 调整立汇位置
+            zoom = 1,          -- 缩放
+            name = "Name_10088",  -- 艾里克
+            namePos = {390,175},          -- 名字的位置，需要调整
+            textOffset = {85,0}
+		},
+	},
+	[3125] = {	--传记 杰德特3开始
+		{	
+            talk = "STAGETALK_61401_3_01",
+            side = 1,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Jeddite.png", -- 立汇名字
+            anchor = {1.1,-0.02},      -- 锚点 调整立汇位置
+            zoom = 1,          -- 缩放
+            name = "Name_10090",  -- 杰德特
+            namePos = {380,175},          -- 名字的位置，需要调整
+            textOffset = {110,0}
+		},
+		{ 
+            talk = "STAGETALK_61401_3_02",
+            side = 2,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Sandro.png", -- 立汇名字
+            anchor = {-0.15,0},      -- 锚点 调整立汇位置
+            zoom = 1,         -- 缩放
+            name = "Name_10075",  -- 山德鲁
+            namePos = {120,180},       -- 名字的位置，需要调整
+            textOffset = {-30,0}  -- 文本位置
+		},
+	},
+	[3126] = {	--传记 杰德特3结束
+		{	
+            talk = "STAGETALK_61401_3_03",
+            side = 1,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Jeddite.png", -- 立汇名字
+            anchor = {1.1,-0.02},      -- 锚点 调整立汇位置
+            zoom = 1,          -- 缩放
+            name = "Name_10090",  -- 杰德特
+            namePos = {380,175},          -- 名字的位置，需要调整
+            textOffset = {130,0}
+		},
+	},
+	[3127] = {	--传记 杰德特4开始
+		{	
+            talk = "STAGETALK_61401_4_01",
+            side = 1,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Jeddite.png", -- 立汇名字
+            anchor = {1.1,-0.02},      -- 锚点 调整立汇位置
+            zoom = 1,          -- 缩放
+            name = "Name_10090",  -- 杰德特
+            namePos = {380,175},          -- 名字的位置，需要调整
+            textOffset = {110,0}
+		},
+	},
+	[3128] = {	--传记 杰德特4结束
+		{	
+            talk = "STAGETALK_61401_4_02",
+            side = 1,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Jeddite.png", -- 立汇名字
+            anchor = {1.1,-0.02},      -- 锚点 调整立汇位置
+            zoom = 1,          -- 缩放
+            name = "Name_10090",  -- 杰德特
+            namePos = {380,175},          -- 名字的位置，需要调整
+            textOffset = {110,0}
+		},
+		{ 
+            talk = "STAGETALK_61401_4_03",
+            side = 2,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Rashka_01.png", -- 立汇名字
+            anchor = {-0.15,0},      -- 锚点 调整立汇位置
+            zoom = 1,         -- 缩放
+            name = "Name_10089",  -- 赛诺费克斯
+            namePos = {120,180},       -- 名字的位置，需要调整
+            textOffset = {-60,0}  -- 文本位置
+		},
+	},
+[3129] = {	--传记 杰德特5开始
+		{	
+            talk = "STAGETALK_61401_5_01",
+            side = 1,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Kendal.png", -- 立汇名字
+            anchor = {1.1,-0.02},      -- 锚点 调整立汇位置
+            zoom = 0.7,          -- 缩放
+            name = "Name_10063",  -- 肯达尔
+            namePos = {450,235},          -- 名字的位置，需要调整
+            textOffset = {80,0}
+		},
+		{ 
+            talk = "STAGETALK_61401_5_02",
+            side = 2,   -- 1 or 2
+            roleImg1 = "uiother/hero/crusade_Jeddite.png", -- 立汇名字
+            anchor = {-0.15,0},      -- 锚点 调整立汇位置
+            zoom = 1,         -- 缩放
+            name = "Name_10090",  -- 杰德特
+            namePos = {120,180},       -- 名字的位置，需要调整
+            textOffset = {-30,0}  -- 文本位置
 		},
 	},
 	[4001] = {	--传记 凯瑟琳5助战

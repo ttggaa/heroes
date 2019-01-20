@@ -116,7 +116,7 @@ function GuildServer:onGetGameGuildInfo(result, error)
         result["bubble"] = nil 
     end
     if result["arrow"] then
-        dump(result["arrow"], "arrow==")
+        -- dump(result["arrow"], "arrow==")
         local arrowModel = self._modelMgr:getModel("ArrowModel")
         if arrowModel:getIsFirstLoad() == false then
             arrowModel:updateData(result["arrow"])
@@ -263,11 +263,12 @@ function GuildServer:onTechDonate(result, error)
     if error ~= 0 then 
         return
     end
-    -- dump(result)
+    -- dump(result,"result===>",5)
     if result and result["d"] and result["d"].backFlow then
-        self._modelMgr:getModel("BackflowModel"):updateReturnBlessData(result["d"].backFlow)
+        self._modelMgr:getModel("BackflowModel"):updateReturnPrivileges(result["d"].backFlow)
         result["d"].backFlow = nil
     end
+
     self:updateUserData(result)
     result["d"] = nil
     -- dump(result,"==============================")
@@ -572,6 +573,15 @@ function GuildServer:onSetLastInviteTime(result, error)
         return
     end
     self:callback(result,error)
+end
+
+--联盟退盟评价
+function GuildServer:onQuitJudge(result, error)
+	if error~=0 then
+		return
+	end
+	self:handAboutServerData(result)
+	self:callback(result)
 end
 
 return GuildServer

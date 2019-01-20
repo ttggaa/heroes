@@ -15,7 +15,7 @@ SkillUtils.SKILL_TYPE_ATTACKEFFECT = 4
 
 local modelMgr = ModelManager:getInstance()
 function SkillUtils:handleSkillDesc1(inDesc, inTeamData, inLevel, inUlevel)
-    local backData, backSpeed = BattleUtils.getTeamBaseAttr1(inTeamData, modelMgr:getModel("PokedexModel"):getScore())
+    local backData, backSpeed = BattleUtils.getTeamBaseAttr1(inTeamData, modelMgr:getModel("PokedexModel"):getScore(), modelMgr:getModel("BattleArrayModel"):getData(), modelMgr:getModel("ParagonModel"):getData())
     local volume = inTeamData.volume 
     local attr = modelMgr:getModel("TeamModel"):getTeamTreasure(volume) 
     if not inTeamData["exp"] and volume then

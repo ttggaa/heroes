@@ -167,7 +167,8 @@ function FriendRecallInfoView:updateCell(item, data, idx)
 
 	--lv
     local lvLab = item:getChildByFullName("lvLab")  
-    lvLab:setString("Lv." .. (data["level"] or 0))
+    local inParam = {lvlStr = "Lv." .. (data["level"] or 0), lvl = data["level"], plvl = data.plvl}
+    UIUtils:adjustLevelShow(lvLab, inParam, 1)
     
     --sec
     local secName = self._modelMgr:getModel("LeagueModel"):getServerName(data["sec"]) or ""

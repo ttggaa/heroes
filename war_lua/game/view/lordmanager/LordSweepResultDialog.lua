@@ -129,6 +129,7 @@ function LordSweepResultDialog:createItem(item,idx)
     item.list = item:getChildByFullName("itemList")
     for k,itemData in pairs(self._awards[idx].awards) do
     	local itemCell
+        local typeId 
         if itemData.type ~= "tool" 
             and itemData.type ~= "hero" 
             and itemData.type ~= "team" 
@@ -137,9 +138,11 @@ function LordSweepResultDialog:createItem(item,idx)
             and itemData.type ~= "hSkin" 
             and itemData.type ~= "siegeProp"
         then
+            typeId = itemData.typeId
             itemData.typeId = IconUtils.iconIdMap[itemData.type]
         end
 
+        
         --抽到兵团整卡
         if itemData.isChange and itemData.isChange == 0 then
             local teamId  = itemData.typeId-3000
@@ -150,7 +153,11 @@ function LordSweepResultDialog:createItem(item,idx)
             iconColor:loadTexture("globalImageUI_squality_jin.png",1)
             itemCell:setScale(0.74)
         else
-            itemCell = IconUtils:createItemIconById({itemId = itemData.typeId, num = itemData.num})
+            if itemData.type == "battleSoul" then
+                itemCell = IconUtils:createItemIconById({itemId = itemData.typeId,num = itemData.num, eventStyle = 0, battleSoulType = typeId })
+            else
+                itemCell = IconUtils:createItemIconById({itemId = itemData.typeId, num = itemData.num})
+            end
             itemCell:setScale(0.85)
         end
     	itemCell:setAnchorPoint(0.5,1)

@@ -70,6 +70,8 @@ function GlobalChatNode:showChatUnread(inData)
     local chatModel = self._modelMgr:getModel("ChatModel")
     local guildUnread = chatModel:getUnread(ChatConst.CHAT_CHANNEL.GUILD)
     local worldUnread = chatModel:getUnread(ChatConst.CHAT_CHANNEL.WORLD)
+    local godWarUnread = chatModel:getUnread(ChatConst.CHAT_CHANNEL.GODWAR) 
+    local fSerUnread = chatModel:getUnread(ChatConst.CHAT_CHANNEL.FSERVER)
     local priUnread = chatModel:getPriUnread()
 
     self._chatUnread:setVisible(false)
@@ -80,10 +82,8 @@ function GlobalChatNode:showChatUnread(inData)
         local num1 = guildUnread + #table.keys(priUnread)
         local num = num1 > 99 and "99+" or num1
         self._unreadNum:setString(num)
-    else
-        if worldUnread > 0 then
-            self._redPoint:setVisible(true)
-        end
+    elseif worldUnread > 0 or godWarUnread > 0 or fSerUnread > 0 then
+        self._redPoint:setVisible(true)
     end
 end
 

@@ -226,8 +226,12 @@ function GuildMapAQRuleView:createRewards(inObj, inRwas)
         rwdNum:setVisible(true)
 
         if inRwas[i] == nil then
-            rwd:setVisible(false)
-            rwdNum:setVisible(false)
+            for m=i,3 do
+                local rwd1 = inObj:getChildByFullName("rwd" .. m)
+                local rwdNum1 = inObj:getChildByFullName("rwdNum" .. m)
+                rwd1:setVisible(false)
+                rwdNum1:setVisible(false)
+            end
             break
         end
 

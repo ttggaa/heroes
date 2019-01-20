@@ -64,6 +64,7 @@ function GuildMapEquipView:onInit()
     knowledgeLab:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor,1)
 
     local userData = self._modelMgr:getModel("UserModel"):getData()
+    local lvl = userData.lvl
 
     for k,v in pairs(tab.guildEquipment) do
         local numBg = self:getUI("bg.positionBg" .. v.position .. ".numBg")
@@ -102,17 +103,25 @@ function GuildMapEquipView:onInit()
                     numLab:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor,1)
                 end
                 -- 整理属性加成
+                local attr = {}
                 for k,v1 in pairs(sysEquip.arrt) do
-                    if v1[1] == 110 then 
-                        attackNum = attackNum + v1[2] * v
-                    elseif v1[1] == 113 then 
-                        defNum = defNum + v1[2] * v
-                   elseif v1[1] == 116 then 
-                        intelNum = intelNum + v1[2] * v
-                   elseif v1[1] == 119 then 
-                        knowledgeNum = knowledgeNum + v1[2] * v
+                    if v1[1][1] <= lvl and lvl <= v1[1][2] then
+                        attr = v1[2]                                               
+                        break
                     end
                 end
+                for k,v2 in pairs(attr) do
+                    if v2[1] == 110 then 
+                        attackNum = attackNum + v2[2] * v
+                    elseif v2[1] == 113 then 
+                        defNum = defNum + v2[2] * v
+                    elseif v2[1] == 116 then 
+                        intelNum = intelNum + v2[2] * v
+                    elseif v2[1] == 119 then 
+                        knowledgeNum = knowledgeNum + v2[2] * v
+                    end
+                end 
+
             end
         end
     end

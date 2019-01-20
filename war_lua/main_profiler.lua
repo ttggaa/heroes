@@ -21,6 +21,7 @@ local function profilerend()
     outfile:close()
 end
 
+
 -- 战斗复盘测试
 profilerbegin()
 require "battle"

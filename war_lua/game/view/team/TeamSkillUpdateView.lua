@@ -18,17 +18,13 @@ end
 
 function TeamSkillUpdateView:onInit()
     self:registerClickEventByName("bg.closeBtn", function ()
-        if OS_IS_WINDOWS then
-            UIUtils:reloadLuaFile("team.TeamSkillUpdateView")
-        end
         self:close()
     end)
 
+    self._teamModel = self._modelMgr:getModel("TeamModel")
+
     local title1 = self:getUI("bg.titleBg.title")
     UIUtils:setTitleFormat(title1, 1, 1)
-    
-    -- self._scrollItem = self:getUI("bg.item")
-    -- self._scrollItem:setVisible(false)
     self._scrollView = self:getUI("bg.Panel_28.scrollView")
     self._scrollView:addEventListener(function(inView,inType)
         self._touchState = 2
@@ -40,19 +36,6 @@ function TeamSkillUpdateView:onInit()
         return true
     end)
 
-    -- self._titleLab = self:getUI("bg.Image_95.Label_145")
-    -- self._titleLab:disableEffect()
-    -- self._titleLab:setFontSize(26)
-    -- self._titleLab:setColor(cc.c3b(255,255,255))
-    -- self._titleLab:setFontName(UIUtils.ttfName)
-    -- self._titleLab:enableOutline(cc.c4b(60,10,30,255), 1)
-
-    -- local tishi = self:getUI("bg.Panel_10.tishi")
-    -- tishi:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
-    -- local maxLab = self:getUI("bg.Panel_10.maxLab")
-    -- maxLab:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
-    -- self:listenReflash("ItemModel", self.reflashSkillUI)
-
     -- local mcMgr = MovieClipManager:getInstance()
     -- mcMgr:loadRes("teamskillanim", function ()
     self:animBegin()    
@@ -61,99 +44,221 @@ function TeamSkillUpdateView:onInit()
     expTipLab:setFontSize(20)
     expTipLab:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
 
-    -- dump(self._teamData)
-
-    local teamModel = self._modelMgr:getModel("TeamModel")
-    for i=1,4 do
-        local equip = self:getUI("bg.equiptList.equip" .. i)
-        local sysTeam = tab:Team(self._teamData.teamId)
-        local skillId = sysTeam.skill[i][2]
-        local skillType = sysTeam.skill[i][1]
-        local skill = SkillUtils:getTeamSkillByType(skillId, skillType)
-
-        local dazhao = self:getUI("bg.equiptList.equip" .. i .. ".dazhao")
-        if skill.dazhao then
-            if dazhao then
-                dazhao:setVisible(true)
-            end
-        else
-            if dazhao then
-                dazhao:setVisible(false)
-            end
-        end
-
-        local skillIcon = equip:getChildByFullName("skillIcon")
-        local param = {teamSkill = skill ,eventStyle = 0, level = self._teamData["sl" .. i], levelLab = false, teamData = self._teamData}
-        if skillIcon then
-            IconUtils:updateTeamSkillIconByView(skillIcon, param)
-        else
-            skillIcon = IconUtils:createTeamSkillIconById(param)
-            skillIcon:setPosition(cc.p(equip:getContentSize().width*0.5,equip:getContentSize().height*0.5))
-            skillIcon:setAnchorPoint(cc.p(0.5,0.5))
-            skillIcon:setName("skillIcon")
-            equip:addChild(skillIcon)
-        end
-
-        local skillLvl = self:getUI("bg.equiptList.equip" .. i .. ".skillLvl")
-        if skillLvl then
-            skillLvl:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
-        end
-        local suo = self:getUI("bg.equiptList.equip" .. i .. ".suo")
-        if self._teamData["sl" .. i] <= 0 then
-            if suo then
-                suo:setVisible(true)
-            end
-            if skillLvl then
-                skillLvl:setVisible(false)
-            end
-        else
-            if suo then
-                suo:setVisible(false)
-            end
-            if skillLvl then
-                skillLvl:setVisible(true)
-                local sysTeamStarData = tab:Star(self._teamData.star)
-                local maxLevel = sysTeamStarData.skilllevel
-                skillLvl:setString("Lv." .. self._teamData["sl" .. i] .. "/" .. maxLevel)
-            end
-        end
-
-        local selectRune = self:getUI("bg.equiptList.equip" .. i .. ".selectRune")
-        selectRune:setVisible(false)
-        
-
-
-        local xuanzhong = mcMgr:createViewMC("xuanzhong_itemeffectcollection", true, false)
-        xuanzhong:setName("xuanzhong")
-        xuanzhong:gotoAndStop(1)
-        xuanzhong:setPosition(equip:getContentSize().width*0.5, equip:getContentSize().height*0.5+1)
-        xuanzhong:setScale(0.85)
-        xuanzhong:setVisible(false)
-        equip:addChild(xuanzhong,0)
-        if self._curSelectIndex == i then
-            if xuanzhong then
-                xuanzhong:setVisible(true)
-            end
-        else
-            if xuanzhong then
-                xuanzhong:setVisible(false)
-            end
-        end
-
-        self:registerClickEvent(equip, function()
-            -- print("====time============", os.clock())
-            self:updateEquipUI(i)
-        end)
-    end
-
+    self._tableNode = self:getUI("bg.equiptList")
+    self._skillCell = self:getUI("skillCell")
+    self._tableCellW, self._tableCellH = self._skillCell:getContentSize().width, self._skillCell:getContentSize().height
+    self._specialSkillId = self._teamData.ss
+    self:createSkillData()
+    self:addTableView()
 end
 
-function TeamSkillUpdateView:updateEquipUI(equipId)
-    if self._curSelectIndex ~= equipId then
-        if self._teamData["sl" .. equipId] > 0 then
+function TeamSkillUpdateView:createSkillData(  )
+    self._skillData = {}
+    local sysTeam = tab:Team(self._teamData.teamId)
+    local showSort = self._teamModel:getTeamSkillShowSort(self._teamData)
+
+    for k, v in pairs(showSort) do
+        if (k ~= #showSort) or (k == #showSort and v == self._specialSkillId) then
+            local skillId = sysTeam.skill[v][2]
+            local skillType = sysTeam.skill[v][1]
+            local skill = SkillUtils:getTeamSkillByType(skillId, skillType)
+            skill = clone(skill)
+            skill.sysSkillIndex = v
+            skill.teji = (v == self._specialSkillId)
+            table.insert(self._skillData, clone(skill))
+        end
+    end
+end
+
+function TeamSkillUpdateView:changeSpecialSkill(  )
+    if not self._specialSkillId then return end
+    local changeSkillId = 5 + 6 - self._specialSkillId
+    self._serverMgr:sendMsg("TeamServer", "switchSpecialSkill", {ssId = changeSkillId, teamId = self._teamData.teamId}, true, {}, function ( result )
+        self._teamData = self._teamModel:getTeamAndIndexById(self._teamData.teamId)
+        local oldTableViewH = self._tableView:getContentOffset()
+        self._specialSkillId = self._teamData.ss
+        self:createSkillData()
+        self._tableView:reloadData()
+        self._tableView:setContentOffset(oldTableViewH, false)
+        self:updateEquipUI(self._curSelectIndex, true)
+        --头像特效
+        local panel39 = self:getUI("bg.Image_9.Panel_39")
+        local mc2 = mcMgr:createViewMC("zhuangbeiqianghuatexiao_teamupgrade", false, true, function()
+        end)
+        mc2:setScale(1.2)
+        mc2:setPosition(panel39:getContentSize().width*0.5, panel39:getContentSize().height*0.5)
+        panel39:addChild(mc2, 7)
+    end)
+end
+
+function TeamSkillUpdateView:addTableView(  )
+    local tableView = cc.TableView:create(cc.size(self._tableNode:getContentSize().width, self._tableNode:getContentSize().height))
+    tableView:setDirection(cc.SCROLLVIEW_DIRECTION_VERTICAL)
+    tableView:setPosition(cc.p(0, 0))
+    tableView:setDelegate()
+    tableView:setVerticalFillOrder(cc.TABLEVIEW_FILL_TOPDOWN)
+    tableView:setBounceable(true)
+    tableView:setName("tableView")
+    self._tableNode:addChild(tableView)
+
+    tableView:registerScriptHandler(function( table,index )
+        return self:cellSizeForTable(table,index)
+    end,cc.TABLECELL_SIZE_FOR_INDEX)
+
+    tableView:registerScriptHandler(function ( table,index )
+        return self:tableCellAtIndex(table,index)
+    end,cc.TABLECELL_SIZE_AT_INDEX)
+
+    tableView:registerScriptHandler(function ( table )
+        return self:numberOfCellsInTableView(table)
+    end,cc.NUMBER_OF_CELLS_IN_TABLEVIEW)
+
+    tableView:reloadData()
+    self._tableView = tableView
+
+    if self._curSelectIndex >= 5 then  --5个会超
+        if self._curSelectIndex == #self._skillData then   --最后一个
+            self._tableView:setContentOffset(cc.p(0, 0))
+        else
+            local offsetY = (#self._skillData - self._curSelectIndex - 0.5) * self._tableCellH
+            self._tableView:setContentOffset(cc.p(0, -offsetY))
+        end
+    end
+end
+
+function TeamSkillUpdateView:cellSizeForTable(table,idx) 
+    return self._tableCellH, self._tableCellW
+end
+
+function TeamSkillUpdateView:numberOfCellsInTableView(table)
+   return #self._skillData
+end
+
+function TeamSkillUpdateView:tableCellAtIndex(table, idx)
+    local cell = table:dequeueCell()
+    if nil == cell then
+        cell = cc.TableViewCell:new()
+    end
+
+    local skillItem = cell:getChildByFullName("skillItem")
+    if tolua.isnull(skillItem) then
+        skillItem = self._skillCell:clone()
+        skillItem:setPosition(0, 0)
+        skillItem:setCascadeOpacityEnabled(true, true)
+        skillItem:setSwallowTouches(false)
+        skillItem:setName("skillItem")
+        skillItem:setVisible(true)
+        cell:addChild(skillItem, 1)
+    end
+
+    self:updateCellInfo(cell, idx)
+    return cell
+end
+
+function TeamSkillUpdateView:updateCellInfo( cell, idx )
+    local skillItem = cell:getChildByFullName("skillItem.skill")
+    local skillData = self._skillData[idx + 1]
+    local sysSkillIndex = skillData.sysSkillIndex
+
+    local dazhao = skillItem:getChildByFullName("dazhao")
+    if skillData.dazhao then
+        dazhao:loadTexture("label_big_skill_hero.png", 1)
+        dazhao:setVisible(true)
+    elseif skillData.teji then
+        dazhao:loadTexture("teamImageUI_updateRed2.png", 1)
+        dazhao:setVisible(true)
+    else
+        dazhao:setVisible(false)
+    end
+
+    local skillIcon = skillItem:getChildByFullName("skillIcon")
+    local param = {teamSkill = skillData, eventStyle = 0, level = self._teamData["sl" .. sysSkillIndex], levelLab = false, teamData = self._teamData}
+    if skillIcon then
+        IconUtils:updateTeamSkillIconByView(skillIcon, param)
+    else
+        skillIcon = IconUtils:createTeamSkillIconById(param)
+        skillIcon:setPosition(cc.p(skillItem:getContentSize().width * 0.5, skillItem:getContentSize().height * 0.5))
+        skillIcon:setAnchorPoint(cc.p(0.5,0.5))
+        skillIcon:setName("skillIcon")
+        skillItem:addChild(skillIcon)
+    end
+
+    local skillLvl = skillItem:getChildByFullName("skillLvl")
+    if skillLvl then
+        skillLvl:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
+    end
+    local suo = skillItem:getChildByFullName("suo")
+    if self._teamData["sl" .. sysSkillIndex] <= 0 then
+        if suo then
+            suo:setVisible(true)
+        end
+        if skillLvl then
+            skillLvl:setVisible(false)
+        end
+    else
+        if suo then
+            suo:setVisible(false)
+        end
+        if skillLvl then
+            skillLvl:setVisible(true)
+
+            local addLevel = 0      -- 额外增加等级
+            local rune = self._teamData.rune
+            if rune and rune.suit and rune.suit["4"] then
+                local id, level = TeamUtils:getRuneIdAndLv(rune.suit["4"])
+                if id == 104 then
+                    addLevel = level
+                end
+                if (idx + 1) == 1 then
+                    if id == 403 then
+                        addLevel = level 
+                    end
+                end
+            end
+            local sysTeamStarData = tab:Star(self._teamData.star)
+            local maxLevel = sysTeamStarData.skilllevel
+            skillLvl:setString("Lv." .. (self._teamData["sl" .. sysSkillIndex] + addLevel) .. "/" .. (maxLevel + addLevel))
+            skillLvl.addLevel = addLevel
+        end
+    end
+
+    local selectRune = skillItem:getChildByFullName("selectRune")
+    selectRune:setVisible(false)
+
+    local xuanzhong = skillItem:getChildByFullName("xuanzhong")
+    if xuanzhong == nil then
+        xuanzhong = mcMgr:createViewMC("xuanzhong_itemeffectcollection", true, false)
+        xuanzhong:setName("xuanzhong")
+        xuanzhong:gotoAndStop(1)
+        xuanzhong:setPosition(skillItem:getContentSize().width * 0.5, skillItem:getContentSize().height * 0.5 + 1)
+        xuanzhong:setScale(0.85)
+        xuanzhong:setVisible(false)
+        skillItem:addChild(xuanzhong,0)
+    end
+    if self._curSelectIndex == (idx + 1) then
+        if xuanzhong then
+            xuanzhong:setVisible(true)
+        end
+    else
+        if xuanzhong then
+            xuanzhong:setVisible(false)
+        end
+    end
+
+    self:registerClickEvent(skillItem, function()
+        self:updateEquipUI(idx + 1)
+    end)
+
+    skillItem:setSwallowTouches(false)
+end
+
+function TeamSkillUpdateView:updateEquipUI(equipId, force)
+    if self._curSelectIndex ~= equipId or force then
+        local skillData = self._skillData[equipId]
+        local sysSkillIndex = skillData.sysSkillIndex
+        if self._teamData["sl" .. sysSkillIndex] > 0 or skillData.teji then
             self._curSelectIndex = equipId
-            local teamModel = self._modelMgr:getModel("TeamModel")
-            local tempTeamData,tempTeamIndex = teamModel:getTeamAndIndexById(self._teamData.teamId)
+            local tempTeamData, tempTeamIndex = self._teamModel:getTeamAndIndexById(self._teamData.teamId)
             local tempData = {}
             tempData.teamData = tempTeamData
             tempData.index = self._curSelectIndex
@@ -172,8 +277,7 @@ function TeamSkillUpdateView:updateEquipUI(equipId)
             self._viewMgr:showTip("该技能暂未解锁")
         end
 
-        -- local teamModel = self._modelMgr:getModel("TeamModel")
-        -- local backQuality = teamModel:getTeamQualityByStage(self._teamData["es" .. equipId])
+        -- local backQuality = self._teamModel:getTeamQualityByStage(self._teamData["es" .. equipId])
         -- local param = {teamData = self._teamData, index = equipId, sysRuneData = sysEquip,isUpdate = -2, quality = backQuality[1], quaAddition = backQuality[2], eventStyle = 0}
         -- local equip = self:getUI("bg.equiptList.equip" .. equipId)
         -- local iconRune = equip:getChildByFullName("runeIcon")
@@ -191,61 +295,58 @@ function TeamSkillUpdateView:updateEquipUI(equipId)
 end
 
 function TeamSkillUpdateView:updateLeftSkillList()
-    for i=1,4 do
-        local equip = self:getUI("bg.equiptList.equip" .. i)
-        local xuanzhong = equip:getChildByName("xuanzhong")
-        if self._curSelectIndex == i then
-            if xuanzhong then
-                xuanzhong:setVisible(true)
+    -- self._tableView:reloadData()
+    for i = 1, #self._skillData do
+        repeat
+            local skillItem = self._tableView:cellAtIndex(i - 1)
+            if not skillItem then
+                break
             end
-        else
-            if xuanzhong then
-                xuanzhong:setVisible(false)
-            end
-        end
-
-        local uSkill = false    -- 是否大招技能加成
-        local sSkill = false    -- 是否普通技能加成
-        local addLevel = 0      -- 额外增加等级
-        local rune = self._teamData.rune
-        if rune and rune.suit and rune.suit["4"] then
-            local id,level = TeamUtils:getRuneIdAndLv(rune.suit["4"])
-            if id == 104 then
-                sSkill = true
-            end
-            if i == 1 then
-                if id == 403 then
-                    uSkill = true 
+            
+            local xuanzhong = skillItem:getChildByFullName("skillItem.skill.xuanzhong")
+            if self._curSelectIndex == i  then
+                if xuanzhong then
+                    xuanzhong:setVisible(true)
+                end
+            else
+                if xuanzhong then
+                    xuanzhong:setVisible(false)
                 end
             end
-            addLevel = level
-        end
-        local skillLvl = self:getUI("bg.equiptList.equip" .. i .. ".skillLvl")
-        if skillLvl then
-            local sysTeamStarData = tab:Star(self._teamData.star)
-            local maxLevel = sysTeamStarData.skilllevel
-            skillLvl:setString("Lv." .. (self._teamData["sl" .. i]+addLevel) .. "/" .. (maxLevel+addLevel))
-            skillLvl.addLevel = addLevel
-            if uSkill and i == 1 then
-                skillLvl:setColor(cc.c3b(39,247,58))
-            elseif sSkill then
-                skillLvl:setColor(cc.c3b(39,247,58))
-            else
-                skillLvl:setColor(cc.c3b(255,255,255))
+
+            local addLevel = 0      -- 额外增加等级
+            local rune = self._teamData.rune
+            if rune and rune.suit and rune.suit["4"] then
+                local id,level = TeamUtils:getRuneIdAndLv(rune.suit["4"])
+                if id == 104 then
+                    addLevel = level
+                end
+                if i == 1 then
+                    if id == 403 then
+                        addLevel = level 
+                    end
+                end
             end
-        end
+            local skillItem = self._tableView:cellAtIndex(i - 1)
+            local skillLvl = skillItem:getChildByFullName("skillItem.skill.skillLvl")
+            if skillLvl then
+                local skillData = self._skillData[i]
+                local sysSkillIndex = skillData.sysSkillIndex
+                local sysTeamStarData = tab:Star(self._teamData.star)
+                local maxLevel = sysTeamStarData.skilllevel
+                skillLvl:setString("Lv." .. (self._teamData["sl" .. sysSkillIndex] + addLevel) .. "/" .. (maxLevel + addLevel))
+                skillLvl.addLevel = addLevel
+            end
+        until true
     end
 end
 
 function TeamSkillUpdateView:reflashSkillUI()
-
-    local teamModel = self._modelMgr:getModel("TeamModel")
-    local tempTeamData,tempTeamIndex = teamModel:getTeamAndIndexById(self._teamData.teamId)
+    local tempTeamData,tempTeamIndex = self._teamModel:getTeamAndIndexById(self._teamData.teamId)
     local tempData = {}
     tempData.teamData = tempTeamData
     tempData.index = self._curSelectIndex
     self._touchState = 0
-
     self._depleteItems = {}
     self._tempLevel = 0
     self._tempExp = 0
@@ -254,10 +355,6 @@ function TeamSkillUpdateView:reflashSkillUI()
 end
 
 function TeamSkillUpdateView:reflashUI(inData)
-    -- if  self._teamData == nil or self._teamData.teamId ~= inData.teamData.teamId then 
-    --     self._curSelectIndex = inData.index 
-    -- end
-
     self._teamData = inData.teamData
     self._curSelectIndex = inData.index
 
@@ -266,28 +363,28 @@ function TeamSkillUpdateView:reflashUI(inData)
     self._tempLevel = 0
     self._tempExp = 0
     self._expLevel = 0
-    -- print("111====switchSkill============", os.clock())
     self:updateLeftSkillList()
     self:switchSkill()
-    -- print("====switchSkill============", os.clock())
-
 end
 
 
 function TeamSkillUpdateView:switchSkill()
     local itemModel = self._modelMgr:getModel("ItemModel")
     self._itemMaterials = itemModel:getItemsByType(ItemUtils.ITEM_TYPE_MATERIAL)
-
     
     local sysTeam = tab:Team(self._teamData.teamId)
     
     self._scrollView:removeAllChildren()
-    
-    local skillLvl = self:getUI("bg.equiptList.equip" .. self._curSelectIndex .. ".skillLvl")
+
+    local skillItem = self._tableView:cellAtIndex(self._curSelectIndex - 1)
+    local skillLvl = skillItem:getChildByFullName("skillItem.skill.skillLvl")
     local addLevel = skillLvl.addLevel
-    local skillLevel = self._teamData["sl" .. self._curSelectIndex]
-    local skillId = sysTeam.skill[self._curSelectIndex][2]
-    local skillType = sysTeam.skill[self._curSelectIndex][1]
+
+    local skillData = self._skillData[self._curSelectIndex]
+    local sysSkillIndex = skillData.sysSkillIndex
+    local skillLevel = self._teamData["sl" .. sysSkillIndex]
+    local skillId = sysTeam.skill[sysSkillIndex][2]
+    local skillType = sysTeam.skill[sysSkillIndex][1]
 
     self._sysSkill = SkillUtils:getTeamSkillByType(skillId, skillType)
 
@@ -296,7 +393,7 @@ function TeamSkillUpdateView:switchSkill()
         local panel39 = self:getUI("bg.Image_9.Panel_39")
         local skillIcon = panel39:getChildByName("skillIcon")
 
-        local param = {teamSkill = self._sysSkill ,eventStyle = 0, teamData = self._teamData}
+        local param = {teamSkill = self._sysSkill, eventStyle = 0, teamData = self._teamData}
         if skillIcon then
             IconUtils:updateTeamSkillIconByView(skillIcon, param)
         else
@@ -313,49 +410,48 @@ function TeamSkillUpdateView:switchSkill()
         -- if descLab ~= nil then
         --     descLab:removeFromParent()
         -- end
-
+        local originWidth,originHeight = panel323:getContentSize().width,panel323:getContentSize().height
+        print("originWidth:" .. originWidth)
         -- 技能描述
         local richText = panel323:getChildByName("richText")
         if richText ~= nil then
             richText:removeFromParent()
         end
         local desc = SkillUtils:handleSkillDesc1(lang(self._sysSkill.des), self._teamData, (skillLevel+addLevel) ,self._tempLevel)
-     --    desc = string.gsub(desc,"%b[]","")
-     --    local descLab = panel323:getChildByFullName("Label_36")
-     --    descLab:setString(desc)
-     --    descLab:setAnchorPoint(cc.p(0,1))
-     --    descLab:setColor(cc.c3b(255,235,191))
-     --    descLab:setPosition(-10, panel323:getContentSize().height)
-
-        -- descLab = cc.LabelTTF:create(desc, UIUtils.ttfName, 18)
-        -- -- descLab:setFontName(UIUtils.ttfName)
-        -- descLab:setColor(cc.c3b(111,70,32))
-        -- descLab:setPosition(panel323:getContentSize().width*0.5, panel323:getContentSize().height)
-        -- panel323:addChild(descLab)
         if string.find(desc, "color=") == nil then
             desc = "[color=fae6c8]"..desc.."[-]"
         end   
         print("desc ================", self._sysSkill.des)
         desc = string.gsub(desc, "fae6c8", "462800")
-        richText = RichTextFactory:create(desc, panel323:getContentSize().width, panel323:getContentSize().height)
+        richText = RichTextFactory:create(desc, originWidth-30, panel323:getContentSize().height)
         richText:formatText()
         richText:enablePrinter(true)
-        richText:setPosition(panel323:getContentSize().width*0.5, panel323:getContentSize().height - richText:getInnerSize().height*0.5)
+        local rtRealHeight = richText:getRealSize().height
+        richText:setPosition(originWidth*0.5 - 15,  rtRealHeight*0.5)
         richText:setName("richText")
+        UIUtils:alignRichText(richText)
         panel323:addChild(richText)
+        local realHeight = math.max(originHeight,rtRealHeight)
+        panel323:setInnerContainerSize(cc.size(originWidth,rtRealHeight))
+        panel323:setTouchEnabled(rtRealHeight > originHeight)
+        panel323:getInnerContainer():setPositionY(originHeight - rtRealHeight)
+        ScheduleMgr:nextFrameCall(self, function()
+            panel323:getInnerContainer():setPositionY(originHeight - rtRealHeight)
+        end)
     end 
 
     self._nameLab = self:getUI("bg.Image_9.nameLab")
     self._nameLab:setColor(cc.c3b(60,42,30))
-    -- UIUtils:setTitleFormat(self._nameLab, 2, 1)
-    -- local sysSkill = SkillUtils:getTeamSkillByType(skillId, skillType)
     self._nameLab:setString(lang(self._sysSkill.name))
-    -- self._nameLab:disableEffect()
-    -- self._nameLab:setFontSize(26)
-    -- -- self._nameLab:setColor(cc.c3b(255,180,14))
-    -- -- self._nameLab:setFontName(UIUtils.ttfName)
-    -- self._nameLab:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
-
+    local btn_change = self:getUI("bg.Image_9.btn_change")
+    if skillData.teji then
+        btn_change:setVisible(true)
+    else
+        btn_change:setVisible(false)
+    end
+    self:registerClickEvent(btn_change, function ()
+        self:changeSpecialSkill()
+    end)
 
     self._levelLab1 = self:getUI("bg.Image_9.levelLab1")
     local addLvStr = ""
@@ -363,12 +459,8 @@ function TeamSkillUpdateView:switchSkill()
         addLvStr = string.format(" (+%s)",addLevel)
     end
     self._levelLab1:setString( "Lv." .. skillLevel..addLvStr)
-    -- self._levelLab1:setPositionX(self._nameLab:getPositionX()+self._nameLab:getContentSize().width+20)
     self._levelLab1:disableEffect()
-    -- self._levelLab1:setFontSize(24)
     self._levelLab1:setColor(UIUtils.colorTable.ccUIBaseTextColor2)
-    -- self._levelLab1:setFontName(UIUtils.ttfName)
-    -- self._levelLab1:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
 
     local image44 = self:getUI("bg.Image_9.Image_44")
     image44:setVisible(false)
@@ -379,49 +471,40 @@ function TeamSkillUpdateView:switchSkill()
     self._levelLab2:setVisible(false)
     self._levelLab2:setPositionX(image44:getPositionX()+image44:getContentSize().width+5)
     self._levelLab2:disableEffect()
-    -- self._levelLab2:setFontSize(20)
     self._levelLab2:setColor(UIUtils.colorTable.ccUIBaseColor9)
-    -- self._levelLab2:setFontName(UIUtils.ttfName)
-    -- self._levelLab2:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
 
     local sysLevelSkillData = tab:LevelSkill(skillLevel)
     local tmpSysLevelSkillData = tab:LevelSkill(skillLevel + 1)
+    local needExp = sysLevelSkillData.exp
+    if skillData.teji then
+        needExp = sysLevelSkillData.redexp
+    end
 
-    local teamSkillExp = self._teamData["se" .. self._curSelectIndex]
+    local teamSkillExp = self._teamData["se" .. sysSkillIndex]
     local blueExpProg = self:getUI("bg.Panel_10.blueExpProg")
     blueExpProg:setVisible(false)
     local expProg = self:getUI("bg.Panel_10.expProg")
 
-    expProg:setScaleX(teamSkillExp / sysLevelSkillData.exp)
-    blueExpProg:setScaleX(teamSkillExp / sysLevelSkillData.exp)
+    expProg:setScaleX(teamSkillExp / needExp)
+    blueExpProg:setScaleX(teamSkillExp / needExp)
     expProg:setVisible(true)
 
     local isActive = true
     local panel10 = self:getUI("bg.Panel_10")
     local updateBtn = self:getUI("bg.Panel_10.updateBtn")
     local maxlevel = self:getUI("bg.maxlevel")
-    -- local anim1 = updateBtn:getChildByName("anim1")
     if skillLevel > 0 and tmpSysLevelSkillData ~= nil then 
         updateBtn:setEnabled(true)
-        -- skillMaxLevelTipImg:setVisible(false)
         panel10:setVisible(true)
         maxlevel:setVisible(false)
-        -- if anim1 then
-        --     anim1:setVisible(true)
-        -- end
     else
         isActive = false
         updateBtn:setEnabled(false)
         panel10:setVisible(false)
         maxlevel:setVisible(true)
-        -- if anim1 then
-        --     anim1:setVisible(false)
-        -- end
-        -- skillMaxLevelTipImg:setVisible(true)
     end
 
--- 
--- 创建物品列表
+    -- 创建物品列表
     local x = 10
     local maxHeight = 100 * math.ceil(#self._itemMaterials / 6)
     if maxHeight < self._scrollView:getContentSize().height then 
@@ -450,7 +533,7 @@ function TeamSkillUpdateView:switchSkill()
     local expTipLab = self:getUI("bg.Panel_10.expTipLab")
     expTipLab:setFontSize(20)
     expTipLab:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
-    expTipLab:setString(self._tempExp .. "/" ..  sysLevelSkillData.exp)
+    expTipLab:setString(self._tempExp .. "/" ..  needExp)
 
     self:setMaxLevelShow()
 end
@@ -460,15 +543,18 @@ function TeamSkillUpdateView:updateSkillView()
     -- 获取物品数据
     local itemModel = self._modelMgr:getModel("ItemModel")
     self._itemMaterials = itemModel:getItemsByType(ItemUtils.ITEM_TYPE_MATERIAL)
-
     
     local sysTeam = tab:Team(self._teamData.teamId)
     
-    local skillLvl = self:getUI("bg.equiptList.equip" .. self._curSelectIndex .. ".skillLvl")
+    local skillItem = self._tableView:cellAtIndex(self._curSelectIndex - 1)
+    local skillLvl = skillItem:getChildByFullName("skillItem.skill.skillLvl")
     local addLevel = skillLvl.addLevel
-    local skillLevel = self._teamData["sl" .. self._curSelectIndex]
-    local skillId = sysTeam.skill[self._curSelectIndex][2]
-    local skillType = sysTeam.skill[self._curSelectIndex][1]
+
+    local skillData = self._skillData[self._curSelectIndex]
+    local sysSkillIndex = skillData.sysSkillIndex
+    local skillLevel = self._teamData["sl" .. sysSkillIndex]
+    local skillId = sysTeam.skill[sysSkillIndex][2]
+    local skillType = sysTeam.skill[sysSkillIndex][1]
     self._sysSkill = SkillUtils:getTeamSkillByType(skillId, skillType)
 
     -- 更新技能描述
@@ -498,22 +584,40 @@ function TeamSkillUpdateView:updateSkillView()
             desc = "[color=000000]"..desc.."[-]"
         end   
         desc = string.gsub(desc, "fae6c8", "000000")
-        richText = RichTextFactory:create(desc, panel323:getContentSize().width, panel323:getContentSize().height)
+        -- richText = RichTextFactory:create(desc, panel323:getContentSize().width - 10, panel323:getContentSize().height)
+        -- richText:formatText()
+        -- richText:enablePrinter(true)
+        -- richText:setPosition(panel323:getContentSize().width*0.5 - 5, panel323:getContentSize().height - richText:getInnerSize().height*0.5)
+        -- richText:setName("richText")
+        -- panel323:addChild(richText)
+        local originWidth,originHeight = panel323:getContentSize().width,panel323:getContentSize().height
+        richText = RichTextFactory:create(desc, panel323:getContentSize().width-30, panel323:getContentSize().height)
         richText:formatText()
         richText:enablePrinter(true)
-        richText:setPosition(panel323:getContentSize().width*0.5, panel323:getContentSize().height - richText:getInnerSize().height*0.5)
+        local rtRealHeight = richText:getRealSize().height
+        richText:setPosition(originWidth*0.5 - 15,  rtRealHeight*0.5)
         richText:setName("richText")
+        UIUtils:alignRichText(richText)
         panel323:addChild(richText)
+        local realHeight = math.max(originHeight,rtRealHeight)
+        panel323:setInnerContainerSize(cc.size(originWidth,rtRealHeight))
+        panel323:setTouchEnabled(rtRealHeight > originHeight)
+        panel323:getInnerContainer():setPositionY(originHeight - rtRealHeight)
+
     end 
 
     self._nameLab = self:getUI("bg.Image_9.nameLab")
-    -- local sysSkill = SkillUtils:getTeamSkillByType(skillId, skillType)
     self._nameLab:setString(lang(self._sysSkill.name))
     self._nameLab:disableEffect()
-    -- self._nameLab:setFontSize(26)
-    -- self._nameLab:setColor(cc.c3b(255,180,14))
-    -- self._nameLab:setFontName(UIUtils.ttfName)
-    -- self._nameLab:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
+    local btn_change = self:getUI("bg.Image_9.btn_change")
+    if skillData.teji then
+        btn_change:setVisible(true)
+    else
+        btn_change:setVisible(false)
+    end
+    self:registerClickEvent(btn_change, function ()
+        self:changeSpecialSkill()
+    end)
 
     local addLvStr = ""
     if addLevel > 0 then
@@ -522,10 +626,8 @@ function TeamSkillUpdateView:updateSkillView()
 
     self._levelLab1 = self:getUI("bg.Image_9.levelLab1")
     self._levelLab1:setString( "Lv." .. skillLevel .. addLvStr)
-    -- self._levelLab1:setPositionX(self._nameLab:getPositionX()+self._nameLab:getContentSize().width+20)
     self._levelLab1:disableEffect()
     self._levelLab1:setColor(UIUtils.colorTable.ccUIBaseTextColor2)
-    -- self._levelLab1:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
 
     local image44 = self:getUI("bg.Image_9.Image_44")
     image44:setVisible(false)
@@ -535,20 +637,22 @@ function TeamSkillUpdateView:updateSkillView()
     self._levelLab2:setString("Lv." .. skillLevel .. addLvStr)
     self._levelLab2:setVisible(false)
     self._levelLab2:setPositionX(image44:getPositionX()+image44:getContentSize().width+5)
-    -- self._levelLab2:disableEffect()
-    -- self._levelLab2:setColor(UIUtils.colorTable.ccUIBaseColor9)
-    -- self._levelLab2:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
 
     local sysLevelSkillData = tab:LevelSkill(skillLevel)
     local tmpSysLevelSkillData = tab:LevelSkill(skillLevel + 1)
 
-    local teamSkillExp = self._teamData["se" .. self._curSelectIndex]
+    local needExp = sysLevelSkillData.exp
+    if skillData.teji then
+        needExp = sysLevelSkillData.redexp
+    end
+
+    local teamSkillExp = self._teamData["se" .. sysSkillIndex]
     local blueExpProg = self:getUI("bg.Panel_10.blueExpProg")
     blueExpProg:setVisible(false)
     local expProg = self:getUI("bg.Panel_10.expProg")
 
-    expProg:setScaleX(teamSkillExp / sysLevelSkillData.exp)
-    blueExpProg:setScaleX(teamSkillExp / sysLevelSkillData.exp)
+    expProg:setScaleX(teamSkillExp / needExp)
+    blueExpProg:setScaleX(teamSkillExp / needExp)
     expProg:setVisible(true)
 
     local isActive = true
@@ -578,7 +682,7 @@ function TeamSkillUpdateView:updateSkillView()
     self._tempExp = teamSkillExp
    
     local expTipLab = self:getUI("bg.Panel_10.expTipLab")
-    expTipLab:setString(self._tempExp .. "/" ..  sysLevelSkillData.exp)
+    expTipLab:setString(self._tempExp .. "/" ..  needExp)
 
     self:registerClickEvent(updateBtn, function ()
         self:upgradeSkill()
@@ -1105,7 +1209,10 @@ function TeamSkillUpdateView:shifangdingshi()
 end
 
 function TeamSkillUpdateView:setMaxLevelShow()
-    local skillLevel = self._teamData["sl" .. self._curSelectIndex]
+    local skillData = self._skillData[self._curSelectIndex]
+    local sysSkillIndex = skillData.sysSkillIndex
+
+    local skillLevel = self._teamData["sl" .. sysSkillIndex]
     local sysTeamStarData = tab:Star(self._teamData.star)
     local flag = false
     if (skillLevel + self._tempLevel) >= sysTeamStarData.skilllevel then
@@ -1223,7 +1330,10 @@ function TeamSkillUpdateView:updateAboutExp(inView, inData, inOperate, piaoSpeed
         return 
     end
 
-    local skillLevel = self._teamData["sl" .. self._curSelectIndex]
+    local skillData = self._skillData[self._curSelectIndex]
+    local sysSkillIndex = skillData.sysSkillIndex
+
+    local skillLevel = self._teamData["sl" .. sysSkillIndex]
     -- 最大等级判断
     -- local tmpSysLevelSkillData = tab:LevelSkill(skillLevel + self._tempLevel + 1)
     -- if tmpSysLevelSkillData == nil then
@@ -1272,6 +1382,10 @@ function TeamSkillUpdateView:updateAboutExp(inView, inData, inOperate, piaoSpeed
     end
 
     local sysLevelSkillData = tab:LevelSkill(skillLevel + self._tempLevel)
+    local needExp = sysLevelSkillData.exp
+    if skillData.teji then
+        needExp = sysLevelSkillData.redexp
+    end
     print("===========", skillLevel + self._tempLevel)
 -- 设置按钮光效
     self._depleteItems[tostring(inData.goodsId)] = operateResult
@@ -1340,13 +1454,17 @@ function TeamSkillUpdateView:updateAboutExp(inView, inData, inOperate, piaoSpeed
     local flag = false
 
     -- 如果点选经验超过1级以上，则需要对界面做处理
-    print("self._tempExp >= sysLevelSkillData.exp",self._tempExp, sysLevelSkillData.exp, self._tempLevel)
-    if self._tempExp >= sysLevelSkillData.exp then
+    print("self._tempExp >= sysLevelSkillData.exp",self._tempExp, needExp, self._tempLevel)
+    if self._tempExp >= needExp then
         for i=1,50 do
-            self._tempExp = self._tempExp - sysLevelSkillData.exp
+            self._tempExp = self._tempExp - needExp
             self._tempLevel = self._tempLevel + 1
             sysLevelSkillData = tab:LevelSkill(skillLevel + self._tempLevel)
-            if self._tempExp < sysLevelSkillData.exp then
+            needExp = sysLevelSkillData.exp
+            if skillData.teji then
+                needExp = sysLevelSkillData.redexp
+            end
+            if self._tempExp < needExp then
                 break
             end
         end
@@ -1354,25 +1472,25 @@ function TeamSkillUpdateView:updateAboutExp(inView, inData, inOperate, piaoSpeed
             self._tempLevel = self._tempLevel - 1
             self._shengyuExp = self._tempExp + 1
             sysLevelSkillData = tab:LevelSkill(skillLevel + self._tempLevel)
-            self._tempExp = sysLevelSkillData.exp - 1
+            needExp = sysLevelSkillData.exp
+            if skillData.teji then
+                needExp = sysLevelSkillData.redexp
+            end
+            self._tempExp = needExp - 1
         end
         local soulProgBg = self:getUI("bg.Panel_10.soulProgBg")
-        -- local mc2 = mcMgr:createViewMC("jindutiao_teamskillanim", false, true)
-        -- -- mc2:setPosition(238, 8)
-        -- mc2:setPosition(soulProgBg:getContentSize().width*0.5 + 1, soulProgBg:getContentSize().height*0.5 - 3)
-
-        -- soulProgBg:addChild(mc2, 2)
-        -- self._tempExp = self._tempExp - sysLevelSkillData.exp
-        -- self._tempLevel = self._tempLevel + 1
-        -- sysLevelSkillData = tab:LevelSkill(skillLevel + self._tempLevel)
         flag = true
     -- 如果点选经验超过1级以上，消除经验时需要处理
     elseif self._tempExp < 0 and self._tempLevel > 0 then 
-        local skillLevel = self._teamData["sl" .. self._curSelectIndex]
+        local skillLevel = self._teamData["sl" .. sysSkillIndex]
         for i=1,50 do
             self._tempLevel = self._tempLevel - 1
             sysLevelSkillData = tab:LevelSkill(skillLevel + self._tempLevel)
-            self._tempExp = self._tempExp + sysLevelSkillData.exp
+            needExp = sysLevelSkillData.exp
+            if skillData.teji then
+                needExp = sysLevelSkillData.redexp
+            end
+            self._tempExp = self._tempExp + needExp
             if self._tempExp >= 0 then
                 break
             end
@@ -1384,16 +1502,18 @@ function TeamSkillUpdateView:updateAboutExp(inView, inData, inOperate, piaoSpeed
         -- self._tempExp = sysLevelSkillData.exp + self._tempExp 
         flag = true
     end
-    -- print("2222222222222222222222========",self._tempExp, sysLevelSkillData.exp, self._tempLevel)
     local expTipLab = self:getUI("bg.Panel_10.expTipLab")
     -- 等级达到最大时进行经验处理
-    print("self._maxExpBar==========", (skillLevel + self._tempLevel), table.nums(tab.levelSkill))
     if (skillLevel + self._tempLevel) >= table.nums(tab.levelSkill) then
-        local tempMaxExp = tab:LevelSkill(table.nums(tab.levelSkill) - 1).exp
+        local tempMaxLevelSkillData = tab:LevelSkill(table.nums(tab.levelSkill) - 1)
+        local tempMaxExp = tempMaxLevelSkillData.exp
+        if skillData.teji then
+            tempMaxExp = tempMaxLevelSkillData.redexp
+        end
         expTipLab:setString(tempMaxExp .. "/" ..  tempMaxExp)
         self._maxExpBar = true
     else
-        expTipLab:setString(self._tempExp .. "/" ..  sysLevelSkillData.exp)
+        expTipLab:setString(self._tempExp .. "/" ..  needExp)
         self._maxExpBar = false
     end
     
@@ -1403,8 +1523,9 @@ function TeamSkillUpdateView:updateAboutExp(inView, inData, inOperate, piaoSpeed
     local image44 = self:getUI("bg.Image_9.Image_44")
 
     -- local levelLab2 = self:getUI("bg.Image_9.levelLab2")
+
     if self._tempLevel > 0 and flag  == true then 
-        self._levelLab2:setString( "Lv." .. (skillLevel + self._tempLevel).." (+2)")
+        self._levelLab2:setString( "Lv." .. (skillLevel + self._tempLevel))
     end
     -- 如果等级=0时则隐藏右侧等级
     if self._tempLevel > 0 then 
@@ -1429,15 +1550,30 @@ function TeamSkillUpdateView:updateAboutExp(inView, inData, inOperate, piaoSpeed
         if richText ~= nil then
             richText:removeFromParent()
         end
-
-        local desc = SkillUtils:handleSkillDesc1(lang(self._sysSkill.des), self._teamData, skillLevel ,self._tempLevel)
+        local skillItem = self._tableView:cellAtIndex(self._curSelectIndex - 1)
+        local skillLvl = skillItem:getChildByFullName("skillItem.skill.skillLvl")
+        local addLevel = skillLvl.addLevel or 0
+        local desc = SkillUtils:handleSkillDesc1(lang(self._sysSkill.des), self._teamData, skillLevel+addLevel ,self._tempLevel)
         desc = string.gsub(desc, "fae6c8", "462800")
-        richText = RichTextFactory:create(desc, panel323:getContentSize().width, panel323:getContentSize().height)
+        -- richText = RichTextFactory:create(desc, panel323:getContentSize().width, panel323:getContentSize().height)
+        -- richText:formatText()
+        -- richText:enablePrinter(true)
+        -- richText:setPosition(panel323:getContentSize().width*0.5, panel323:getContentSize().height - richText:getInnerSize().height*0.5)
+        -- richText:setName("richText")
+        -- panel323:addChild(richText)
+        local originWidth,originHeight = panel323:getContentSize().width,panel323:getContentSize().height
+        richText = RichTextFactory:create(desc, panel323:getContentSize().width-5, panel323:getContentSize().height)
         richText:formatText()
         richText:enablePrinter(true)
-        richText:setPosition(panel323:getContentSize().width*0.5, panel323:getContentSize().height - richText:getInnerSize().height*0.5)
+        local rtRealHeight = richText:getRealSize().height
+        richText:setPosition(originWidth*0.5,  rtRealHeight*0.5)
         richText:setName("richText")
+        UIUtils:alignRichText(richText)
         panel323:addChild(richText)
+        local realHeight = math.max(originHeight,rtRealHeight)
+        panel323:setInnerContainerSize(cc.size(originWidth,rtRealHeight))
+        panel323:setTouchEnabled(rtRealHeight > originHeight)
+        panel323:getInnerContainer():setPositionY(originHeight - rtRealHeight)
 
     end 
     -- 经验条操控
@@ -1449,35 +1585,23 @@ function TeamSkillUpdateView:updateAboutExp(inView, inData, inOperate, piaoSpeed
         expProg:setVisible(false)
     end
     blueExpProg:setVisible(true)
-
-    print("inOperate=========", inOperate)
     if inOperate > 0 then
         local tempAnim = blueExpProg:getScaleX() * 100
         if tempAnim == 100 then
             tempAnim = 0
         end
  
-        -- print("“nowexp ===", self._tempExp, sysLevelSkillData.exp)
-        local nowExp = self._tempExp/sysLevelSkillData.exp * 100
-        -- print("temp ==========",nowExp, self._tempLevel, self._expLevel)
+        local nowExp = self._tempExp/needExp * 100
         local addTempExp = nowExp + 100*(self._tempLevel-self._expLevel) -- - tempAnim
         self._expLevel = self._tempLevel
-        -- if nowExp < tempAnim then
-        --     addTempExp = 100 + nowExp
-        -- end
-        -- print ("===addTempExp========", addTempExp, tempAnim)
         if addTempExp - tempAnim >= 0 then
             local addExp = 18
-            -- if addTempExp > 150 then
-            --     addExp = 19.9
-            -- end
             blueExpProg:stopAllActions()
             blueExpProg:runAction(cc.RepeatForever:create(cc.Sequence:create(cc.CallFunc:create(function()
-                -- print ("addTempExp+++======", tempAnim ,addTempExp)
                 if addTempExp - tempAnim < 3.9 then
                     blueExpProg:stopAllActions()
 
-                    local percent = self._tempExp / sysLevelSkillData.exp
+                    local percent = self._tempExp / needExp
                     if (skillLevel + self._tempLevel) == 15 then
                         blueExpProg:setScaleX(1)
                     else
@@ -1507,8 +1631,8 @@ function TeamSkillUpdateView:updateAboutExp(inView, inData, inOperate, piaoSpeed
                     blueExpProg:setScaleX(percent)
                 else
                     blueExpProg:stopAllActions()
-                    percent = self._tempExp / sysLevelSkillData.exp
-                    -- print("===percentpercent===========", percent, self._tempExp, sysLevelSkillData.exp)
+                    percent = self._tempExp / needExp
+                    -- print("===percentpercent===========", percent, self._tempExp, needExo)
                     -- blueExpProg:setScaleX(percent)
                     if (skillLevel + self._tempLevel) == 15 then
                         blueExpProg:setScaleX(1)
@@ -1525,7 +1649,7 @@ function TeamSkillUpdateView:updateAboutExp(inView, inData, inOperate, piaoSpeed
                 tempAnim = tempAnim + addExp
             end), cc.DelayTime:create(0.0001))))
         end
-        -- blueExpProg:setScaleX(self._tempExp / sysLevelSkillData.exp * 100)
+        -- blueExpProg:setScaleX(self._tempExp / needExp * 100)
         -- self._expLevel = self._tempLevel
     else
         local tempAnim = blueExpProg:getScaleX() * 100
@@ -1533,8 +1657,8 @@ function TeamSkillUpdateView:updateAboutExp(inView, inData, inOperate, piaoSpeed
             tempAnim = 0
         end
 
-        -- print("“nowexp ===", self._tempExp, sysLevelSkillData.exp)
-        local nowExp = self._tempExp/sysLevelSkillData.exp * 100
+        -- print("“nowexp ===", self._tempExp, needExp)
+        local nowExp = self._tempExp/needExp * 100
         -- print("temp ==========",nowExp, self._tempLevel, self._expLevel)
         local addTempExp = nowExp + 100*(self._tempLevel-self._expLevel) -- - tempAnim
         self._expLevel = self._tempLevel
@@ -1548,7 +1672,7 @@ function TeamSkillUpdateView:updateAboutExp(inView, inData, inOperate, piaoSpeed
                 if tempAnim - addTempExp < 3.9 then
                     blueExpProg:stopAllActions()
 
-                    local str =  self._tempExp / sysLevelSkillData.exp
+                    local str =  self._tempExp / needExp
                     if str > 1 then
                         str = 1
                     end
@@ -1578,8 +1702,8 @@ function TeamSkillUpdateView:updateAboutExp(inView, inData, inOperate, piaoSpeed
                     blueExpProg:setScaleX(percent)
                 else
                     blueExpProg:stopAllActions()
-                    percent = self._tempExp / sysLevelSkillData.exp
-                    -- print("===percentpercent===========", percent, self._tempExp, sysLevelSkillData.exp)
+                    percent = self._tempExp / needExp
+                    -- print("===percentpercent===========", percent, self._tempExp, needExp)
                     -- blueExpProg:setScaleX(percent)
                     if (skillLevel + self._tempLevel) == 0 then
                         blueExpProg:setScaleX(1)
@@ -1599,56 +1723,7 @@ function TeamSkillUpdateView:updateAboutExp(inView, inData, inOperate, piaoSpeed
                 tempAnim = tempAnim + addExp
             end), cc.DelayTime:create(0.0001))))
         end
-
-        -- blueExpProg:setScaleX(self._tempExp / sysLevelSkillData.exp * 100)
-        -- self._expLevel = self._tempLevel
     end
-
-    -- if inOperate > 0 then
-    --     -- local tempAnim = blueExpProg:getScaleX()
-    --     -- if tempAnim == 100 then
-    --     --     tempAnim = 0
-    --     -- end
-    --     -- local nowExp = self._tempExp/sysLevelSkillData.exp * 100
-    --     -- local addTempExp = nowExp + 100*(self._tempLevel-self._expLevel) -- - tempAnim
-    --     -- self._expLevel = self._tempLevel
-    --     -- -- if nowExp < tempAnim then
-    --     -- --     addTempExp = 100 + nowExp
-    --     -- -- end
-    --     -- print ("===addTempExp========", addTempExp, tempAnim)
-    --     -- if addTempExp - tempAnim >= 0 then
-    --     --     local addExp = (addTempExp - tempAnim)*0.1
-    --     --     if addTempExp > 150 then
-    --     --         addExp = 20
-    --     --     end
-    --     --     blueExpProg:stopAllActions()
-    --     --     blueExpProg:runAction(cc.RepeatForever:create(cc.Sequence:create(cc.CallFunc:create(function()
-    --     --         -- print ("addTempExp+++======", tempAnim ,addTempExp)
-    --     --         if tempAnim < addTempExp then
-    --     --             local str = math.fmod(tempAnim, 100)
-    --     --             blueExpProg:setScaleX(str)
-    --     --         else
-    --     --             blueExpProg:stopAllActions()
-    --     --             percent = self._tempExp / sysLevelSkillData.exp * 100
-    --     --             print("===percentpercent===========", percent, self._tempExp, sysLevelSkillData.exp)
-    --     --             -- blueExpProg:setPercent(percent)
-    --     --             if (skillLevel + self._tempLevel) == 15 then
-    --     --                 blueExpProg:setPercent(100)
-    --     --             else
-    --     --                 blueExpProg:setPercent(percent)
-    --     --             end
-    --     --         end
-    --     --         tempAnim = tempAnim + addExp
-    --     --     end), cc.DelayTime:create(0.0001))))
-    --     -- end
-    --     percent = self._tempExp / sysLevelSkillData.exp * 100
-    --     blueExpProg:setPercent(percent)
-    -- else
-    --     blueExpProg:setPercent(self._tempExp / sysLevelSkillData.exp * 100)
-    --     self._expLevel = self._tempLevel
-    -- end
-
-    -- blueExpProg:setPercent(self._tempExp / sysLevelSkillData.exp * 100)
     print("self._maxExpBar=====", self._maxExpBar)
 
     if self._maxExpBar == true then
@@ -1707,7 +1782,10 @@ function TeamSkillUpdateView:upgradeSkill()
         table.insert(items.items,tempData)
     end
     self._oldFight = TeamUtils:updateFightNum()
-    local param = {args = json.encode(items), positionId = self._curSelectIndex, teamId = self._teamData.teamId}
+
+    local skillData = self._skillData[self._curSelectIndex]
+    local sysSkillIndex = skillData.sysSkillIndex
+    local param = {args = json.encode(items), positionId = sysSkillIndex, teamId = self._teamData.teamId}
     self._serverMgr:sendMsg("TeamServer", "upgradeSkill", param, true, {}, function (result)
         return self:upgradeSkillFinish(result)
     end)
@@ -1719,8 +1797,7 @@ function TeamSkillUpdateView:upgradeSkillFinish(inResult)
         return
     end
     audioMgr:playSound("crSkLvUp")
-    local teamModel = self._modelMgr:getModel("TeamModel")
-    local tempTeamData,tempTeamIndex = teamModel:getTeamAndIndexById(self._teamData.teamId)
+    local tempTeamData,tempTeamIndex = self._teamModel:getTeamAndIndexById(self._teamData.teamId)
     local tempData = {}
     tempData.teamData = tempTeamData
     tempData.index = self._curSelectIndex

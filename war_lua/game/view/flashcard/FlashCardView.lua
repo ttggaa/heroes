@@ -5,15 +5,14 @@
     Datetime:    2015-04-29 15:22:09
     Description: File description
 --]]
-local isLuckyCoin = false
-local rightCostType = isLuckyCoin and "luckyCoin" or "gem"
-local navigationRes = isLuckyCoin and {"LuckyCoin","Gem","Gold"} or {"Physcal","Gold","Gem"}
+
 -- 静态全局数据
 local discountSingle = tab:Setting("G_DISCOUNT_FIRST_SINGLE_DRAW").value
 local discountTen = tab:Setting("G_DISCOUNT_TENTIMES_DRAW").value
 
 local toolSingle = tab:Setting("G_DRAWCOST_TOOL_SINGLE").value[3]
 local toolTen = tab:Setting("G_DRAWCOST_TOOL_TENTIMES").value[3]
+local tool100 = 100
 local gemSingle = tab:Setting("G_DRAWCOST_GEM_SINGLE").value[3]
 local gemTen = tab:Setting("G_DRAWCOST_GEM_TENTIMES").value[3]
 local gemFreeCD = tab:Setting("G_FREECD_DRAW_GEM_SINGLE").value -- 转换成秒数
@@ -27,10 +26,13 @@ function FlashCardView:ctor()
     self.fixMaxWidth = ADOPT_IPHONEX and 1136 or nil 
     self._free = false
     self._mcs = {}
+    self._drawType = "team"
     -- 重新设置消耗类型
-    isLuckyCoin = self._modelMgr:getModel("UserModel"):drawUseLuckyCoin()
-    rightCostType = isLuckyCoin and "luckyCoin" or "gem"
-    navigationRes = isLuckyCoin and {"LuckyCoin","Gem","Gold"} or {"Physcal","Gold","Gem"}
+    self._isLuckyCoin = self._modelMgr:getModel("UserModel"):drawUseLuckyCoin()
+    self._rightCostType = self._isLuckyCoin and "luckyCoin" or "gem"
+    self._navigationRes = self._isLuckyCoin and {"LuckyCoin","Gem","Gold"} or {"Physcal","Gold","Gem"}
+    self._userModel = self._modelMgr:getModel("UserModel")
+    self._raceDrawModel = self._modelMgr:getModel("RaceDrawModel")
 end
 
 -- function FlashCardView:getBgName(  )
@@ -39,9 +41,9 @@ end
 
 function FlashCardView:setNavigation()
     if self._inBuyScene then
-        self._viewMgr:showNavigation("global.UserInfoView",{types= navigationRes,hideBtn = true,hideInfo=true}, nil, ADOPT_IPHONEX and self.fixMaxWidth or nil)
+        self._viewMgr:showNavigation("global.UserInfoView",{types= self._navigationRes,hideBtn = true,hideInfo=true}, nil, ADOPT_IPHONEX and self.fixMaxWidth or nil)
     else
-        self._viewMgr:showNavigation("global.UserInfoView",{types= navigationRes,hideHead = true}, nil, ADOPT_IPHONEX and self.fixMaxWidth or nil)
+        self._viewMgr:showNavigation("global.UserInfoView",{types= self._navigationRes,hideHead = true}, nil, ADOPT_IPHONEX and self.fixMaxWidth or nil)
     end
 end
 function FlashCardView:getAsyncRes()
@@ -50,6 +52,8 @@ function FlashCardView:getAsyncRes()
         {"asset/ui/flashCard.plist", "asset/ui/flashCard.png"},
         {"asset/ui/flashCard1.plist", "asset/ui/flashCard1.png"},
         {"asset/ui/flashCard3.plist", "asset/ui/flashCard3.png"},
+        {"asset/ui/flashCard4.plist", "asset/ui/flashCard4.png"},
+        {"asset/ui/flashCard5.plist", "asset/ui/flashCard5.png"}, -- 阵营抽卡动画用资源
         {"asset/anim/flashcardanimimage.plist", "asset/anim/flashcardanimimage.png"},
         {"asset/anim/flashcardgoumaishiciimage.plist", "asset/anim/flashcardgoumaishiciimage.png"},
         -- {"asset/anim/flashcarddingguangimage.plist", "asset/anim/flashcarddingguangimage.png"},
@@ -67,6 +71,34 @@ function FlashCardView:onHide()
     -- self:destroyAct()
 end
 
+function FlashCardView:onBeforeAdd(callback, errorCallback)
+    if SystemUtils["enableRaceDraw"]() then
+        self._serverMgr:sendMsg("RaceDrawServer", "getDrawCardInfo", {}, true, {}, function(success)
+            if not success then return end
+            if callback then
+                callback()
+            end
+            if self.initFlashCardUI then
+                -- print("=============self.initFlashCardUI=======")
+                self:initFlashCardUI()
+            else
+                -- print("=========else===========")
+                require("game.view.flashcard.FlashCardRaceView")
+                self:initFlashCardUI()
+            end
+
+        end, 
+        function(errorCode)
+            if errorCode and errorCallback then
+                errorCallback()
+            end
+        end)
+    else
+        if callback then
+            callback()
+        end
+    end
+end
 function FlashCardView:onTop( )
     self._viewMgr:enableScreenWidthBar()
     local yun1 = self._bg:getChildByFullName("yun1")
@@ -105,7 +137,11 @@ function FlashCardView:onInit()
             if not self._inBounce then
                 self._isBounceLock = true
                 self:lock(-1)
-                self:bgBounceDown()
+                if self._drawType == "team" then
+                    self:bgBounceDown()
+                else
+                    self:bgBounceDownRace()
+                end
                 -- self._gemLayer:setScale(1)
                 -- self._toolLayer:setScale(1)
             end
@@ -115,13 +151,19 @@ function FlashCardView:onInit()
     self._showCangetBtn:setScale(0.9)
     self._showCangetBtn:setVisible(false)
     self:registerClickEventByName("showCangetBtn",function( )
-        self._viewMgr:showDialog("flashcard.DialogFlashPreView",{tp = self._costType},nil,nil,nil,true)
+        if self._drawType and self._drawType == "team" then
+            self._viewMgr:showDialog("flashcard.DialogFlashPreView",{tp = self._costType},nil,nil,nil,true)
+        else
+            self._viewMgr:showDialog("flashcard.DialogRaceFlashPreView",{raceId = self._raceId},nil,nil,nil,true)
+        end
     end)
     -- self._lockView = self:getUI("lockView")
     -- self._lockView:setSwallowTouches(false)
     self._toolBtnLayer = self:getUI("bg.toolBtnLayer")
+    self._toolBtnLayer:setCascadeOpacityEnabled(true,true)
     self._toolBtnLayer:setVisible(false)
     self._gemBtnLayer = self:getUI("bg.gemBtnLayer")
+    self._gemBtnLayer:setCascadeOpacityEnabled(true,true)
     self._gemBtnLayer:setVisible(false)
     self._gemBar = self:getUI("gemBar")
     self._gemBar:setVisible(false)
@@ -138,15 +180,14 @@ function FlashCardView:onInit()
     self._keyImg = self._gemBar:getChildByFullName("goldKey")
     self._keyBg = self._gemBar:getChildByFullName("goldKeyBg")
     self._goldKeyNum:setString(haveKeyNum)
-    if haveKeyNum <= 0 then
-        self._keyImg:setVisible(false)
-        self._keyBg:setVisible(false)
-        self._goldKeyNum:setVisible(false)
-    end
+    self._keyImg:setVisible(false)
+    self._keyBg:setVisible(false)
+    self._goldKeyNum:setVisible(false)
 
     self:registerClickEventByName("bg.toolLayer",function( )
         if self._toolLayer:isVisible() then
             self._gemBtnLayer:setVisible(false)
+            self._raceLayer:setVisible(false)
             self._isBounceLock = true
             self:lock(-1)
             self._costType = "tool"
@@ -194,9 +235,10 @@ function FlashCardView:onInit()
     self:registerClickEventByName("bg.gemLayer",function( )
         if self._gemLayer:isVisible() then
             self._toolBtnLayer:setVisible(false)
+            self._raceLayer:setVisible(false)
             self._isBounceLock = true
             self:lock(-1)
-            self._costType = rightCostType
+            self._costType = self._rightCostType
             self._gemLayer:setBrightness(40)
             ScheduleMgr:delayCall(150, self, function( )
                 if not self._gemBtnLayer then return end
@@ -242,10 +284,20 @@ function FlashCardView:onInit()
         -- self._toolBtnLayer:setVisible(false)
     end)
 
+    self:registerClickEventByName("bg.toolBtnLayer.buy100Btn", function ()
+        if self._inBounce then return end
+        self._costType = "tool"
+        self:buy100ByTool()
+        self._buyAginFunc = function( )
+            self:buy100ByTool()
+        end
+        -- self._toolBtnLayer:setVisible(false)
+    end)
+
     self:registerClickEventByName("bg.gemBtnLayer.buyOneBtn", function ()
         if self._inBounce then return end
         local player = self._modelMgr:getModel("UserModel"):getData()
-        local gem = player[rightCostType] or 0
+        local gem = player[self._rightCostType] or 0
         local gemCost = gemSingle
         local gemDiscountLab = self._gOneCost:getChildByFullName("greenText")
         local disCountGem
@@ -261,7 +313,7 @@ function FlashCardView:onInit()
         local free ,disCountNum = self:isGemDrawFree()
         -- print(free,haveKeyNum,disCountNum,"==============================day1====,",day1)
         if (haveKeyNum > 0 and not disCountNum) or (gem >= gemCost or free) then
-            self._costType = rightCostType
+            self._costType = self._rightCostType
             -- self._bg:runAction(cc.Sequence:create(cc.DelayTime:create(1),cc.CallFunc:create(function( )
             self:buyOneByGem()
             self._buyAginFunc = function( )
@@ -280,7 +332,7 @@ function FlashCardView:onInit()
     self:registerClickEventByName("bg.gemBtnLayer.buyTenBtn", function ()
         if self._inBounce then return end
         local player = self._modelMgr:getModel("UserModel"):getData()
-        local gem = player[rightCostType] or 0
+        local gem = player[self._rightCostType] or 0
         local _,haveKeyNum = self._modelMgr:getModel("ItemModel"):getItemsById(3041)
         -- print("===========================haveKeyNum======",haveKeyNum)
         if haveKeyNum <= 0 and gem < gemTen*discountTen then
@@ -292,7 +344,7 @@ function FlashCardView:onInit()
             self:showNeedCharge(gemTen*discountTen-gem)
             return 
         end
-        self._costType = rightCostType
+        self._costType = self._rightCostType
         -- self._bg:runAction(cc.Sequence:create(cc.DelayTime:create(1),cc.CallFunc:create(function( )
         self:buyTenByGem()
         self._buyAginFunc = function( )
@@ -355,11 +407,21 @@ function FlashCardView:onInit()
     tTenBtn:getTitleRenderer():enableOutline(cc.c4b(61, 24, 0, 255), 2)
     self._tTenBtn = tTenBtn
 
+    local t100Btn = self:getUI("bg.toolBtnLayer.buy100Btn")
+    t100Btn:setTitleFontSize(28)
+    t100Btn:setTitleColor(cc.c4b(255, 251, 237, 255))
+    t100Btn:getTitleRenderer():enable2Color(1,cc.c4b(252, 222, 153, 255))
+    t100Btn:getTitleRenderer():enableOutline(cc.c4b(61, 24, 0, 255), 2)
+    self._t100Btn = t100Btn
+    
+
     -- 换按钮 by guojun 
     tOneBtn:loadTextures("flashcard_btn1.png","flashcard_btn1.png","flashcard_btn1.png",1)
     tOneBtn:setTitleText("")
     tTenBtn:loadTextures("flashcard_btn2.png","flashcard_btn2.png","flashcard_btn2.png",1)
     tTenBtn:setTitleText("")
+    t100Btn:loadTextures("flashcard_btn3.png","flashcard_btn3.png","flashcard_btn3.png",1)
+    t100Btn:setTitleText("")
     gOneBtn:loadTextures("flashcard_btn1.png","flashcard_btn1.png","flashcard_btn1.png",1)
     gOneBtn:setTitleText("")
     gTenBtn:loadTextures("flashcard_btn2.png","flashcard_btn2.png","flashcard_btn2.png",1)
@@ -370,6 +432,10 @@ function FlashCardView:onInit()
     local tAnimImg = self:getUI("bg.toolBtnLayer.buyTenBtn.animImg")
     tAnimImg:loadTexture("flashcard_btn2.png",1)
     tAnimImg:setPosition(94,37)
+
+    local t100AnimImg = self:getUI("bg.toolBtnLayer.buy100Btn.animImg")
+    t100AnimImg:loadTexture("flashcard_btn3.png",1)
+    t100AnimImg:setPosition(94,37)
 
 
     -- 首次进入展示
@@ -386,12 +452,16 @@ function FlashCardView:onInit()
     self._tTenCost = self:getUI("bg.toolBtnLayer.buyTenCostLayer.cost")
     self._tTenCost:setFontName(UIUtils.ttfName)
     self._tTenCost:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor,2)
+    self._t100Cost = self:getUI("bg.toolBtnLayer.buy100CostLayer.cost")
+    self._t100Cost:setFontName(UIUtils.ttfName)
+    self._t100Cost:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor,2)
     self._tDot = self:getUI("bg.toolLayer.dot")
     self._tDot:setZOrder(100)
     self._tBoardW = self._toolLayer:getContentSize().width
     -- self._tTimeLab:setString("00:10:00后免费")
     self._tOneCost:setString(toolSingle)
     self._tTenCost:setString(toolTen)
+    self._t100Cost:setString(tool100)
     
     self._gOneBtn = self:getUI("bg.gemBtnLayer.buyOneBtn")
     self._gTimeLab = self:getUI("bg.gemLayer.timeLab")
@@ -477,16 +547,19 @@ function FlashCardView:onInit()
     gemLab:setString(ItemUtils.formatItemCount(self._modelMgr:getModel("UserModel"):getData().gem))
     self:listenReflash("UserModel", function( )
         gemLab:setString(ItemUtils.formatItemCount(self._modelMgr:getModel("UserModel"):getData().gem))
-        if isLuckyCoin and luckyLab then
+        if self._isLuckyCoin and luckyLab then
             luckyLab:setString(ItemUtils.formatItemCount(self._modelMgr:getModel("UserModel"):getData().luckyCoin or 0))
         end
         self:isGemDrawFree()
+        if self.updateRaceBtnLayer then
+            self:updateRaceBtnLayer()       -- 阵营抽卡刷新
+        end
         local _,toolHaveNum = self._modelMgr:getModel("ItemModel"):getItemsById(3041)
         self._goldKeyNum:setString(toolHaveNum)
     end)
 
     -- 不使用幸运币则隐藏
-    if not isLuckyCoin then
+    if not self._isLuckyCoin then
         local hideMap = {"luckyLab","buyLuckyBtn","lukyIcon","lukyBg"}
         for _,name in pairs(hideMap) do
             local node = self._gemBar:getChildByFullName(name)
@@ -519,6 +592,7 @@ function FlashCardView:onInit()
     -- self:addMcWithMask(self:getUI("bg.gemBtnLayer.buyTenBtn.animImg"),"buytenmask2_flashcard.png","saoguang2_flashcardgoumaishici",{scale={0.9,0.85},x=94,y=40})
     
     self:addAnimation2Node("anniuguangxiao_tongyonganniu",self:getUI("bg.toolBtnLayer.buyTenBtn.animImg"),{zOrder = 10,offsetx = 0,offsety = 0})
+    self:addAnimation2Node("anniuguangxiao_tongyonganniu",self:getUI("bg.toolBtnLayer.buy100Btn.animImg"),{zOrder = 10,offsetx = 0,offsety = 0})
     -- self:addMcWithMask(self:getUI("bg.toolBtnLayer.buyTenBtn.animImg"),"buytenmask1_flashcard.png","saoguang1_flashcardgoumaishici")
     -- self:addMcWithMask(self:getUI("bg.toolBtnLayer.buyTenBtn.animImg"),"buytenmask2_flashcard.png","saoguang2_flashcardgoumaishici")
     self._baoxiangdingguangMc = self:addAnimation2Node("dingguang_flashcarddingguang",self._bg,{zOrder = 3,offsetx = 0,offsety = MAX_SCREEN_HEIGHT/2-320,notLoop=true})
@@ -577,6 +651,24 @@ function FlashCardView:onInit()
     starYinMc:setCascadeOpacityEnabled(true,true)
     self._starYinMc = starYinMc
     -- 
+    self._raceLayer = self:getUI("bg.raceLayer")
+    self._raceLayer:setVisible(false)
+    self._raceLayer:setCascadeOpacityEnabled(true,true)
+
+    self._raceBtnLayer = self:getUI("bg.raceBtnLayer")
+    self._raceBtnLayer:setCascadeOpacityEnabled(true,true)
+    self._raceBtnLayer:setVisible(false)
+
+    self._teamDrawBtn = self:getUI("bg.teamDrawBtn")
+    self._raceDrawBtn = self:getUI("bg.raceDrawBtn")
+    self._teamDrawBtn:setVisible(false)
+    self._raceDrawBtn:setVisible(false)
+    -- print("==================123123123===",SystemUtils["enableRaceDraw"]())
+    if SystemUtils["enableRaceDraw"]() then 
+        -- print("===================================")
+        require("game.view.flashcard.FlashCardRaceView")
+        self:initFlashCardUI()
+    end
 end
 
 function FlashCardView:addMcWithMask( node,maskName,mcName,param )
@@ -789,11 +881,16 @@ function FlashCardView:isToolDrawFree( )
     self:textColorRed(self._tCost,toolHaveNum< toolSingle and not isFree)
     self:textColorRed(self._tOneCost,toolHaveNum< toolSingle and not isFree)
     self:textColorRed(self._tTenCost,toolHaveNum< toolTen)
+    self:textColorRed(self._t100Cost, toolHaveNum< tool100)
 
     --按钮特效层 不满足条件，不加特效
     local btnAnim = self._tTenBtn:getChildByFullName("animImg")
     if btnAnim then
         btnAnim:setVisible(toolHaveNum >= toolTen)
+    end
+    local btnAnim2 = self._t100Btn:getChildByFullName("animImg")
+    if btnAnim2 then
+        btnAnim2:setVisible(toolHaveNum >= tool100)
     end
     if isFree then
         self._tCost:setColor(cc.c4b(0,255,30,255))
@@ -805,6 +902,7 @@ function FlashCardView:isToolDrawFree( )
         self._tOneCost:setString(toolHaveNum .. "/" .. cost)
     end
     self._tTenCost:setString(toolHaveNum .. "/" .. toolTen)
+    self._t100Cost:setString(toolHaveNum .. "/" .. tool100)
     return isFree
 end
 function FlashCardView:textColorRed( node,red,color )
@@ -817,7 +915,7 @@ end
 local isSetGemFirstImg = false
 function FlashCardView:isGemDrawFree()
     -- 换成幸运币
-    local costImageName = isLuckyCoin and "globalImageUI_luckyCoin.png" or "globalImageUI_diamond.png"
+    local costImageName = self._isLuckyCoin and "globalImageUI_luckyCoin.png" or "globalImageUI_diamond.png"
     self._gCostImg:loadTexture(costImageName,1)
     self._gOneCostImg:loadTexture(costImageName,1)
     self._gTenCostImg:loadTexture(costImageName,1)
@@ -825,7 +923,7 @@ function FlashCardView:isGemDrawFree()
     --玩家拥有的金钥匙道具  hgf
     local _,toolHaveNum = self._modelMgr:getModel("ItemModel"):getItemsById(3041)
     self._goldKeyNum:setString(toolHaveNum)
-    if toolHaveNum <= 0 then
+    if toolHaveNum <= 0 or self._drawType == "race" then
         self._keyImg:setVisible(false)
         self._keyBg:setVisible(false)
         self._goldKeyNum:setVisible(false)
@@ -959,7 +1057,7 @@ function FlashCardView:isGemDrawFree()
         self._gOneCost:setString(gemSingle)
     end
    
-    local gemHaveNum = self._modelMgr:getModel("UserModel"):getData()[rightCostType] or 0
+    local gemHaveNum = self._modelMgr:getModel("UserModel"):getData()[self._rightCostType] or 0
     if disCountNum < 1 then
         local costW,costH = self._gOneCost:getContentSize().width,self._gOneCost:getContentSize().height
         local costX,costY = self._gOneCost:getPositionX(),self._gOneCost:getPositionY()
@@ -1009,6 +1107,7 @@ function FlashCardView:isGemDrawFree()
 end
 
 function FlashCardView:reflashUI(data)
+    -- print("============reflashUI========")
     --更新用户钻石
     if data.d and data.d.drawAward then
         self._playerDayModel:updateDrawAward(data.d.drawAward)
@@ -1041,6 +1140,7 @@ function FlashCardView:reflashUI(data)
     -- end})
     -- self._gemBtnLayer:setVisible(false)
     -- self._toolBtnLayer:setVisible(false)
+    self._returnBtn:setTouchEnabled(false)
     local moveAction = cc.Sequence:create(cc.MoveBy:create(0.2,cc.p(0,50)),cc.MoveBy:create(0.35,cc.p(0,-300)),cc.CallFunc:create(function()
         self._gemBtnLayer:setVisible(false)
         self._toolBtnLayer:setVisible(false) 
@@ -1048,8 +1148,13 @@ function FlashCardView:reflashUI(data)
         callback = function( awards )
             -- self:removeMC("choukabeijing_choukaanim2")
             self:bgBounceUp(true)
-            local moveBack = cc.Sequence:create(cc.MoveBy:create(0.25,cc.p(0,270)),cc.MoveBy:create(0.2,cc.p(0,-20)))
-            if self._costType == rightCostType then
+            local moveBack = cc.Sequence:create(cc.MoveBy:create(0.25,cc.p(0,270)),cc.MoveBy:create(0.2,cc.p(0,-20)),
+                cc.CallFunc:create(function ()
+                    if self._returnBtn then
+                        self._returnBtn:setTouchEnabled(true)
+                    end
+                end))
+            if self._costType == self._rightCostType then
                 self._gemBtnLayer:setVisible(true)
                 self._gemBtnLayer:setOpacity(255)
                 self._gemBtnLayer:runAction(moveBack)
@@ -1060,9 +1165,9 @@ function FlashCardView:reflashUI(data)
             end
             self._tOneBtn:setTouchEnabled(true)
             self._tTenBtn:setTouchEnabled(true)
+            self._t100Btn:setTouchEnabled(true)
             self._gOneBtn:setTouchEnabled(true)
             self._gTenBtn:setTouchEnabled(true)
-            self._returnBtn:setTouchEnabled(true)
             self._showCangetBtn:setTouchEnabled(true)
             self._buyGemBtn:setTouchEnabled(true)
             
@@ -1077,7 +1182,7 @@ function FlashCardView:reflashUI(data)
             self._starYinMc:play()
         end},true)
     end))
-    if self._costType == rightCostType then
+    if self._costType == self._rightCostType then
         self._gemBtnLayer:runAction(moveAction)                
     else
         self._toolBtnLayer:runAction(moveAction)              
@@ -1142,7 +1247,7 @@ end
 --]]
 function FlashCardView:buyCardByGem(price,num)
     local player = self._modelMgr:getModel("UserModel"):getData()
-    local gem = player[rightCostType] or 0
+    local gem = player[self._rightCostType] or 0
     local _,haveKeyNum = self._modelMgr:getModel("ItemModel"):getItemsById(3041)
     local free ,disCountNum = self:isGemDrawFree()
     local conditions = false
@@ -1157,6 +1262,7 @@ function FlashCardView:buyCardByGem(price,num)
 
         self._tOneBtn:setTouchEnabled(false)
         self._tTenBtn:setTouchEnabled(false)
+        self._t100Btn:setTouchEnabled(false)
         self._gOneBtn:setTouchEnabled(false)
         self._gTenBtn:setTouchEnabled(false)
         self._returnBtn:setTouchEnabled(false)
@@ -1190,6 +1296,7 @@ function FlashCardView:buyCardByGem(price,num)
             if not self._tOneBtn then return end
             self._tOneBtn:setTouchEnabled(true)
             self._tTenBtn:setTouchEnabled(true)
+            self._t100Btn:setTouchEnabled(true)
             self._gOneBtn:setTouchEnabled(true)
             self._gTenBtn:setTouchEnabled(true)
             self._returnBtn:setTouchEnabled(true)
@@ -1234,6 +1341,7 @@ function FlashCardView:buyCardByTool(count,num)
 
         self._tOneBtn:setTouchEnabled(false)
         self._tTenBtn:setTouchEnabled(false)
+        self._t100Btn:setTouchEnabled(false)
         self._gOneBtn:setTouchEnabled(false)
         self._gTenBtn:setTouchEnabled(false)
         self._returnBtn:setTouchEnabled(false)
@@ -1270,6 +1378,7 @@ function FlashCardView:buyCardByTool(count,num)
             if not self._tOneBtn then return end
             self._tOneBtn:setTouchEnabled(true)
             self._tTenBtn:setTouchEnabled(true)
+            self._t100Btn:setTouchEnabled(true)
             self._gOneBtn:setTouchEnabled(true)
             self._gTenBtn:setTouchEnabled(true)
             self._returnBtn:setTouchEnabled(true)
@@ -1311,6 +1420,12 @@ function FlashCardView:buyTenByTool( )
     local cost = toolTen
     self._buyNum = 10
     self:buyCardByTool(cost,10)
+end
+
+function FlashCardView:buy100ByTool( )
+    local cost = tool100
+    self._buyNum = 100
+    self:buyCardByTool(cost,100)
 end
 
 function FlashCardView:buyOneByGem( )
@@ -1522,6 +1637,12 @@ function FlashCardView:bgBounceUp( notShowApearAnim )
     -- dingguangMc:setName("dingguangMc")
     -- dingguangMc:setPosition(self._bg:getContentSize().width/2, self._bg:getContentSize().height/2)
     -- self._bg:addChild(dingguangMc,999)
+    self._teamDrawBtn:setOpacity(255)
+    self._raceDrawBtn:setOpacity(255)
+    self._teamDrawBtn:setEnabled(false)
+    self._raceDrawBtn:setEnabled(false)
+    self._teamDrawBtn:runAction(cc.FadeOut:create(0.1))
+    self._raceDrawBtn:runAction(cc.FadeOut:create(0.1))
     self:loadSceneBg(self._costType == "tool" and "yin" or "jin")
     self:showAltarAnim()
     self._returnBtn:setVisible(true)
@@ -1550,6 +1671,7 @@ function FlashCardView:bgBounceUp( notShowApearAnim )
         self:fadeOutWithChildren(self._toolLayer,function( )
             -- self._lockView:setSwallowTouches(false)
             self._toolBtnLayer:setVisible(true)
+            self._tTenBtn:setTouchEnabled(true)
             -- self._toolBtnLayer:runAction(cc.EaseIn:create(cc.MoveTo:create(0.2,cc.p(0,0)),0.3))
             self._toolBtnLayer:runAction(cc.FadeIn:create(bounceTime-0.17))
             local children = self._toolBtnLayer:getChildren()
@@ -1567,7 +1689,7 @@ function FlashCardView:bgBounceUp( notShowApearAnim )
         self:fadeInWithChildren(self._toolBtnLayer)
         -- self:fadeInWithChildren(self._toolTitle)
         self:fadeOutWithChildren(self._gemLayer)
-        self._viewMgr:showNavigation("global.UserInfoView",{types= navigationRes,hideBtn = true,hideInfo=true})
+        self._viewMgr:showNavigation("global.UserInfoView",{types= self._navigationRes,hideBtn = true,hideInfo=true})
         self:boxShowAnim(self._yinMc,function( )
                 -- self:addAnimation2Node("baoxiangyin-1_flashcardanim",self._bg,{endCallback = function( sender )
                 --     sender:removeFromParent()
@@ -1582,7 +1704,7 @@ function FlashCardView:bgBounceUp( notShowApearAnim )
                 --     self:addAnimation2Node("baoxiangyin-2_flashcardanim",self._bg)
                 -- end})
         end,notShowApearAnim)
-    elseif self._costType == rightCostType then
+    elseif self._costType == self._rightCostType then
         self:fadeOutWithChildren(self._gemLayer,function( )
             -- self._lockView:setSwallowTouches(false)
             self._gemBtnLayer:setVisible(true)
@@ -1605,7 +1727,7 @@ function FlashCardView:bgBounceUp( notShowApearAnim )
         self:fadeInWithChildren(self._gemBar)
         self:fadeInWithChildren(self._gemBtnLayer)
         -- self:fadeInWithChildren(self._gemTitle)
-        self._viewMgr:showNavigation("global.UserInfoView",{types= navigationRes,hideBtn = true,hideInfo=true})
+        self._viewMgr:showNavigation("global.UserInfoView",{types= self._navigationRes,hideBtn = true,hideInfo=true})
         self:boxShowAnim(self._jinMc,function( )
                 -- self:addAnimation2Node("baoxiangjin-1 _flashcardanim",self._bg,{endCallback = function( sender )
                     -- sender:removeFromParent()
@@ -1633,6 +1755,12 @@ end
 function FlashCardView:bgBounceDown( )
     -- self._baoxiangdingguangMc:setVisible(false)
     -- self._baoxiangdingguangMc:stop()
+    self._teamDrawBtn:setOpacity(0)
+    self._raceDrawBtn:setOpacity(0)
+    self._teamDrawBtn:setEnabled(true)
+    self._raceDrawBtn:setEnabled(true)
+    self._teamDrawBtn:runAction(cc.FadeIn:create(0.1))
+    self._raceDrawBtn:runAction(cc.FadeIn:create(0.1))
     self:hideAltarAnim()
     self._returnBtn:setVisible(false)
     self._inBounce = true
@@ -1656,7 +1784,6 @@ function FlashCardView:bgBounceDown( )
         self._gemBtnLayer:setOpacity(255)
         self._toolBtnLayer:setVisible(true)
         self._toolBtnLayer:setOpacity(255)
-        
         -- self._toolLayer:setScale(1)
         -- self._gemLayer:setScale(1)
 
@@ -1673,12 +1800,12 @@ function FlashCardView:bgBounceDown( )
 
     self:fadeInWithChildren(self._toolLayer)
     self:fadeOutWithChildren(self._toolBar,function( )
-        self._viewMgr:showNavigation("global.UserInfoView",{types= navigationRes,hideHead = true}, nil, ADOPT_IPHONEX and self.fixMaxWidth or nil)
+        self._viewMgr:showNavigation("global.UserInfoView",{types= self._navigationRes,hideHead = true}, nil, ADOPT_IPHONEX and self.fixMaxWidth or nil)
     end)
 
     self:fadeInWithChildren(self._gemLayer)
     self:fadeOutWithChildren(self._gemBar,function( )
-        self._viewMgr:showNavigation("global.UserInfoView",{types= navigationRes,hideHead = true}, nil, ADOPT_IPHONEX and self.fixMaxWidth or nil)
+        self._viewMgr:showNavigation("global.UserInfoView",{types= self._navigationRes,hideHead = true}, nil, ADOPT_IPHONEX and self.fixMaxWidth or nil)
     end)
 
     -- self._showCangetBtn:setVisible(false)
@@ -1690,6 +1817,7 @@ function FlashCardView:bgBounceDown( )
 
     self:fadeOutWithChildren(self._gemBtnLayer)
     self:fadeOutWithChildren(self._toolBtnLayer)
+    self._tTenBtn:setTouchEnabled(false)
     self._jinMc:setVisible(false)
     self._yinMc:setVisible(false)
 end
@@ -1834,11 +1962,16 @@ function FlashCardView:onDestroy( )
     end
     self._viewMgr:disableScreenWidthBar()
     FlashCardView.super.onDestroy(self)
+    if OS_IS_64 then
+        package.loaded["game.view.flashcard.FlashCardRaceView64"] = nil
+    else
+        package.loaded["game.view.flashcard.FlashCardRaceView"] = nil
+    end
 end
 
 -- 根据类型跳转
 function FlashCardView:showNeedCharge( needNum )
-    if isLuckyCoin then
+    if self._isLuckyCoin then
         DialogUtils.showNeedCharge({desc = lang("TIP_GLOBAL_LACK_LUCKYCOIN"),button1 = "前往",title = "幸运币不足",callback1=function( )
             DialogUtils.showBuyRes({goalType = "luckyCoin",inputNum = needNum })
         end})

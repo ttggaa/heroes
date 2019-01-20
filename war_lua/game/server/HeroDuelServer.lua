@@ -50,6 +50,7 @@ function HeroDuelServer:onHDuelGetMainInfo(result, error)
     hdData["wins"] = result["wins"] or 0
     hdData["seasonWins"] = result["seasonWins"] or 0
     hdData["loses"] = result["loses"] or 0
+    hdData["mode"] = result["mode"] or 0
     self._hModel:setHeroDuelData(hdData)
 
 	self:callback(result)

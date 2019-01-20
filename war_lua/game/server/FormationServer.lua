@@ -133,6 +133,14 @@ function FormationServer:onGetSelfBattleInfo(result, error)
     self:callback(result)
 end
 
+function FormationServer:onSetCrossGodWarFormations( result, error )
+    self:callback(0 == tonumber(error))
+end
+
+function FormationServer:onSetCrossArenaFormations( result, error )
+    self:callback(0 == tonumber(error))
+end
+
 -- 设置布阵的宝物编组
 function FormationServer:onChangeTformation(result, error)
     if error ~= 0 then 
@@ -140,8 +148,21 @@ function FormationServer:onChangeTformation(result, error)
     end
     dump(result,"onChangeTformation...==========",10)
     if result.d and result.d.formations then
-        dump(result.d.formations)
         self._formationModel:updateAllFormationData(result.d.formations)
+    end
+    self:callback(result)
+end
+
+function FormationServer:onSetAreaSkillTeam( result, error )
+    if error ~= 0 then
+        return
+    end
+    dump(result)
+    if result.d and result.d.formations then
+        self._formationModel:updateAllFormationData(result.d.formations)
+    end
+    if result["unset"] ~= nil then 
+        self._formationModel:handleUnsetFormationData(result["unset"])
     end
     self:callback(result)
 end

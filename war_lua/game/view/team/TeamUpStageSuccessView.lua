@@ -173,10 +173,16 @@ function TeamUpStageSuccessView:reflashUI(inData)
         if sysTeam.skill == nil then 
             return
         end
-        local skillId = sysTeam.skill[skillIndex][2]
 
-        local skillType = sysTeam.skill[skillIndex][1]
-
+        local skillId, skillType
+        if skillIndex == 5 then   --新特技icon显示
+            skillId = 6900050
+            skillType = 2
+        else
+            skillId = sysTeam.skill[skillIndex][2]
+            skillType = sysTeam.skill[skillIndex][1]
+        end
+        
         local sysSkill = SkillUtils:getTeamSkillByType(skillId, skillType)
 
         if sysSkill ~= nil then 
@@ -262,7 +268,7 @@ function TeamUpStageSuccessView:reflashUI(inData)
         table.insert(tempEquips, tempEquip)
     end
 
-    local oldBackData, oldBackSpeed = BattleUtils.getTeamBaseAttr(oldTeamData, tempEquips, self._modelMgr:getModel("PokedexModel"):getScore())
+    local oldBackData, oldBackSpeed = BattleUtils.getTeamBaseAttr(oldTeamData, tempEquips, self._modelMgr:getModel("PokedexModel"):getScore(), nil, nil, nil, nil, nil, self._modelMgr:getModel("BattleArrayModel"):getData(), self._modelMgr:getModel("ParagonModel"):getData())
     -- 获取宝物属性
     local attr = teamModel:getTeamTreasure(oldTeamData.volume)
     local treasureAttr = teamModel:getTeamTreasureAttrData(oldTeamData.teamId)
@@ -340,7 +346,7 @@ function TeamUpStageSuccessView:reflashUI(inData)
     newFight:setFntFile(UIUtils.bmfName_zhandouli)
     newFight:setScale(0.5)
 
-    local backData, backSpeed = BattleUtils.getTeamBaseAttr(self._teamData, tempEquips, self._modelMgr:getModel("PokedexModel"):getScore())
+    local backData, backSpeed = BattleUtils.getTeamBaseAttr(self._teamData, tempEquips, self._modelMgr:getModel("PokedexModel"):getScore(), nil, nil, nil, nil, nil, self._modelMgr:getModel("BattleArrayModel"):getData(), self._modelMgr:getModel("ParagonModel"):getData())
     for i=BattleUtils.ATTR_Atk, BattleUtils.ATTR_COUNT do
         backData[i] = backData[i] + heroAttr[i] + treasureAttr[i] + attr[i]
     end

@@ -26,6 +26,12 @@ function DailySiegeServer:onGetDailySiegeInfo(result, error)
     		self._dailySiegeModel:updateData(dailySiege)
     	end
 
+        local dayInfo = result["dayInfo"]
+        if dayInfo then
+            self._dailySiegeModel:updateRemainNum(dayInfo)
+            self._playerTodayMode:updateDayInfo(dayInfo)
+        end
+        
     	-- 更新阵型数据  
     	local formations =  result["formations"]
     	if formations then

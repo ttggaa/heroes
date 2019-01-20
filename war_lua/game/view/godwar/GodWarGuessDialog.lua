@@ -69,7 +69,7 @@ function GodWarGuessDialog:reflashUI()
 
     local headBg = self:getUI("bg.headBg")
     local iconBg = self:getUI("bg.headBg.headIcon")
-    local param = {avatar = winData.avatar, level = winData.lvl, tp = 4, avatarFrame = winData["avatarFrame"]}
+    local param = {avatar = winData.avatar, level = winData.lvl, tp = 4, avatarFrame = winData["avatarFrame"], plvl = winData.plvl}
     local icon = iconBg:getChildByName("icon")
     if not icon then
         icon = IconUtils:createHeadIconById(param)

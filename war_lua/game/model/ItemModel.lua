@@ -500,4 +500,49 @@ function ItemModel:approatchIsOpen( itemId )
     end
     return false
 end
+
+-- 获取英雄皮肤属性
+function ItemModel:getHeroSkinAttr(hSkin)
+    local attrs = {atk=0,def=0,int=0,ack=0}
+    local changeMap = {[101] = "atk",[102] = "def", [103]="int",[104] = "ack"}
+    local skinData = hSkin or self._userModel:getTeamSkinData()
+    local skinTb = tab.teamSkin
+    for k,v in pairs(skinData) do
+        for kk,vv in pairs(v) do
+            local tempData = skinTb[tonumber(kk)]
+            if tempData and tempData.addAttr then
+                for key,value in pairs(tempData.addAttr) do                    
+                    local changeType = changeMap[tonumber(value[1])]
+                    if changeType then
+                        attrs[changeType] = attrs[changeType]+tonumber(value[2])
+                    end
+                end
+            end
+        end
+    end
+    return attrs
+end
+
+function ItemModel:isHaveAutoUseMaterial()
+	local param = {}
+	param.goodsIds  = {}
+	param.goodsNums  = {}
+	local tem = tab:Setting("Auto_Item").value
+	for i,v in ipairs(tem) do
+		for ii,good in ipairs(self._data) do
+			if tonumber(good.goodsId) == tonumber(v) and good.num > 0 then
+				table.insert(param.goodsIds,good.goodsId)
+				local num = good.num
+				local maxNum = tab:Setting("G_TOOL_BOX_MAX").value
+				--超过200 按200算
+				if good.num > maxNum then
+					num = maxNum
+				end
+				table.insert(param.goodsNums,num)
+			end
+		end
+	end
+	return #param.goodsNums > 0 , param
+end
+
 return ItemModel

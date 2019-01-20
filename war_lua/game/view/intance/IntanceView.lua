@@ -130,8 +130,11 @@ function IntanceView:onHide()
 end
 
 function IntanceView:onTop()
-
     print("IntanceView:onTop===========================================")
+    if self._mapLayer ~= nil then   --by wangyan 强制刷新英雄模型动画
+        self._mapLayer:refreshSectionHero()
+    end
+
     audioMgr:playMusic("campaign", true)
     -- 为2-2之前的章节特殊处理
     if IntanceConst.QUICK_ENTER_BY_WORLD == false and self._quickStageId == nil then 

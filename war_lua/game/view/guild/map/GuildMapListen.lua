@@ -55,8 +55,9 @@ function GuildMapLayer:handleListenModelMyselfSkipPos(otherSkipPosEvent)
             end)
             self._bgSprite:addChild(backcity4, order + 1)
             backcity4:setPosition(endGridData.pos.x, endGridData.pos.y)
-
-
+			
+			local tempGrids = self:getCircleGrids(endGridData.grid.a, endGridData.grid.b, 2)
+			self:openFog(tempGrids)
         end)
     end)
     self._bgSprite:addChild(backcity2, order + 1)
@@ -213,6 +214,18 @@ function GuildMapLayer:handleListenModelMyselfRoleMove(otherRoleMoveEventKey)
                 gridElement:runNearAction(v1.dis)
             end
         end
+        local guildId = self._modelMgr:getModel("UserModel"):getData().guildId
+        local currentGuildId = self._guildMapModel:getData().currentGuildId
+        local isSelfMap = (tostring(guildId) == tostring(currentGuildId))
+        if self._intanceMcAnimNode and self._intanceMcAnimNode.compass then
+            self._intanceMcAnimNode.compass:setVisible(isSelfMap)
+            self._intanceMcAnimNode.treasureDisBg:setVisible(isSelfMap)
+        end
+        if not isSelfMap then
+            return
+        end
+		
+		self:reloadTreasureCompass()
     end)
 end
 
@@ -481,7 +494,7 @@ function GuildMapLayer:listenModelAddEle()
     local backMapList = self._guildMapModel:getData().mapList
     -- 添加建筑，后要处理重叠建筑显示
     for k,v in pairs(addEleEvent) do
-        self:removeEleByGridKey(k)
+        self:removeEleByGridKey(k, true)
         if backMapList[k] ~= nil then 
             local grid = self._shapes[k]
             self:updateMapEle(k, grid, backMapList[k])
@@ -627,6 +640,7 @@ function GuildMapLayer:handleListenModelBackCity(backCityEvent, isMyself)
 
             self:moveToGridByMyself(gridData.grid.a, gridData.grid.b, false, true, function()
                 self._userGridKeys[self._userId] = self._curGrid.a .. "," .. self._curGrid.b
+				self:reloadTreasureCompass()
                 local backcity3 = mcMgr:createViewMC("huicheng3_guildmaphuicheng", false, true, function()
 
                 end)

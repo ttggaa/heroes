@@ -198,6 +198,14 @@ function MapLayer:moveToGridPoint(inMc, inX, inY, inAnim, isFollowScreen, inCall
         if inMc.progress ~= nil then 
             inMc.progress:setScaleX(1 * math.abs(inMc.progress:getScaleX()))
         end
+		
+		if inMc.compass ~= nil then
+			inMc.compass:setScaleX(1 * math.abs(inMc.compass:getScaleX()))
+		end
+		
+		if inMc.treasureDisBg~= nil then
+			inMc.treasureDisBg:setScaleX(1 * math.abs(inMc.compass:getScaleX()))
+		end
     else
         inMc:setFlipX(true)
         if inMc.nameBg ~= nil then 
@@ -207,6 +215,14 @@ function MapLayer:moveToGridPoint(inMc, inX, inY, inAnim, isFollowScreen, inCall
         if inMc.progress ~= nil then 
             inMc.progress:setScaleX(-1 * math.abs(inMc.nameBg:getScaleX()))
         end
+		
+		if inMc.compass ~= nil then
+			inMc.compass:setScaleX(-1 * math.abs(inMc.compass:getScaleX()))
+		end
+		
+		if inMc.treasureDisBg~= nil then
+			inMc.treasureDisBg:setScaleX(-1 * math.abs(inMc.compass:getScaleX()))
+		end
     end
     inMc:stopAllActions()
 

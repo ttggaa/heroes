@@ -33,7 +33,8 @@ function ChatPrivateChatCell:reflashUI(data, richText, width, height, isMyself)
         if userData["rid"] == "bug_op" then
             self._avatar = IconUtils:createHeadIconById({art = "ti_xiaojingling", level = 0, tp = 4,avatarFrame=userData["avatarFrame"]})
         else
-            self._avatar = IconUtils:createHeadIconById({avatar = userData.avatar, level = userData.lvl or "0", tp = 4,avatarFrame=userData["avatarFrame"]})
+            local headP = {avatar = userData.avatar, level = userData.lvl or "0", tp = 4,avatarFrame=userData["avatarFrame"], plvl = userData.plvl}
+            self._avatar = IconUtils:createHeadIconById(headP)
         end
         self._avatar:setScale(0.7)
         self._avatar:setAnchorPoint(0, 1)
@@ -42,7 +43,8 @@ function ChatPrivateChatCell:reflashUI(data, richText, width, height, isMyself)
         if userData["rid"] == "bug_op" then
             IconUtils:updateHeadIconByView(self._avatar,{art = "ti_xiaojingling", level = 0, tp = 4,avatarFrame=userData["avatarFrame"]})
         else
-            IconUtils:updateHeadIconByView(self._avatar,{avatar = userData.avatar, level = userData.lvl or "0", tp = 4,avatarFrame=userData["avatarFrame"]})
+            local headP = {avatar = userData.avatar, level = userData.lvl or "0", tp = 4,avatarFrame=userData["avatarFrame"], plvl = userData.plvl}
+            IconUtils:updateHeadIconByView(self._avatar, headP)
         end
     end
     if isMyself == true then 

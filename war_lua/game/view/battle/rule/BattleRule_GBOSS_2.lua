@@ -124,6 +124,10 @@ function BattleScene:initBattleUIEx()
     if self._battleInfo.bossKill then
         self._countLabel:setString("x∞")
     end
+
+    if self._skipBtn then
+        self._skipBtn:setVisible(true)
+    end
 end
 
 -- 显示HP

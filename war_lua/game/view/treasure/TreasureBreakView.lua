@@ -594,6 +594,17 @@ function TreasureBreakView:createItem( data )
             btnTouchLayer._clockOn = nil
         end
     end)
+
+    --满级  by hgf
+    local maxImg = ccui.ImageView:create("treasureBreak_levelMax.png", 1)
+    maxImg:setAnchorPoint(0, 0)
+    maxImg:setPosition(cc.p(4, 7))
+    maxImg:setVisible(false)
+    item._maxImg = maxImg 
+    item:addChild(maxImg, 1000)
+    if data.stage >= self._stageMax then
+        maxImg:setVisible(true)
+    end
     
     return item
 end

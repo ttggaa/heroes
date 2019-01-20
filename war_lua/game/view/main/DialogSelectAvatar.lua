@@ -10,7 +10,7 @@ end
 
 -- 初始化UI后会调用, 有需要请覆盖
 function DialogSelectAvatar:onInit()
-	self:registerClickEventByName("bg.closeBtn", function ()
+    self:registerClickEventByName("bg.closeBtn", function ()
         self:close()
         UIUtils:reloadLuaFile("main.DialogSelectAvatar")
     end)
@@ -31,16 +31,23 @@ function DialogSelectAvatar:onInit()
     self._frameScrollView:setClippingType(1)
     self._frames = {}
 
+    self._shadowsScrollView = self:getUI("bg.shadowsScrollView")
+    self._shadowsScrollView:setBounceEnabled(true)
+    self._shadowsScrollView:setClippingType(1)
+    self._shadowsFrames = {}
+
     self._panels = {}
     table.insert(self._panels,self._scrollView)
     table.insert(self._panels,self._frameScrollView)
+    table.insert(self._panels,self._shadowsScrollView)
 
     self._tabs = {}
     table.insert(self._tabs, self:getUI("bg.tab_avatar"))
     table.insert(self._tabs, self:getUI("bg.tab_frame"))
+    table.insert(self._tabs, self:getUI("bg.tab_shadows"))
     self:getUI("bg.tab_frame"):setTitleText("头像框")
     
-    for i=1,2 do
+    for i=1,3 do
         -- self:registerClickEvent(self._tabs[i],function( )
         --     self:touchTab(i)
         -- end)
@@ -81,6 +88,7 @@ function DialogSelectAvatar:onInit()
 end
 
 function DialogSelectAvatar:touchTab( idx )
+    print("========idx======="..idx)
     if self._tabIdx and self._tabIdx == idx then return end
     self._tabIdx = idx
     for i,v in ipairs(self._tabs) do
@@ -97,12 +105,22 @@ function DialogSelectAvatar:touchTab( idx )
         self:setTabStatus(self._tabs[idx],true)
     end)
     self._panels[idx]:setVisible(true)
-    if not next(self._frames) then
-        self._serverMgr:sendMsg("AvatarFramesServer","getAvatarFrameInfo",{}, true, {},function( )
-            self:initFrames()
-            self:reflashUI()
-        end)
+    if idx == 2 then
+        if not next(self._frames) then
+            self._serverMgr:sendMsg("AvatarFramesServer","getAvatarFrameInfo",{}, true, {},function( )
+                self:initFrames()
+                self:reflashUI()
+            end)
+        end
+    elseif idx == 3 then
+        if not next(self._shadowsFrames) then
+            self._serverMgr:sendMsg("ShadowsServer","getShadowsInfo",{}, true, {},function( )
+                self:initShadowsFrames()
+                self:reflashUI()
+            end)
+        end
     end
+
 end
 
 function DialogSelectAvatar:setTabStatus( sender,isSelect )
@@ -118,16 +136,16 @@ function DialogSelectAvatar:setTabStatus( sender,isSelect )
 end
 
 function DialogSelectAvatar:initAvatar( )
-	local teamAvatars = {}
-	local heroAvatars = {}
+    local teamAvatars = {}
+    local heroAvatars = {}
     -- [[新逻辑 英雄兵团分类变成  普通 稀有 典藏
     local normalAvatars = {}
     local rareAvatars = {}
     local collectionAvatars = {}
     --]]
-	local allAvatar = clone(tab.roleAvatar)
-	local avatarsInfo = self._modelMgr:getModel("AvatarModel"):getData()
-	-- dump(avatarsInfo)
+    local allAvatar = clone(tab.roleAvatar)
+    local avatarsInfo = self._modelMgr:getModel("AvatarModel"):getData()
+    -- dump(avatarsInfo)
     local sfc = cc.SpriteFrameCache:getInstance()
     for k,v in pairs(allAvatar) do
         if v.display == 1 then
@@ -137,11 +155,11 @@ function DialogSelectAvatar:initAvatar( )
                 have = false
             end
             if have then
-        		if v.avtype == 1 then
-        			table.insert(teamAvatars, v)
-        		elseif v.avtype == 2 or v.avtype == 3 then
-        			table.insert(heroAvatars, v)
-        		end
+                if v.avtype == 1 then
+                    table.insert(teamAvatars, v)
+                elseif v.avtype == 2 or v.avtype == 3 then
+                    table.insert(heroAvatars, v)
+                end
                 -- [[ 新逻辑分类
                 if v.avaQuality == 1 then
                     table.insert(normalAvatars,v)
@@ -165,7 +183,7 @@ function DialogSelectAvatar:initAvatar( )
                 -- end
             end
         end
-	end
+    end
     table.sort(teamAvatars,function( a,b )
         if a.islocked == b.islocked then
             if a.unlock and b.unlock then 
@@ -185,8 +203,8 @@ function DialogSelectAvatar:initAvatar( )
         return b.islocked or false 
     end)
     self._teamAvatar = teamAvatars
-	-- dump(teamAvatars)
-	self._heroAvatar = heroAvatars
+    -- dump(teamAvatars)
+    self._heroAvatar = heroAvatars
 
     -- [[ 新分类排序
     local sortFunc = function( tableD )
@@ -330,36 +348,86 @@ function DialogSelectAvatar:initFrames( )
     --]]
 end
 
+function DialogSelectAvatar:initShadowsFrames()
+    -- [[ 头像框资源
+    local allFrames = clone(tab.heroShadow)
+    local frames = {}
+    local frameInfo = self._modelMgr:getModel("ShadowsModel"):getShadowsFrame() or  {}
+    -- dump(avatarsInfo)
+    local sfc = cc.SpriteFrameCache:getInstance()
+    for k,v in pairs(allFrames) do
+        if v.display == 1 then
+            local have = true 
+            local art = v.icon
+            if art == "avatarFrame_0" then art = "bg_head_mainView" end
+            if not (sfc:getSpriteFrameByName(art ..".jpg") or sfc:getSpriteFrameByName(art ..".png")) then
+                have = false
+            end
+            table.insert(frames, v)
+            v.islocked = not frameInfo[tostring(k)]
+        end
+    end
+    table.sort(frames,function( a,b )
+        if a.islocked == b.islocked then 
+            return tonumber(a.id) < tonumber(b.id)
+        end
+        return b.islocked or false 
+    end)
+
+    local col = 4
+    local avatarSize    = 125
+    local maxHeight     = 0 -- 两个title高40 计算
+    local titleHeight   = 50
+    local scrollWidth   = self._shadowsScrollView:getContentSize().width
+    local scrollHeight  = self._shadowsScrollView:getContentSize().height
+    local heroBgHeight  = math.ceil(#frames/col)*(avatarSize+20)+10
+    maxHeight = maxHeight+heroBgHeight 
+    maxHeight = math.max(maxHeight,scrollHeight)
+    self._shadowsScrollView:setInnerContainerSize(cc.size(scrollWidth,maxHeight))
+    for i,v in ipairs(frames) do
+        local avatar = self:createShadowFrame(frames[i])
+        avatar:setPosition(((i-1)%col)*avatarSize+15,maxHeight-math.floor((i-1)/col+1)*(avatarSize+20)+25)
+        self._shadowsScrollView:addChild(avatar)
+        if not v.islocked then
+            table.insert(self._shadowsFrames,avatar)
+        end
+    end
+    self._shadowsScrollView:getInnerContainer():setPositionY(scrollHeight-maxHeight)
+    -- self._frameScrollView:scrollToPercentVertical(0, 0, false)
+    --]]
+end
+
+
 
 function DialogSelectAvatar:createAvatar( data )
-	local bgNode = ccui.Widget:create()
-	bgNode:setContentSize(cc.size(80,80))
-	bgNode:setAnchorPoint(cc.p(0,0))
+    local bgNode = ccui.Widget:create()
+    bgNode:setContentSize(cc.size(80,80))
+    bgNode:setAnchorPoint(cc.p(0,0))
     bgNode._data = data
-	local fu = cc.FileUtils:getInstance()
-	local icon = ccui.ImageView:create()
-	local sfc = cc.SpriteFrameCache:getInstance()
-	local art = data.icon
-	if sfc:getSpriteFrameByName(art ..".jpg") then
-		icon:loadTexture("" .. art ..".jpg", 1)
-	elseif sfc:getSpriteFrameByName(art ..".png") then
-		icon:loadTexture("" .. art ..".png", 1) 
+    local fu = cc.FileUtils:getInstance()
+    local icon = ccui.ImageView:create()
+    local sfc = cc.SpriteFrameCache:getInstance()
+    local art = data.icon
+    if sfc:getSpriteFrameByName(art ..".jpg") then
+        icon:loadTexture("" .. art ..".jpg", 1)
+    elseif sfc:getSpriteFrameByName(art ..".png") then
+        icon:loadTexture("" .. art ..".png", 1) 
     else
         print("头像资源是空...",art)
-	end
-	icon:ignoreContentAdaptWithSize(false)
-	icon:setContentSize(cc.size(78,78))
-	icon:setAnchorPoint(cc.p(0,0))
-	icon:setPosition(cc.p(0,0))
-	bgNode:addChild(icon)
-	local frame = ccui.ImageView:create()
+    end
+    icon:ignoreContentAdaptWithSize(false)
+    icon:setContentSize(cc.size(78,78))
+    icon:setAnchorPoint(cc.p(0,0))
+    icon:setPosition(cc.p(0,0))
+    bgNode:addChild(icon)
+    local frame = ccui.ImageView:create()
     local quality = data.avaQuality and (data.avaQuality+1) or 1
-	frame:loadTexture("globalImageUI4_squality" .. quality .. ".png",1) 
-	frame:setContentSize(cc.size(90,90))
-	frame:ignoreContentAdaptWithSize(false)
-	frame:setPosition(cc.p(-6,-6))
-	frame:setAnchorPoint(cc.p(0,0))
-	bgNode:addChild(frame,1)
+    frame:loadTexture("globalImageUI4_squality" .. quality .. ".png",1) 
+    frame:setContentSize(cc.size(90,90))
+    frame:ignoreContentAdaptWithSize(false)
+    frame:setPosition(cc.p(-6,-6))
+    frame:setAnchorPoint(cc.p(0,0))
+    bgNode:addChild(frame,1)
 
     -- 头像特效
     if icon.__shine then 
@@ -394,7 +462,7 @@ function DialogSelectAvatar:createAvatar( data )
     end)
     bgNode:setSwallowTouches(false)
 
-	return bgNode
+    return bgNode
 end
 
 function DialogSelectAvatar:createAvatarFrame( data )
@@ -439,6 +507,69 @@ function DialogSelectAvatar:createAvatarFrame( data )
     bgNode:setSwallowTouches(false)
 
     return bgNode
+end
+
+function DialogSelectAvatar:createShadowFrame(data)
+    dump(data,"========data===========")
+    local param = {itemData = data ,eventStyle = 0}
+    
+    local shadowNode = IconUtils:createShadowIcon(param)
+    shadowNode.iconColor.nameLab:setVisible(false)
+    shadowNode._data = data
+
+    -- 头像特效
+    if shadowNode.itemIcon.__shine then 
+        shadowNode.itemIcon.__shine:removeFromParent()
+        shadowNode.itemIcon.__shine = nil
+    end
+    if data.islocked then
+        shadowNode:setSaturation(-180)
+    else
+        -- 添加头像特效   
+        local shineData = data.shine
+        if shineData then 
+            local realWidth = 82   -- 头像图片真实宽度                       
+            shadowNode.itemIcon.__shine = IconUtils:addHeadFrameMc(icon,shineData[1],data.effect ,icon:getContentSize().width/realWidth,true) 
+        end
+    end
+
+
+    local nameLab = ccui.Text:create()
+    nameLab:setFontSize(20)
+    nameLab:setFontName(UIUtils.ttfName)
+    nameLab:setColor(UIUtils.colorTable.ccUIBaseTextColor2)
+    nameLab:setString(lang(data.name))
+    nameLab:setPosition(shadowNode:getContentSize().width*0.5,-15)
+    shadowNode:addChild(nameLab)
+
+    if data.islocked then
+        shadowNode:setSaturation(-180)
+        local iconColor = shadowNode.iconColor
+        if iconColor then
+            local bgMc = iconColor:getChildByName("bgMc")
+            if bgMc then
+                bgMc:removeFromParent()
+            end
+        end
+    end
+    self:registerClickEvent(shadowNode,function( )
+        if self._inDraging then return end
+        if shadowNode._data.islocked then
+            self._viewMgr:showTip(lang(shadowNode._data.tips))
+            return 
+        end
+        local isSet = 1
+        if shadowNode._data.id == self._modelMgr:getModel("ShadowsModel"):getSelectedShadowId() then
+            isSet = 0 
+        end
+
+        self._serverMgr:sendMsg("ShadowsServer","setShadow",{id = data.id,isSet = isSet}, true, {},function( )
+            self:reflashUI()
+        end)
+    end)
+    shadowNode:setSwallowTouches(false)
+
+    return shadowNode
 end
 
 -- 接收自定义消息
@@ -492,6 +623,33 @@ function DialogSelectAvatar:reflashUI(data)
             v:addChild(selectNode,99) 
         else
             if v:getChildByName("tag") and v._data.id ~= self._modelMgr:getModel("UserModel"):getData().avatarFrame then
+                v:getChildByName("tag"):removeFromParent()
+            end
+        end
+    end
+
+    for k,v in pairs(self._shadowsFrames) do
+        if v._data and v._data.id == self._modelMgr:getModel("ShadowsModel"):getSelectedShadowId() and not v:getChildByName("tag") then
+            local selectNode = ccui.Widget:create()
+            local tag = ccui.ImageView:create()
+            tag:loadTexture("globalImageUI_duigou.png",1)
+            -- tag:setFlippedX(true)
+            selectNode:addChild(tag)
+            -- local name = ccui.Text:create()
+            -- name:setString("当前")
+            -- name:setFontName(UIUtils.ttfName)
+            -- -- name:setColor(cc.c3b(255, 243, 121))
+            -- -- name:enableOutline(cc.c4b(146,19,5,255),3)
+            -- name:setFontSize(22)
+            -- name:setRotation(-41)
+            -- name:setPosition(-12,6)
+            -- selectNode:addChild(name)
+            selectNode:setName("tag")
+            selectNode:setPosition(cc.p(55,55))
+            -- selectNode:setScale(0.8)
+            v:addChild(selectNode,99) 
+        else
+            if v:getChildByName("tag") and v._data.id ~= self._modelMgr:getModel("ShadowsModel"):getSelectedShadowId() then
                 v:getChildByName("tag"):removeFromParent()
             end
         end

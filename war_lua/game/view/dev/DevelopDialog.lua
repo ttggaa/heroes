@@ -32,26 +32,16 @@ function DevelopDialog:ctor(data)
         function () 
             self._viewMgr:showView("MF.MFView")
         end},
-        {"兵团技巧", 
-        function () 
-            -- if self._text:getString() == "" then self._viewMgr:showTip("没填参数") return end
-            -- 
-
-            -- self._viewMgr:showDialog("global.DialogUserLevelUp")
-            -- self._viewMgr:showDialog("guild.dialog.GuildTipBindDialog")
-            -- self._viewMgr:showDialog("pokedex.PokedexShowDialog")
-            -- self._viewMgr:showDialog("backflow.BackflowView")
-            -- local teamId = self._modelMgr:getModel("TeamModel"):getTeamMaxFightScore()
-            -- print("teamId========", teamId)
-
-            -- self._modelMgr:getModel("SignModel"):isSignInTip()
-
-            -- local param = {teamId = 106} 
-            -- self._viewMgr:showDialog("team.TeamAwakenOpenTaskDialog", param)
-            -- self._viewMgr:showDialog("godwar.GodWarChampionDialog", {})
-            
-            UIUtils:reloadLuaFile("team.TeamHolyView")
-            self._viewMgr:showView("team.TeamHolyView", {})
+        {"炼金工坊", 
+        function ()
+			self._serverMgr:sendMsg("AlchemyServer", "getInfo", {}, true, {}, function(result)
+				if OS_IS_WINDOWS then
+					UIUtils:reloadLuaFile("MF.MFAlchemyView")
+				end
+				self._viewMgr:showView("MF.MFAlchemyView", {callback = function()
+					print("callback")
+				end})
+			end)
         end},
         {"spine", 
         function () 
@@ -158,24 +148,20 @@ function DevelopDialog:ctor(data)
                 SystemUtils.saveAccountLocalData("CITYBATTLE_PRI_TIME", nil)
             end 
         end},
-        {"guoj..", 
+        {"限时祈愿", 
         function () 
-            -- if not i then 
-            --     i = 1
-            -- end
-            self._viewMgr:showView("purgatory.PurgatoryView")
-            -- self._viewMgr:showDialog("league.LeagueOpenFlyView", {target = self}, true)
-            -- DialogUtils.showTeam({teamId=402})--(100)*math.floor(i/7+1)+i%7+1}) -- 402})--
-            -- i = i+1
-            -- DialogUtils.showCard({itemId=3104,changeNum=10})
-             -- self._viewMgr:showDialog("league.LeagueUpStageView",{zone=2})
-             -- DialogUtils.showGiftGet({
-             --    gifts = {{"tool",3001,15,txPlus = {is_qq_vip=100}}},
-             --    title = lang("FINISHSTAGETITLE"),
-             --    })-- vipPlus = 1.5
-            -- UIUtils:reloadLuaFile("hero.HeroUnlockView")
-            -- local heroUnlockLayer = self._viewMgr:createLayer("hero.HeroUnlockView", {heroId = 60103, callBack = function()end})
-            -- self:addChild(heroUnlockLayer,999)
+
+            local isOpen = self._modelMgr:getModel("LimitPrayModel"):isActicityOpen()
+            print("============isOpen=====",isOpen)
+            if isOpen then
+                local openID ,acID = self._modelMgr:getModel("LimitPrayModel"):getCurrPrayId()
+                print(isOpen,"==========openID===",openID,acID)
+                self._serverMgr:sendMsg("LimitPrayServer", "getLimitPrayInfo", {acId = openID}, true, {}, function (result, error)
+                    self._modelMgr:getModel("LimitPrayModel"):setDataById(result,openID)
+                    self._viewMgr:showView("activity.acLimitPray.AcLimitPrayView",{openId = openID,acId = acID})
+                end) 
+            end
+
         end},  
         {"公测庆典", 
         function () 
@@ -247,9 +233,9 @@ function DevelopDialog:ctor(data)
         function () 
             self._viewMgr:showView("elemental.ElementalView")
         end},
-        {"联盟佣兵", 
+        {"世界Boss", 
         function () 
-            self._viewMgr:showView("guild.mercenary.GuildMercenaryView")
+            self._viewMgr:showView("worldboss.WorldBossView")
         end},
         {"法术抽取", 
         function () 
@@ -323,13 +309,31 @@ function DevelopDialog:ctor(data)
             end
 
         end},
-        {"", 
+        {"神秘商人", 
         function () 
-            
+            self._viewMgr:showView("activity.mysteryTreasure.TreasureDirectShopView",{},true)   
         end},
-        {"", 
+        {"木桩自定义布阵", 
         function () 
+            local goFormationView = function(result) 
+                local formationModel = self._modelMgr:getModel("FormationModel")                          
+                self._viewMgr:showView("formation.NewFormationView", {
+                    formationType = formationModel.kFormationTypeStakeAtk2,
+                    extend = {
+                        enterBattle = {
+                            [formationModel.kFormationTypeStakeAtk2] = false,
+                            [formationModel.kFormationTypeStakeDef2] = true
+                        }
+                    },
+                    callback = function(playerInfo, teamCount, filterCount, formationType)                            
+                        print("======fighting============")
+                    end            
+                })
+            end
             
+            self._serverMgr:sendMsg("StakeServer", "getStakeInfo", {}, true, {}, function(result)
+                goFormationView(result)
+            end)
         end},
         {"线上信息", 
         function () 
@@ -431,14 +435,139 @@ function DevelopDialog:ctor(data)
         end},
         {"远征战斗", 
         function () 
-			package.loaded["game.view.dev.TestBattleCrusade"] = nil
-			self._viewMgr:showView("dev.TestBattleCrusade")
+            package.loaded["game.view.dev.TestBattleCrusade"] = nil
+            self._viewMgr:showView("dev.TestBattleCrusade")
         end},
         {"训练所战斗", 
         function () 
             if self._text:getString() == "" then self._viewMgr:showTip("没填参数") return end
             BattleUtils.PVE_TRAINING_ID = tonumber(self._text:getString())
             BattleUtils.battleDemo_Training()
+        end},
+         {"荣耀竞技场", 
+         function () 
+            if self._text:getString() == "" then self._viewMgr:showTip("没填参数") return end
+
+            local debugColor = ccui.Layout:create()
+            debugColor:setBackGroundColorOpacity(255)
+            debugColor:setBackGroundColorType(1)
+            debugColor:setBackGroundColor(cc.c3b(181,181,181))
+            debugColor:setContentSize(MAX_SCREEN_WIDTH, MAX_SCREEN_HEIGHT)
+            debugColor:setPosition(0, 0)
+            self:addChild(debugColor)
+
+            local closeBtn = ccui.Button:create("globalBtnUI_quit.png", "globalBtnUI_quit.png", "globalBtnUI_quit.png", 1)
+            closeBtn:setPosition(MAX_SCREEN_WIDTH - closeBtn:getContentSize().width * 0.5, MAX_SCREEN_HEIGHT - closeBtn:getContentSize().height * 0.5)
+            debugColor:addChild(closeBtn)
+            self:registerClickEvent(closeBtn, function ()
+                self:removeChild(debugColor, true)
+            end)
+            local solo = NewHeroSoloPlayer.new()
+            solo:setPosition(MAX_SCREEN_WIDTH * 0.5, MAX_SCREEN_HEIGHT * 0.5 - 160)
+            debugColor:addChild(solo)
+            local heroData1 =
+            {
+                {
+                    heroID = 60102,
+                    name = "我是大哥",
+                    HP_begin = 8,
+                    HP_end = 0,
+                    HP_color = 2, -- 1红2蓝3绿
+                    startPos = cc.p(- MAX_SCREEN_WIDTH * 0.5 - 300, 180),
+                    --x 轴越大又靠近中心
+                    battlePos = cc.p(-100, 180)
+                },
+              {
+                  heroID = 60103,
+                  name = "我是达哥",
+                  HP_begin = 8,
+                  HP_end = 6,
+                  HP_color = 2, -- 1红2蓝3绿
+                  startPos = cc.p(- MAX_SCREEN_WIDTH * 0.5 - 200, 60),
+                  battlePos = cc.p(-130, 60)
+              },
+              {
+                  heroID = 60104,
+                  name = "我是亣哥",
+                  HP_begin = 8,
+                  HP_end = 6,
+                  HP_color = 2, -- 1红2蓝3绿
+                  startPos = cc.p(- MAX_SCREEN_WIDTH * 0.5 - 300, -100),
+                  battlePos = cc.p(-230, -100)
+              } 
+            }
+            -- 右边信息
+            local heroData2 =
+            {
+                {
+                    heroID = 60303,
+                    name = "我是二哥",
+                    HP_begin = 8,
+                    HP_end = 0,
+                    HP_color = 1, -- 1红2蓝3绿
+                    startPos = cc.p(MAX_SCREEN_WIDTH * 0.5 + 200, 180),
+                    --x 轴越小又靠近中心
+                    battlePos = cc.p(50, 180)
+                },
+              {
+                  heroID = 60104,
+                  name = "我是二哥",
+                  HP_begin = 8,
+                  HP_end = 6,
+                  HP_color = 1, -- 1红2蓝3绿
+                  startPos = cc.p(MAX_SCREEN_WIDTH * 0.5 + 300, 60),
+                  battlePos = cc.p(300, 60)
+              },
+              {
+                  heroID = 60401,
+                  name = "我是儿哥",
+                  HP_begin = 8,
+                  HP_end = 6,
+                  HP_color = 1, -- 1红2蓝3绿
+                  startPos = cc.p(MAX_SCREEN_WIDTH * 0.5 + 200, -100),
+                  battlePos = cc.p(200, -100)
+              },
+            }
+
+            local str1 = string.split(self._text:getString(), ",") or {}
+            local param = {
+                info1 = heroData1,
+                info2 = heroData2,
+                groupID = {tonumber(str1[1] or 1), tonumber(str1[2] or 1), tonumber(str1[3] or 1)},
+                --由于表里面攻击方都是胜利，所以这需要和上面的胜利做处理
+                atkCamp = {1, 1, 1},
+                scale = 0.5
+            }
+
+            solo:init(param, function()
+                solo:walkLeave(nil, function()
+                        solo:clear()
+                        end)
+            end)
+
+            --  package.loaded["game.view.debugLayout"] = nil
+            --  self._viewMgr:showView("debugLayout", {str = self._text:getString()})
+         end},
+         {"世界boss战斗", 
+        function () 
+            tab:initProcBattle()
+            BattleUtils.dontInitTab = true
+            BattleUtils.dontCheck = true
+
+            local file1=io.open("C:\\Users\\playcrab\\AppData\\Local\\war\\".."test.txt", "r+") 
+            local str=file1:read()
+            file1:close()
+            local attackTypeData = cjson.decode(str)
+            local playerInfo = BattleUtils.jsonData2lua_battleData(attackTypeData["atk"])
+            -- dump(playerInfo)
+            BattleUtils.enterBattleView_BOSS_WordBoss(playerInfo, function(info, callback)
+                callback(info)
+            end, function()
+            
+            
+
+            end, nil, nil)
+            BattleUtils.dontCheck = false
         end},
     }
 end

@@ -8,8 +8,6 @@
 local ChatPrivateView = class("ChatPrivateView", BasePopView)
 
 function ChatPrivateView:ctor(data)
-    -- local sfc = cc.SpriteFrameCache:getInstance()
-    -- sfc:addSpriteFrames("asset/ui/chat.plist", "asset/ui/chat.png")
 	ChatPrivateView.super.ctor(self)
 	self._chatModel = self._modelMgr:getModel("ChatModel")
     self._userModel = self._modelMgr:getModel("UserModel")
@@ -56,7 +54,6 @@ function ChatPrivateView:onInit()
 
     self._titleLab = self:getUI("bg.bg2.titleBg.titleLab")
     self._titleLab:setString("")
-    -- self._titleLab:setFontName(UIUtils.ttfName)
     UIUtils:setTitleFormat(self._titleLab, 1)
     if ChatConst.IS_DEBUG_OPEN == false then
         self._titleLab:setString("私聊")
@@ -160,14 +157,6 @@ function ChatPrivateView:onInit()
     end)
 end
 
-function ChatPrivateView:onEnter()
-    -- self._viewMgr:lock(-1)
-    -- ScheduleMgr:delayCall(100, self, function ()
-    --     self._viewMgr:unlock()
-    --     self:createLeftUserList()
-    --     end)
-end
-
 function ChatPrivateView:onPopEnd()
     self._viewMgr:lock(-1)   
     ScheduleMgr:delayCall(100, self, function ()   --delayCall(100) 让背景压黑层先渲染完
@@ -195,6 +184,15 @@ function ChatPrivateView:modelReflash_chat(data)
         return
     end
 
+    --更新左侧玩家等级数据
+    if dataTb[2] == "user" then
+        local index = self:getCellIndexByID(dataTb[3])
+        self._showData[index + 1]["user"] = self._chatModel:getCacheUserData()
+        self._userTableView:updateCellAtIndex(index)
+        return
+    end
+
+    --插入右侧聊天消息
    	if dataTb[2] == self._currPriID then 
    		self:updateRightChatList()   --右侧列表插入新聊天信息
    	else
@@ -333,28 +331,25 @@ end
 --第一次登录获取服务器数据
 function ChatPrivateView:getMessage()
     self._serverMgr:sendMsg("ChatServer", "getMessage", {type = "pri"}, true, {}, function (result)
-        self:getMessageFinish(result)
+        -- unlock
+        self._viewMgr:unlock()
+        self._chatModel:setLoadDataByChannel(ChatConst.CHAT_CHANNEL.PRIVATE)
+        self._chatModel:updatDataByType(ChatConst.CHAT_CHANNEL.PRIVATE, result) 
+        self:getMessageFinish()
     end)
 end
 
-function ChatPrivateView:getMessageFinish(result)  
-    -- unlock
-    self._viewMgr:unlock()
-    self._chatModel:setLoadDataByChannel(ChatConst.CHAT_CHANNEL.PRIVATE)
-    self._chatModel:updatDataByType(ChatConst.CHAT_CHANNEL.PRIVATE, result) 
-    
+function ChatPrivateView:getMessageFinish()  
     --当前信息设置
     if self._openInfo and self._openInfo["userData"] then
         self._currPriID = self._openInfo["userData"].rid    --当前聊天对象ID
-        self._chatModel:setCacheUserData(self._openInfo["userData"])    --设置当前账号
+        self._chatModel:checkInsertUserData(self._openInfo["userData"])    --设置当前账号
         self._showData = clone(self._chatModel:getPrivateChatWithNum(1))
-        self:setTipInfo(#self._showData)
         if #self._showData == 0 then
             return
         end
     else
         self._showData = clone(self._chatModel:getPrivateChatWithNum())
-        self:setTipInfo(#self._showData)
         if #self._showData == 0 then
             return
         end
@@ -364,9 +359,10 @@ function ChatPrivateView:getMessageFinish(result)
             self._currPriID = self._showData[math.max(#self._showData-1, 1)]["user"].rid
         end
     end
-    self._chatModel:setCacheUserID(self._currPriID)
 
-    self._curLeftSize = #self._showData
+    self._chatModel:setCacheUserID(self._currPriID)
+    self:setTipInfo(#self._showData)
+    
     self._curSelectIndex = self:getCellIndexByID(self._currPriID)
     self._chatData = clone(self._chatModel:getPrivateDataByUserID(self._currPriID))
     self._currChatNum = #self._chatData
@@ -424,43 +420,8 @@ function ChatPrivateView:createLeftUserList()
             self:getMessage()
             return
         end
-        -- self._viewMgr:unlock()  
-        
-        --当前信息设置
-        if self._openInfo and self._openInfo["userData"] then
-            self._currPriID = self._openInfo["userData"].rid    --当前聊天对象ID
-            self._chatModel:setCacheUserData(self._openInfo["userData"])    --设置当前账号
-            self._showData = clone(self._chatModel:getPrivateChatWithNum(1))
-            self:setTipInfo(#self._showData)
-            if #self._showData == 0 then
-                return
-            end
-        else
-            self._showData = clone(self._chatModel:getPrivateChatWithNum())
-            self:setTipInfo(#self._showData)
-            if #self._showData == 0 then
-                return
-            end
-            if self._openInfo["viewtType"] == "debug" then
-                self._currPriID = self._showData[#self._showData]["user"].rid
-            else
-                self._currPriID = self._showData[math.max(#self._showData-1, 1)]["user"].rid
-            end
-        end
-        self._chatModel:setCacheUserID(self._currPriID)
-             
-        self._curLeftSize = #self._showData  
-        self._curSelectIndex = self:getCellIndexByID(self._currPriID)
-        self._chatData = clone(self._chatModel:getPrivateDataByUserID(self._currPriID))
-        self._currChatNum = #self._chatData
-        self._userTableView:reloadData()
-        self._viewMgr:lock(-1)
-        ScheduleMgr:delayCall(0, self, function ()  --delayCall 先刷左边，否则数据多两边同时白板
-            self._viewMgr:unlock()
-            self:createRightChatList(self._currPriID)   --初始化右侧列表
-        end)
 
-        -- dump(self._showData, "showdata", 10)
+        self:getMessageFinish(result) 
     -- end)  
 end
 
@@ -469,14 +430,6 @@ function ChatPrivateView:tableCellTouched_user(table,cell)
 	local tempCell = table:cellAtIndex(self._curSelectIndex)
     if tempCell ~= nil then 
         tempCell:switchListItemState(false)
-        -- --最上面的cell是否有未读
-        -- local cellIndex = self:getCellIndexByID(tempCell:getName())
-        -- local cellMaxIndex = math.min(#self._showData-1, ChatConst.CHAT_PRIVATE_USER_MAX_LEN-1)
-        -- local isUnread = tempCell._unreadMark:isVisible() 
-        -- if cellIndex == cellMaxIndex and isUnread then 
-        --     tempCell._unreadMark:setVisible(false)
-        --     self._chatModel:removePriUnread(tempCell:getName())
-        -- end
     end
     cell:switchListItemState(true)
     self._curSelectIndex = cell:getIdx()
@@ -519,12 +472,6 @@ function ChatPrivateView:tableCellAtIndex_user(table1,idx)
         end
     end
 
-    -- local cellMaxIndex = math.min(#self._showData, ChatConst.CHAT_PRIVATE_USER_MAX_LEN) - 1 --最上面一个默认为已读
-    -- if idx == cellMaxIndex and isUnread then  
-    --     isUnread = false
-    --     self._chatModel:removePriUnread(userData["user"].rid)
-    -- end
-    
     --isCurClick
     local isCurrClick = false
     if userData["user"].rid == self._currPriID then

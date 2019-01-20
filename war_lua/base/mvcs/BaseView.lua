@@ -1474,6 +1474,76 @@ function BaseView:patch()
 
 end
 
+--子类需要，自己覆盖
+function BaseView:onRewardCallback(_, _x, _y, sender)
+
+end
+
+function BaseView:lGetChildrens(sender, _tableName)
+    local childNodeTable = {}
+    if sender and _tableName and #_tableName > 0 then
+        local function setTextTable(sender, nType, bIsDisable)
+            bIsDisable = bIsDisable or true
+            if sender then
+                if nType == 1 and sender.setFontName then
+                    sender:setFontName(UIUtils.ttfName)
+                    if bIsDisable then
+                        sender:disableEffect()
+                    end
+                elseif  nType == 2 and sender.setTitleFontName then
+                    sender:setTitleFontName(UIUtils.ttfName)
+                    if bIsDisable and sender:getTitleRenderer() then
+                        sender:getTitleRenderer():disableEffect()
+                    end
+                end
+            end
+        end
+        for key, var in ipairs(_tableName) do
+            if var then
+                if var.isBtn then
+                    childNodeTable[var.name] = sender:getChildByFullName(var.childName)
+                    if childNodeTable[var.name] then
+                        if var.tileName then
+                            local txt = UIUtils:addFuncBtnName(childNodeTable[var.name], var.tileName ,nil,nil, 18)
+                        end
+                        setTextTable(childNodeTable[var.name], 2, var.bIsDisable)
+                        self:registerClickEventByName(var.childName, handler(self, self.onRewardCallback))
+                    end
+                else
+                    
+                    if var.starNum and var.endNum then
+                        childNodeTable[var.name] = {}
+                        for i = var.starNum, var.endNum do
+                            childNodeTable[var.name][i] = sender:getChildByFullName(var.childName..i)
+                            if var.isText then
+                                setTextTable(childNodeTable[var.name][i], 1, var.bIsDisable)
+                            end
+                        end
+                    else
+                        childNodeTable[var.name] = sender:getChildByFullName(var.childName)
+                        if var.isText then
+                            setTextTable(childNodeTable[var.name], 1, var.bIsDisable)
+                        end
+                    end
+                end
+            end
+        end
+    else    
+        return nil
+    end
+    return childNodeTable
+end
+
+function BaseView:lSetBtnTitle(senderBtn)
+    if senderBtn then
+        local text = senderBtn:getTitleRenderer()
+        if text then
+            senderBtn:setTitleFontName(UIUtils.ttfName)
+            text:disableEffect()
+        end
+    end
+end
+
 function BaseView.dtor()
     BaseView = nil
     sfc = nil

@@ -37,7 +37,7 @@ local UI_INFO = {
 		teamId = 107, 
 		priviewBtn = {510, 382},
 		titlePos = {713, 424},
-		frame = {fType = 1, fSize = {153, 333}, fAnchor = {76, 105}},   --fType类型 / fSize宽高 / fAnchor九宫格分割点 / fPos位置
+		frame = {fType = 1, fSize = {153, 333}, fAnchor = {76, 105}},   --fType类型 1宽一半2宽全 / fSize宽高 / fAnchor九宫格分割点 / fPos位置
 		role = {scale = 0.68, pos = {300, 260}},
 		skill = {
 			mcName = "tianshiyanshi_tianshiyanshi"}
@@ -47,7 +47,7 @@ local UI_INFO = {
 		priviewBtn = {83, 400},
 		titlePos = {714, 387},
 		frame = {fType = 1, fSize = {175, 333}, fAnchor = {87, 140}},
-		role = {scale = 1, pos = {274, 310}},
+		role = {scale = 0.75, pos = {294, 220}},
 		skill = {
 			mcName = "najiajinengyanshi_najiajinengyanshi"}
 	},
@@ -125,10 +125,57 @@ local UI_INFO = {
 		priviewBtn = {73, 412},
 		titlePos = {713, 394},  
 		frame = {fType = 2, fSize = {373, 375}, fAnchor = {250, 125}, fPos = {702, 302}},
-		role = {scale = 0.8, pos = {223, 145}},
+		role = {scale = 0.8, pos = {320, 175}},
 		skill = {
 			mcName = "manniujinengyanshi_manniujinengyanshi"}
 
+	},
+
+	[1011] = { 	--多头龙
+		teamId = 807, 
+		priviewBtn = {73, 412},
+		titlePos = {714, 394},  
+		frame = {fType = 2, fSize = {362, 375}, fAnchor = {250, 136}, fPos = {706, 305}},
+		role = {scale = 0.7, pos = {240, 235}},
+		skill = {
+			mcName = "duotoulongyanshi_duotoulongyanshi"}
+	},
+
+	[1012] = { 	--狂战士
+		teamId = 408, 
+		priviewBtn = {73, 412},
+		titlePos = {714, 395},  
+		frame = {fType = 2, fSize = {347, 355}, fAnchor = {250, 136}, fPos = {712, 290}},
+		role = {scale = 0.7, pos = {240, 250}},
+		skill = {
+			mcName = "kuangzhanshiyanshi_kuangzhanshiyanshi"}
+	},
+	[1013] = { 	--宝藏猎人
+		teamId = 9902, 
+		priviewBtn = {73, 412},
+		titlePos = {712, 391},  
+		frame = {fType = 2, fSize = {347, 372}, fAnchor = {250, 136}, fPos = {712, 300}},
+		role = {scale = 0.85, pos = {250, 203}},
+		skill = {
+			mcName = "baozanglierenyanshi_baozanglierenyanshi"}
+	},
+	[1014] = { 	--龙龟
+		teamId = 9906, 
+		priviewBtn = {73, 412},
+		titlePos = {714, 387},  
+		frame = {fType = 2, fSize = {342, 352}, fAnchor = {250, 136}, fPos = {713, 290}},
+		role = {scale = 0.85, pos = {250, 203}},
+		skill = {
+			mcName = "longuiyanshi_longguiyanshi"}
+	},
+	[1015] = { 	--红龙
+		teamId = 708, 
+		priviewBtn = {73, 412},
+		titlePos = {709, 393},  
+		frame = {fType = 2, fSize = {354, 346}, fAnchor = {250, 136}, fPos = {713, 286}},
+		role = {scale = 0.72, pos = {250, 223}},
+		skill = {
+			mcName = "honglongyanshi_honglongyanshi"}
 	},
 }
 
@@ -139,7 +186,10 @@ function ACTeamLimitTimeLayer:ctor(param)
 	self._teamModel = self._modelMgr:getModel("TeamModel")
 
 	self._callback = param.callback
-	self._acID = param.acId
+	self._callback2 = param.callback2
+	self._id = param.id        --活动id
+	self._acID = param.acId    --活动activity_id
+	self._isLoadRes = param.isLoadRes or false
 	self._freeCell = {}
     self._useCell = {}
     self._runDataIndex = 0
@@ -152,12 +202,17 @@ function ACTeamLimitTimeLayer:ctor(param)
 end
 
 function ACTeamLimitTimeLayer:getAsyncRes()
-    return 
-    {
-        {"asset/ui/activityTeamTL.plist", "asset/ui/activityTeamTL.png"},
-        {"asset/ui/activityTeamTL1.plist", "asset/ui/activityTeamTL1.png"},
-        {"asset/ui/activityTeamTL2.plist", "asset/ui/activityTeamTL2.png"},
-    }
+	if self._isLoadRes then
+		return {}
+	else
+		return 
+	    {
+	        {"asset/ui/activityTeamTL.plist", "asset/ui/activityTeamTL.png"},
+	        {"asset/ui/activityTeamTL1.plist", "asset/ui/activityTeamTL1.png"},
+	        {"asset/ui/activityTeamTL2.plist", "asset/ui/activityTeamTL2.png"},
+	        {"asset/ui/activityTeamTL3.plist", "asset/ui/activityTeamTL3.png"},
+	    }
+	end
 end
 
 function ACTeamLimitTimeLayer:onInit()
@@ -303,10 +358,13 @@ function ACTeamLimitTimeLayer:onInit()
 		if self._callback then
 			self._callback()
 		end
+		if self._callback2 then
+			self._callback2()
+		end
 		self:close()
-		UIUtils:reloadLuaFile("activity.ACTeamLimitTimeLayer")
+		UIUtils:reloadLuaFile("activity.acLimit.ACTeamLimitTimeLayer")
 		UIUtils:reloadLuaFile("LimitTeamModel", "game.model.")
-		UIUtils:reloadLuaFile("flashcard.DialogFlashLTResult")
+		UIUtils:reloadLuaFile("activity.acLimit.DialogFlashLTResult")
 		end)
 
 	--招募1次
@@ -324,7 +382,7 @@ function ACTeamLimitTimeLayer:onInit()
     self:listenReflash("LimitTeamModel", self.insertBroadcast)
 
     --获取宝箱奖励数据
-    self._boxRewards = self._teamTLModel:getRewardListByIntIndex()
+    self._boxRewards = self._teamTLModel:getRewardListById(self._id)
 
 	--场景监听
     self:registerScriptHandler(function(eventType)
@@ -363,14 +421,14 @@ function ACTeamLimitTimeLayer:recruitBtnClick(inType)
 		needGem = sysTLConfig["cost10"]["num"]
 	end
 	
-	local isFree = self._modelMgr:getModel("PlayerTodayModel"):getDayInfo(51) or 0   --今日已领取次数
+	local isFree = self._teamTLModel:isTodayHasFreeNumById(self._id)   --今日已领取次数
 	local curCoin = 0
 	if self._isUseLuck then
 		curCoin = self._userModel:getData().luckyCoin or 0
 	else
 		curCoin = self._userModel:getData().gem or 0
 	end
-	if not (isFree == 0 and inType == 1 ) and curCoin < needGem then
+	if not (isFree and inType == 1 ) and curCoin < needGem then
 		-- DialogUtils.showNeedCharge({desc = lang("TIP_GLOBAL_LACK_GEM"), callback1=function( )
 		--     local viewMgr = ViewManager:getInstance()
 		--     viewMgr:showView("vip.VipView", {viewType = 0})
@@ -381,13 +439,9 @@ function ACTeamLimitTimeLayer:recruitBtnClick(inType)
         return
 	end
 
-	self._serverMgr:sendMsg("LimitTeamsServer", "limitTeamLottery", {num = inType}, true, {}, function(result, errorCode)
-		if inType == 1 then   --免费不消失，不必现bug，先手动修改
-			self._modelMgr:getModel("PlayerTodayModel"):setDayInfo(51, 1)
-		end
-		
+	self._serverMgr:sendMsg("LimitTeamsServer", "limitTeamLottery", {num = inType, acId = self._id}, true, {}, function(result, errorCode)
 		self:refreshCostNum()			
-		self._viewMgr:showDialog("flashcard.DialogFlashLTResult",{ 
+		self._viewMgr:showDialog("activity.acLimit.DialogFlashLTResult",{ 
 			awards = result.reward or {},
 			showType = "limitTeam",   --限时兵团
 			costType = "gem",
@@ -395,6 +449,7 @@ function ACTeamLimitTimeLayer:recruitBtnClick(inType)
 			buyNum = inType,
 			curData = self._data,
 			acId = self._acID,
+			id = self._id,
 			callback = function() self:reflashUI() end},true)
 		end)
 end
@@ -404,12 +459,15 @@ function ACTeamLimitTimeLayer:reflashUI()
 	if self._uiInfo["role"]["scale"] then
 		roleImg:setScale(self._uiInfo["role"]["scale"])
 	end
+	if self._uiInfo["role"]["flipX"] then
+		roleImg:setFlippedX(true)
+	end
 
 	if self._refeshTimes < 2 then
 		self._refeshTimes = self._refeshTimes + 1
 	end
 	
-	self._data = self._teamTLModel:getData()
+	self._data = self._teamTLModel:getDataById(self._id)
 	-- dump(self._data, "reflashUI()")
 
 	--钻石
@@ -439,8 +497,8 @@ end
 function ACTeamLimitTimeLayer:refreshCostNum()
 	local sysTLConfig = tab.limitTeamConfig
 	--免费次数
-	local isFree = self._modelMgr:getModel("PlayerTodayModel"):getDayInfo(51) or 0   --今日已领取次数
-	if isFree == 0 then
+	local isFree = self._teamTLModel:isTodayHasFreeNumById(self._id)
+	if isFree then
 		self:getUI("bg.bg1.recruit1.freeTip"):setVisible(true)
 		self:getUI("bg.bg1.recruit1.num"):setVisible(false)
 		self:getUI("bg.bg1.recruit1.icon"):setVisible(false)
@@ -695,7 +753,7 @@ function ACTeamLimitTimeLayer:setRewards()
 			    	self._viewMgr:showTip("限时招募活动已结束")
 			    	return
 			    end
-        		self._serverMgr:sendMsg("LimitTeamsServer", "getLimitTeamBox", {id = sysIndex}, true, {}, function(result, errorCode)
+        		self._serverMgr:sendMsg("LimitTeamsServer", "getLimitTeamBox", {id = sysIndex, acId = self._id}, true, {}, function(result, errorCode)
 					DialogUtils.showGiftGet({
 		                gifts = result.reward,
 		                callback = function()

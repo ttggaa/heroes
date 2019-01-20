@@ -96,13 +96,15 @@ function ChatGuildCell:reflashGuildUI(data, richText, width, height, isMyself, o
     local userData = data.message.udata
     --headIcon
     if not self._avatar then
-        self._avatar = IconUtils:createHeadIconById({avatar = userData.avatar, level = userData.lvl or "0", tp = 4, eventStyle=1, avatarFrame=userData["avatarFrame"]})
+        local headP = {avatar = userData.avatar, level = userData.lvl or "0", tp = 4, eventStyle=1, avatarFrame=userData["avatarFrame"], plvl = userData.plvl}
+        self._avatar = IconUtils:createHeadIconById(headP)
         self._avatar:setScale(0.64)
         self._avatar:setAnchorPoint(0, 1)
         self:addChild(self._avatar)
         table.insert(self._guildView, self._avatar)
     else
-        IconUtils:updateHeadIconByView(self._avatar,{avatar = userData.avatar, level = userData.lvl or "0", tp = 4, eventStyle=1, avatarFrame=userData["avatarFrame"]})   
+        local headP = {avatar = userData.avatar, level = userData.lvl or "0", tp = 4, eventStyle=1, avatarFrame=userData["avatarFrame"], plvl = userData.plvl}
+        IconUtils:updateHeadIconByView(self._avatar, headP)   
     end
     if isMyself == true then 
         self._avatar:setPosition(width - self._avatar:getContentSize().width * self._avatar:getScaleX() - 125, height - 5)

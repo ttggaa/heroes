@@ -76,6 +76,8 @@ local function clearFormationRequire()
         "game.view.formation.NewFormationView_League",
         "game.view.formation.NewFormationView_HeroDuel",
         "game.view.formation.NewFormationView_GodWar",
+        "game.view.formation.NewFormationView_CrossGodWar",
+        "game.view.formation.NewFormationView_GloryArena",
         -- "game.view.formation.NewFormationView_CrossPK",
     }
 
@@ -112,6 +114,7 @@ function NewFormationView:ctor(params)
     self._weaponsModel = self._modelMgr:getModel("WeaponsModel")
     self._siegeModel = self._modelMgr:getModel("SiegeModel")
     self._pokedexModel = self._modelMgr:getModel("PokedexModel")
+    self._backupModel = self._modelMgr:getModel("BackupModel")
     params = params or { formationType = self._formationModel.kFormationTypeCommon }
     self._formationType = params.formationType
     print("self._formationType",self._formationType)
@@ -138,6 +141,15 @@ function NewFormationView:ctor(params)
         [self._formationModel.kFormationTypeGodWar1] = "NewFormationView_GodWar",
         [self._formationModel.kFormationTypeGodWar2] = "NewFormationView_GodWar",
         [self._formationModel.kFormationTypeGodWar3] = "NewFormationView_GodWar",
+        [self._formationModel.kFormationTypeCrossGodWar1] = "NewFormationView_CrossGodWar",
+        [self._formationModel.kFormationTypeCrossGodWar2] = "NewFormationView_CrossGodWar",
+        [self._formationModel.kFormationTypeCrossGodWar3] = "NewFormationView_CrossGodWar",
+        [self._formationModel.kFormationTypeGloryArenaAtk1] = "NewFormationView_GloryArena",
+        [self._formationModel.kFormationTypeGloryArenaAtk2] = "NewFormationView_GloryArena",
+        [self._formationModel.kFormationTypeGloryArenaAtk3] = "NewFormationView_GloryArena",
+        [self._formationModel.kFormationTypeGloryArenaDef1] = "NewFormationView_GloryArena",
+        [self._formationModel.kFormationTypeGloryArenaDef2] = "NewFormationView_GloryArena",
+        [self._formationModel.kFormationTypeGloryArenaDef3] = "NewFormationView_GloryArena",
         --[[
         [self._formationModel.kFormationTypeCrossPKAtk1] = "NewFormationView_CrossPK",
         [self._formationModel.kFormationTypeCrossPKAtk2] = "NewFormationView_CrossPK",
@@ -164,9 +176,11 @@ end
 function NewFormationView:getAsyncRes()
     return 
     {
+        {"asset/ui/newFormation3.plist", "asset/ui/newFormation3.png"},
         {"asset/ui/newFormation2.plist", "asset/ui/newFormation2.png"},
         {"asset/ui/newFormation1.plist", "asset/ui/newFormation1.png"},  
         {"asset/ui/newFormation.plist", "asset/ui/newFormation.png"},
+        {"asset/ui/backup.plist", "asset/ui/backup.png"},
         --{"asset/ui/steamandshero1.plist", "asset/ui/steamandshero1.png"},
         --{"asset/ui/steamandshero2.plist", "asset/ui/steamandshero2.png"},
     }
@@ -556,13 +570,24 @@ function NewFormationView:isNewFormationViewEx()
            self._formationType == self._formationModel.kFormationTypeHeroDuel or
            self._formationType == self._formationModel.kFormationTypeGodWar1 or
            self._formationType == self._formationModel.kFormationTypeGodWar2 or
-           self._formationType == self._formationModel.kFormationTypeGodWar3 --[[or 
+           self._formationType == self._formationModel.kFormationTypeGodWar3 or 
+           self._formationType == self._formationModel.kFormationTypeCrossGodWar1 or 
+           self._formationType == self._formationModel.kFormationTypeCrossGodWar2 or 
+           self._formationType == self._formationModel.kFormationTypeCrossGodWar3 or 
+           self._formationType == self._formationModel.kFormationTypeGloryArenaAtk1 or 
+           self._formationType == self._formationModel.kFormationTypeGloryArenaAtk2 or 
+           self._formationType == self._formationModel.kFormationTypeGloryArenaAtk3 or 
+           self._formationType == self._formationModel.kFormationTypeGloryArenaDef1 or 
+           self._formationType == self._formationModel.kFormationTypeGloryArenaDef2 or 
+           self._formationType == self._formationModel.kFormationTypeGloryArenaDef3
+           )
+            --[[or 
            self._formationType == self._formationModel.kFormationTypeCrossPKAtk1 or 
            self._formationType == self._formationModel.kFormationTypeCrossPKAtk2 or 
            self._formationType == self._formationModel.kFormationTypeCrossPKAtk3 or 
            self._formationType == self._formationModel.kFormationTypeCrossPKDef1 or 
            self._formationType == self._formationModel.kFormationTypeCrossPKDef2 or 
-           self._formationType == self._formationModel.kFormationTypeCrossPKDef3]])
+           self._formationType == self._formationModel.kFormationTypeCrossPKDef3]]
 end
 
 function NewFormationView:isShowEnemyFormation()
@@ -591,6 +616,10 @@ function NewFormationView:isShowEnemyFormationCheckArrow()
        self._formationType == self._formationModel.kFormationTypeCrossPKDef3 then
         return false
     end
+
+    if self._formationType == self._formationModel.kFormationTypeStakeAtk1 then
+        return false
+    end
     
     return self:isShowEnemyFormation()
 end
@@ -600,7 +629,7 @@ function NewFormationView:isShowCountDownInfo()
 end
 
 function NewFormationView:isShowNextFight()
-    return self:isShowCloudInfo() and self._extend.enterBattle and not self._extend.enterBattle[self._context._formationId]
+    return (self:isShowCloudInfo() or self:isShowStakeAtkDef2()) and self._extend.enterBattle and not self._extend.enterBattle[self._context._formationId]
 end
 
 function NewFormationView:isSwitchFormationButtonDisabled()
@@ -670,7 +699,15 @@ function NewFormationView:isShowButtonBattle()
            self._formationType == self._formationModel.kFormationTypeElemental4 or
            self._formationType == self._formationModel.kFormationTypeElemental5 or
            self._formationType == self._formationModel.kFormationTypeWeapon or
-           self._formationType == self._formationModel.kFormationTypeWeaponDef)
+           self._formationType == self._formationModel.kFormationTypeWeaponDef or 
+           self._formationType == self._formationModel.kFormationTypeStakeAtk2 or 
+           self._formationType == self._formationModel.kFormationTypeStakeDef2 or 
+           self._formationType == self._formationModel.kFormationTypeProfession1 or 
+           self._formationType == self._formationModel.kFormationTypeProfession2 or 
+           self._formationType == self._formationModel.kFormationTypeProfession3 or 
+           self._formationType == self._formationModel.kFormationTypeProfession4 or 
+           self._formationType == self._formationModel.kFormationTypeProfession5 or 
+           self._formationType == self._formationModel.kFormationTypeWorldBoss)
 end
 
 function NewFormationView:isShowHireTeam()
@@ -714,7 +751,13 @@ function NewFormationView:isShowBattleTip()
             self._formationType == self._formationModel.kFormationTypeCloud1 or
             self._formationType == self._formationModel.kFormationTypeCloud2 or
             self._formationType == self._formationModel.kFormationTypeAdventure or
-            self._formationType == self._formationModel.kFormationTypeTraining)
+            self._formationType == self._formationModel.kFormationTypeTraining or 
+            self._formationType == self._formationModel.kFormationTypeProfession1 or 
+            self._formationType == self._formationModel.kFormationTypeProfession2 or 
+            self._formationType == self._formationModel.kFormationTypeProfession3 or 
+            self._formationType == self._formationModel.kFormationTypeProfession4 or 
+            self._formationType == self._formationModel.kFormationTypeProfession5 or 
+            self._formationType == self._formationModel.kFormationTypeWorldBoss)
 end
 
 function NewFormationView:isShowWeaponInfo()
@@ -749,6 +792,26 @@ function NewFormationView:isShowInsFormation()
            self._formationType == self._formationModel.kFormationTypeGuildDef or
            self._formationType == self._formationModel.kFormationTypeWeapon or
            self._formationType == self._formationModel.kFormationTypeClimbTower or  
+           self._formationType == self._formationModel.kFormationTypeCrossGodWar1 or
+           self._formationType == self._formationModel.kFormationTypeCrossGodWar2 or
+           self._formationType == self._formationModel.kFormationTypeCrossGodWar3 or
+           self._formationType == self._formationModel.kFormationTypeStakeAtk1 or  
+           self._formationType == self._formationModel.kFormationTypeStakeAtk2 or  
+           self._formationType == self._formationModel.kFormationTypeStakeDef2 or  
+           self._formationType == self._formationModel.kFormationTypeGloryArenaAtk1 or  
+           self._formationType == self._formationModel.kFormationTypeGloryArenaAtk2 or  
+           self._formationType == self._formationModel.kFormationTypeGloryArenaAtk3 or  
+           self._formationType == self._formationModel.kFormationTypeGloryArenaDef1 or  
+           self._formationType == self._formationModel.kFormationTypeGloryArenaDef2 or  
+           self._formationType == self._formationModel.kFormationTypeGloryArenaDef3 or  
+           self._formationType == self._formationModel.kFormationTypeCrossPKAtk1 or  
+           self._formationType == self._formationModel.kFormationTypeCrossPKAtk2 or  
+           self._formationType == self._formationModel.kFormationTypeCrossPKAtk3 or  
+           self._formationType == self._formationModel.kFormationTypeCrossPKDef1 or  
+           self._formationType == self._formationModel.kFormationTypeCrossPKDef2 or  
+           self._formationType == self._formationModel.kFormationTypeCrossPKDef3 or  
+           self._formationType == self._formationModel.kFormationTypeCrossPKFight or 
+           self._formationType == self._formationModel.kFormationTypeWorldBoss or  
            (self._extend and self._extend.isShowWeapon))
 end
 
@@ -768,12 +831,19 @@ function NewFormationView:isShowRecommend()
             self._formationType == self._formationModel.kFormationTypeZombie or 
             self._formationType == self._formationModel.kFormationTypeDragon or
             self._formationType == self._formationModel.kFormationTypeDragon1 or
-            self._formationType == self._formationModel.kFormationTypeDragon2)
+            self._formationType == self._formationModel.kFormationTypeDragon2 or 
+            self._formationType == self._formationModel.kFormationTypeWorldBoss)
 end
 
 function NewFormationView:isShowPveRecommendHero()
         return (self._formationType == self._formationModel.kFormationTypeAiRenMuWu or 
-             self._formationType == self._formationModel.kFormationTypeZombie)
+             self._formationType == self._formationModel.kFormationTypeZombie or 
+             self._formationType == self._formationModel.kFormationTypeProfession1 or 
+             self._formationType == self._formationModel.kFormationTypeProfession2 or 
+             self._formationType == self._formationModel.kFormationTypeProfession3 or 
+             self._formationType == self._formationModel.kFormationTypeProfession4 or 
+             self._formationType == self._formationModel.kFormationTypeProfession5 or 
+             self._formationType == self._formationModel.kFormationTypeWorldBoss)
 end
 
 function NewFormationView:isShowRedian()
@@ -793,6 +863,10 @@ function NewFormationView:isShowCrossPKLimitInfo()
            self._formationType == self._formationModel.kFormationTypeCrossPKDef1 or 
            self._formationType == self._formationModel.kFormationTypeCrossPKDef2 or 
            self._formationType == self._formationModel.kFormationTypeCrossPKDef3)
+end
+
+function NewFormationView:isShowStakeAtkDef2(  )
+    return (self._formationType == self._formationModel.kFormationTypeStakeAtk2 or self._formationType == self._formationModel.kFormationTypeStakeDef2)
 end
 
 function NewFormationView:isShowAwakingTaskInfo()
@@ -844,6 +918,7 @@ function NewFormationView:isShowTreasureInfo()
             sfc:addSpriteFrames("asset/ui/treasureSkill.plist", "asset/ui/treasureSkill.png")
         end
     end
+    print("self._formationType:" .. self._formationType)
     return isTreasureInfoShow 
 end
 
@@ -873,16 +948,22 @@ function NewFormationView:isShowPveInfo()
             self._formationType == self._formationModel.kFormationTypeZombie or 
             self._formationType == self._formationModel.kFormationTypeDragon or
             self._formationType == self._formationModel.kFormationTypeDragon1 or
-            self._formationType == self._formationModel.kFormationTypeDragon2)
+            self._formationType == self._formationModel.kFormationTypeDragon2 or 
+            self._formationType == self._formationModel.kFormationTypeWorldBoss or 
+            self._formationType == self._formationModel.kFormationTypeProfession1 or 
+            self._formationType == self._formationModel.kFormationTypeProfession2 or 
+            self._formationType == self._formationModel.kFormationTypeProfession3 or 
+            self._formationType == self._formationModel.kFormationTypeProfession4 or 
+            self._formationType == self._formationModel.kFormationTypeProfession5)
 end
 
 function NewFormationView:isShowButtonReturn()
 --    return not (self:isShowCountDownInfo()--[[ or self._formationType == self._formationModel.kFormationTypeAdventure]]) and (self._extend and not self._extend.isSimpleFormation)
-	if self._extend and self._extend.isSimpleFormation then
-		return false
-	else
-		return not (self:isShowCountDownInfo()--[[ or self._formationType == self._formationModel.kFormationTypeAdventure]])
-	end
+    if self._extend and self._extend.isSimpleFormation then
+        return false
+    else
+        return not (self:isShowCountDownInfo()--[[ or self._formationType == self._formationModel.kFormationTypeAdventure]])
+    end
 end
 
 function NewFormationView:isHaveExtendHeroes()
@@ -1006,6 +1087,247 @@ function NewFormationView:onComplete()
     self._viewMgr:enableScreenWidthBar()
 end
 
+function NewFormationView:updateExtendBtn(  )
+    local posX = {45, 116}
+    local panelBG = self._extendBG:getChildByFullName('Panel_96')
+    self._extendBG:setVisible(false)
+    local careerBtn = panelBG:getChildByFullName('btn_career')
+    local buildsBtn = panelBG:getChildByFullName('btn_builds')
+    careerBtn:setVisible(false)
+    buildsBtn:setVisible(false)
+
+    local bgImg = panelBG:getChildByFullName('Image_89')
+    local extendBtn = panelBG:getChildByName('button')
+
+    panelBG:setContentSize(cc.size(83, panelBG:getContentSize().height))
+    bgImg:setContentSize(cc.size(83, bgImg:getContentSize().height))
+    local extendBtn1 = panelBG:getChildByFullName('button')
+    local extendBtn2 = panelBG:getChildByFullName('button_1')
+    local btnList = {}
+
+    local isShowCareer = self:isShowButtonCareer()
+    if isShowCareer then
+        table.insert(btnList, careerBtn)
+        self:registerClickEvent(careerBtn, function ()
+            self:showTeamCareerInfo()
+        end)
+    end
+    local isShowBuilds = self:isShowButtonTraining()
+    if not isShowBuilds then
+        table.insert(btnList, buildsBtn)
+        self:registerClickEvent(buildsBtn, function ()
+            self:onButtonBuildsClicked()
+        end)
+        buildsBtn:setVisible(true)
+    end
+    for k, v in pairs(btnList) do
+        v:setVisible(true)
+        v:setPositionX(posX[k])
+    end
+
+    if #btnList == 2 then
+        panelBG:setContentSize(cc.size(158, panelBG:getContentSize().height))
+        bgImg:setContentSize(cc.size(158, bgImg:getContentSize().height))
+    end
+    extendBtn1:setPositionX(bgImg:getContentSize().width + 11)
+    extendBtn2:setPositionX(bgImg:getContentSize().width + 11)
+
+    panelBG:setPositionX(-(panelBG:getContentSize().width - 10))
+    extendBtn1:setVisible(true)
+    extendBtn2:setVisible(false)
+    self:registerClickEvent(extendBtn1, function (  )
+        extendBtn2:setVisible(true)
+        extendBtn1:setVisible(false)
+        panelBG:runAction(cc.MoveBy:create(0.1, cc.p(panelBG:getContentSize().width - 10, 0)))
+    end)
+
+    self:registerClickEvent(extendBtn2, function (  )
+        extendBtn2:setVisible(false)
+        extendBtn1:setVisible(true)
+        panelBG:runAction(cc.MoveBy:create(0.1, cc.p(-(panelBG:getContentSize().width - 10), 0)))
+    end)
+
+    if #btnList > 0 then
+        self._extendBG:setVisible(true)
+    end
+
+    -- self._btnCareer = self:getUI("bg.layer_information.btn_career")
+    -- self._btnCareer:setVisible(self:isShowButtonCareer())
+    -- if self:isShowButtonCareer() then
+    --     self:registerClickEvent(self._btnCareer , function ()
+    --         self:showTeamCareerInfo()
+    --     end)
+    -- end
+
+    -- self._layerLeft._relationBuildUI._btnBuilds = self:getUI("bg.layer_information.btn_builds")
+    -- self._layerLeft._relationBuildUI._btnBuilds:setVisible(not self:isShowButtonTraining())
+    -- self:registerClickEvent(self._layerLeft._relationBuildUI._btnBuilds, function ()
+    --     self:onButtonBuildsClicked()
+    -- end)
+end
+
+function NewFormationView:getBackupFilterList(  )
+    -- Redmine #21851 特殊情况处理
+    if self._formationType ~= self._formationModel.kFormationTypeCrusade and 
+        self._formationType ~= self._formationModel.kFormationTypeCrossPKAtk1 and 
+        self._formationType ~= self._formationModel.kFormationTypeCrossPKAtk2 and 
+        self._formationType ~= self._formationModel.kFormationTypeCrossPKAtk3 and 
+        self._formationType ~= self._formationModel.kFormationTypeCrossPKFight and 
+        self._formationType ~= self._formationModel.kFormationTypeCrossPKDef1 and 
+        self._formationType ~= self._formationModel.kFormationTypeCrossPKDef2 and 
+        self._formationType ~= self._formationModel.kFormationTypeCrossPKDef3 and 
+        self._formationType ~= self._formationModel.kFormationTypeGuild and 
+        self._formationType ~= self._formationModel.kFormationTypeGuildDef then
+        return {}
+    end
+    local data = clone(self._teamModel:getData())
+    local t2 = {}
+    for k, v in pairs(data) do
+        repeat
+            if self:isLoaded(NewFormationView.kGridTypeTeam, v.teamId) then break end
+            if self:isFiltered(v.teamId) then
+                table.insert(t2, v.teamId)
+            end
+        until true
+    end
+    return t2
+end
+
+function NewFormationView:getUsingTeamList(  )
+    local formationData = self._layerLeft._teamFormation._data[self._context._formationId]
+    local teamUsing = {}
+    for i = 1, NewFormationView.kTeamMaxCount do
+        local teamId = formationData["team" .. i]
+        if teamId and teamId ~= 0 then
+            table.insert(teamUsing, teamId)
+        end
+    end
+    if self:isShowCloudInfo() then
+        local formationId = self._formationModel.kFormationTypeCloud1 + self._formationModel.kFormationTypeCloud2 - self._context._formationId
+        local data = self._layerLeft._teamFormation._data[formationId]
+        for i = 1, NewFormationView.kTeamMaxCount do
+            local teamId = data["team" .. i]
+            if teamId and teamId ~= 0 then
+                table.insert(teamUsing, teamId)
+            end
+        end
+    end
+    return teamUsing
+end
+
+function NewFormationView:updateBackupInfo(  )
+    self._backupBG:setVisible(false)
+    if not table.indexof(self._formationModel.kBackupFormation, self._context._formationId) or not self._backupModel:isOpen() then
+        return
+    end
+    local formationData = self._layerLeft._teamFormation._data[self._context._formationId]
+    -- 自动下不能用的兵团
+    local noUseList = self:getBackupFilterList()
+    local backupTs = formationData.backupTs or {}
+    for k, v in pairs(backupTs) do
+        for i = 1, 3 do
+            local teamId = v["bt" .. i]
+            if teamId and (teamId == 0 or table.indexof(noUseList, teamId)) then
+                v["bt" .. i] = nil
+            end
+        end
+    end
+    local label = self._backupBG:getChildByFullName('name')
+    if formationData.bid and backupTs[tostring(formationData.bid)] then
+        local addImg = self._backupBG:getChildByName("addImg")
+        if addImg then
+            addImg:setVisible(false)
+        end
+        local data = tab.backupMain[formationData.bid]
+        local sData = self._backupModel:getBackupById(data.id) or {}
+        label:setString(lang(data.name) .. " Lv." .. (sData.lv or 1))
+        local formationIcons = self._backupModel:handleBackupThumb(self._backupBG, data.icon)
+        self._backupModel:handleFormation(formationIcons, data.icon)
+    else
+        label:setString("尚未选择阵型")
+        self._backupModel:clearBackupThumb(self._backupBG)
+        local addImg = self._backupBG:getChildByName("addImg")
+        if not addImg then
+            addImg = ccui.Button:create()
+            addImg:loadTextures("golbalIamgeUI5_add.png", "golbalIamgeUI5_add.png", "golbalIamgeUI5_add.png", 1)
+            addImg:setAnchorPoint(cc.p(0.5, 0.5))
+            addImg:setPosition(cc.p(42, self._backupBG:getContentSize().height / 2))
+            addImg:setName("addImg")
+            addImg:setScale(0.5)
+            self._backupBG:addChild(addImg, 10)
+            addImg:setScale(0.5)
+            addImg:setSwallowTouches(false)
+            addImg:runAction(cc.RepeatForever:create(
+                cc.Sequence:create(
+                    cc.Spawn:create(cc.ScaleTo:create(1, 0.4), cc.FadeTo:create(1, 180)),
+                    cc.Spawn:create(cc.ScaleTo:create(1, 0.5), cc.FadeTo:create(1, 255))
+                )))
+        else
+            addImg:setVisible(true)
+        end
+    end
+
+    -- 气泡提示
+    local isTips = false
+    local img_tip = self._backupBG:getChildByFullName('img_qipao')
+    img_tip:setVisible(false)
+    if not formationData.bid then
+        img_tip:loadTexture('qipao_xuanzehouyuan.png', 1)
+        img_tip:setVisible(true)
+        isTips = true
+    end
+
+    local teamUsing = self:getUsingTeamList()
+
+    local isHaveEmptySeat = self._backupModel:isHaveEmptySeat(formationData.backupTs, formationData.bid, clone(noUseList), clone(teamUsing))
+
+    if not isTips and isHaveEmptySeat then
+        img_tip:loadTexture('qipao_jiaren.png', 1)
+        img_tip:setVisible(true)
+        isTips = true
+    end
+
+    local isHaveConflictTeam = self._backupModel:isHaveConflictTeam(formationData.backupTs, formationData.bid, clone(teamUsing))
+
+    if not isTips and isHaveConflictTeam then
+        img_tip:loadTexture('qipao_bingtuanchongtu.png', 1)
+        img_tip:setVisible(true)
+        isTips = true
+    end
+
+    if isTips then
+        local seq = cc.Sequence:create(cc.ScaleTo:create(1, 1.2), cc.ScaleTo:create(1, 1))
+        img_tip:runAction(cc.RepeatForever:create(seq))
+    else
+        img_tip:stopAllActions()
+    end
+
+    self._backupBG:setVisible(true)
+    local button = self._backupBG:getChildByFullName('Button_83')
+    self:registerClickEvent(button, function (  )
+        if self._isBattleButtonClicked and self._formationType == self._formationModel.kFormationTypeLeague then
+            return
+        end
+        -- dump(self._layerLeft._teamFormation._data[self._context._formationId], "============", 10)
+        local formationData = self._layerLeft._teamFormation._data[self._context._formationId]
+        local teamUsing, backupTeamUsing = self:getUsingTeamList()
+        self._modelMgr:getModel('BackupModel'):showBackupFormationDialog({
+            bid = formationData.bid,
+            backupTs = clone(formationData.backupTs or {}),
+            teamUsing = clone(teamUsing),
+            formationType = self._context._formationId,
+            sortList = self:getBackupFilterList(),
+            formationView = self,
+            callback = function( bid, data )
+                formationData.bid = bid
+                formationData.backupTs = clone(data)
+                self:updateBackupInfo()
+                self:refreshItemsTableView()
+                self:updateRelative()
+            end})
+    end)
+end
+
 function NewFormationView:onInit()
     if self:isShowEnemyFormation() then
         self._musicFileName = audioMgr:getMusicFileName()
@@ -1042,29 +1364,31 @@ function NewFormationView:onInit()
     end
 
     self._formationLocked = false
+    self:getUI("bg.layer_information_beifen"):setVisible(false)
+    self._layer_information = self:getUI("bg.layer_information")
+
+    self._layer_information:setVisible(true)
     --self._layerDescription = self:getUI("bg.layer_description")
-    self._btnBattle = self:getUI("bg.layer_information.btn_battle")
-    self._imageBattle = self:getUI("bg.layer_information.btn_battle.image_battle")
-    self._imageReady = self:getUI("bg.layer_information.btn_battle.image_ready")
-    self._imageAlready = self:getUI("bg.layer_information.btn_battle.image_already")
+    self._btnBattle = self._layer_information:getChildByFullName("btn_battle")
+    self._imageBattle = self._layer_information:getChildByFullName("btn_battle.image_battle")
+    self._imageReady = self._layer_information:getChildByFullName("btn_battle.image_ready")
+    self._imageAlready = self._layer_information:getChildByFullName("btn_battle.image_already")
+    self._backupBG = self._layer_information:getChildByFullName("backup_bg")
 
-    self._btnNextFight = self:getUI("bg.layer_information.btn_next_fight")
-    self._btnUnloadAll = self:getUI("bg.layer_information.btn_unload_all")
-
-    self._btnCareer = self:getUI("bg.layer_information.btn_career")
-    self._btnCareer:setVisible(self:isShowButtonCareer())
-
-    if self:isShowButtonCareer() then
-        self:registerClickEvent(self._btnCareer , function ()
-            self:showTeamCareerInfo()
-        end)
+    self._btnNextFight = self._layer_information:getChildByFullName("btn_next_fight")
+    self._btnUnloadAll = self._layer_information:getChildByFullName("btn_unload_all")
+    if self._formationType == self._formationModel.kFormationTypeStakeAtk2 or self._formationType == self._formationModel.kFormationTypeStakeDef2 then
+        self._btnNextFight:loadTextures("stake_img1.png", "stake_img1.png", "stake_img1.png", 1)
     end
 
-    self._btnTraining = self:getUI("bg.layer_information.btn_training")
+    self._extendBG = self._layer_information:getChildByFullName("extend_bg")
+    self:updateExtendBtn()
+
+    self._btnTraining = self._layer_information:getChildByFullName("btn_training")
     self._btnTraining:setVisible(self:isShowBullet())
 
-    self._btnBullet = self:getUI("bg.layer_information.btn_bullet")
-    self._labelBullet = self:getUI("bg.layer_information.label_bullet")
+    self._btnBullet = self._layer_information:getChildByFullName("btn_bullet")
+    self._labelBullet = self._layer_information:getChildByFullName("label_bullet")
     self._labelBullet:enable2Color(1, cc.c4b(255, 195, 17, 255))
     self._labelBullet:enableOutline(cc.c4b(60, 30, 10, 255), 1)
     self._btnBullet:setVisible(false)
@@ -1177,26 +1501,25 @@ function NewFormationView:onInit()
     local arrowMC = mcMgr:createViewMC("kanchadiqing_selectedanim", true)
     arrowMC:setPosition(self._layerLeft._layerArrow:getContentSize().width / 2, self._layerLeft._layerArrow:getContentSize().height / 2)
     self._layerLeft._layerArrow:addChild(arrowMC)
-    self._layerLeft._layerCountDown = self:getUI("bg.layer_information.layer_count_down")
+    self._layerLeft._layerCountDown = self._layer_information:getChildByFullName("layer_count_down")
     self._layerLeft._layerCountDown:setVisible(self:isShowCountDownInfo())
-
     self._layerLeft._layerTips = self:getUI("bg.layer_left.layer_tips")
     self._layerLeft._layerTips:setVisible(false)
     self._layerLeft._labelTips = self:getUI("bg.layer_left.layer_tips.label_tips")
     self._layerLeft._labelTips:enableOutline(cc.c4b(60, 30, 10, 255), 1)
-
-    self._layerLeft._layerInformation = self:getUI("bg.layer_information.info_left")
+    self._layerLeft._layerInformation = self._layer_information:getChildByFullName("info_left")
     self._layerLeft._layerInformation:getParent():reorderChild(self._layerLeft._layerInformation, 10)
-    self._layerLeft._imageInfoBg1 = self:getUI("bg.layer_information.info_left.image_info_bg")
-    self._layerLeft._labelCurrentFightScore = self:getUI("bg.layer_information.info_left.image_info_bg.label_current_fight_score")
+    self._layerLeft._imageInfoBg1 = self._layer_information:getChildByFullName("info_left.image_info_bg")
+    self._layerLeft._labelCurrentFightScore = self._layer_information:getChildByFullName("info_left.image_info_bg.label_current_fight_score")
     self._layerLeft._labelCurrentFightScore:setScale(0.58)
     self._layerLeft._labelCurrentFightScore:setFntFile(UIUtils.bmfName_zhandouli_little)
     self._layerLeft._labelCurrentFightScore:getVirtualRenderer():setAdditionalKerning(-3)
     self._layerLeft._layerRightFormation = {}
-    local label_title = self:getUI("bg.layer_information.info_left.layer_right_formation.label_title")
-    label_title:enableOutline(cc.c4b(60, 30, 10, 255), 1)
 
-    local layerRightFormationScore = self:getUI("bg.layer_information.info_left.layer_right_formation.label_score")
+    self._layerLeft._layerRightFormationTitle = self._layer_information:getChildByFullName("info_left.layer_right_formation.label_title")
+    self._layerLeft._layerRightFormationTitle:enableOutline(cc.c4b(60, 30, 10, 255), 1)
+
+    local layerRightFormationScore = self._layer_information:getChildByFullName("info_left.layer_right_formation.label_score")
     layerRightFormationScore:setVisible(false)
     self._layerLeft._layerRightFormationScore = ccui.TextBMFont:create("0", UIUtils.bmfName_zhandouli_little) 
     self._layerLeft._layerRightFormationScore:setScale(0.5)
@@ -1206,49 +1529,29 @@ function NewFormationView:onInit()
     if self:isShowEnemyFormation() then
         self._layerLeft._layerRightFormationScore:setString("a"..self._enemyFormationData[self._context._formationId].score)
     end
-    self._layerLeft._layerRightFormation._layer = self:getUI("bg.layer_information.info_left.layer_right_formation") 
-    self._layerLeft._layerRightFormation._layer:setVisible(self:isShowEnemyFormation() and not self:isShowCountDownInfo())
+
+    self._layerLeft._layerRightFormation._layer = self._layer_information:getChildByFullName("info_left.layer_right_formation") 
+    self._layerLeft._layerRightFormation._layer:setVisible((self:isShowEnemyFormation() and not self:isShowCountDownInfo()) or self:isShowStakeAtkDef2())
+
     self._layerLeft._layerRightFormation._icon = {}
     for i = 1, NewFormationView.kTeamGridCount do
-        self._layerLeft._layerRightFormation._icon[i] = self:getUI("bg.layer_information.info_left.layer_right_formation.formation_icon_" .. i)
+        self._layerLeft._layerRightFormation._icon[i] = self._layer_information:getChildByFullName("info_left.layer_right_formation.formation_icon_" .. i)
     end
 
-    self._layerLeft._labelFormationName = self:getUI("bg.layer_information.info_left.image_info_bg.label_formation_name")
+    self._layerLeft._labelFormationName = self._layer_information:getChildByFullName("info_left.image_info_bg.label_formation_name")
     self._layerLeft._labelFormationName:setSkewX(15)
     self._layerLeft._labelFormationName:setFontName(UIUtils.ttfName)
     --self._layerLeft._labelFormationName:enableOutline(cc.c4b(60, 30, 10, 255), 1)
 
-    self._layerLeft._btnFormationSelect = self:getUI("bg.layer_information.info_left.image_info_bg.btn_select")
+    self._layerLeft._btnFormationSelect = self._layer_information:getChildByFullName("info_left.image_info_bg.btn_select")
     --self._layerLeft._btnFormationSelect:setVisible(self:isShowButtonSelect())
     self._layerLeft._btnFormationSelect:setVisible(false)  -- temp code fixed me, 2016.6.20
-
-    -- formation relation build ui
-    self._layerLeft._relationBuildUI = {}
-    self._layerLeft._relationBuildUI._layer = self:getUI("bg.layer_builds")
-    self._layerLeft._relationBuildUI._layerBg = self:getUI("bg.layer_builds.layer_build_bg")
-    self._layerLeft._relationBuildUI._labelTitle = self:getUI("bg.layer_builds.layer_build_bg.image_title_bg.label_title")
-    self._layerLeft._relationBuildUI._labelTitle:setFontName(UIUtils.ttfName_Title)
-    self._layerLeft._relationBuildUI._scrollviewBuilds = self:getUI("bg.layer_builds.layer_build_bg.scrollview_builds")
-    self._layerLeft._relationBuildUI._scrollviewHeight = self._layerLeft._relationBuildUI._scrollviewBuilds:getContentSize().height
-    self._layerLeft._relationBuildUI._layerBuildItem = self:getUI("bg.layer_builds.layer_build_bg.scrollview_builds.layer_item")
-    self._layerLeft._relationBuildUI._layerBuildItemHeight = self._layerLeft._relationBuildUI._layerBuildItem:getContentSize().height
-    self._layerLeft._relationBuildUI._layerBuildItem:setTag(NewFormationView.kRelationBuildTag + 1)
-    self._layerLeft._relationBuildUI._btnClose = self:getUI("bg.layer_builds.layer_build_bg.btn_close")
-    self:registerClickEvent(self._layerLeft._relationBuildUI._btnClose, function ()
-        self._layerLeft._relationBuildUI._layer:setVisible(false)
-    end)
-    self._layerLeft._relationBuildUI._btnBuilds = self:getUI("bg.layer_information.btn_builds")
-    self._layerLeft._relationBuildUI._btnBuilds:setVisible(not self:isShowButtonTraining())
-    self:registerClickEvent(self._layerLeft._relationBuildUI._btnBuilds, function ()
-        self:onButtonBuildsClicked()
-    end)
-
     -- temp code
     --self._layerLeft._labelFormationName:setPositionX(122)
     --self._layerLeft._btnFormationSelect:setPositionX(230)
 
     --self._layerLeft._imageInfoBg2 = self:getUI("bg.layer_left.image_info_bg")
-    self._layerLeft._labelCurrentLoad = self:getUI("bg.layer_information.info_left.image_info_bg.label_current_load")
+    self._layerLeft._labelCurrentLoad = self._layer_information:getChildByFullName("info_left.image_info_bg.label_current_load")
     self._layerLeft._labelCurrentLoad:setFontName(UIUtils.ttfName)
     self._layerLeft._labelCurrentLoad:enableOutline(cc.c4b(60, 30, 10, 255), 1)
     self._layerLeft._labelCurrentLoadMC = mcMgr:createViewMC("renshutishi_selectedanim", true)
@@ -1257,113 +1560,77 @@ function NewFormationView:onInit()
     self._layerLeft._labelCurrentLoadMC:setVisible(false)
     self._layerLeft._labelCurrentLoadMC:setPosition(self._layerLeft._labelCurrentLoad:getContentSize().width / 1.5 + 17, self._layerLeft._labelCurrentLoad:getContentSize().height / 2 + 3)
     self._layerLeft._labelCurrentLoad:addChild(self._layerLeft._labelCurrentLoadMC, 10)
-    self._layerLeft._labelNextUnlockLoad = self:getUI("bg.layer_information.info_left.image_info_bg.label_next_unlock_load")
+    self._layerLeft._labelNextUnlockLoad = self._layer_information:getChildByFullName("info_left.image_info_bg.label_next_unlock_load")
     self._layerLeft._labelNextUnlockLoad:enableOutline(cc.c4b(60, 30, 10, 255), 1)
     --self._labelTeamCount = self:getUI("bg.layer_left.label_team_count")
-    self._layerLeft._labelTeamValue1 = self:getUI("bg.layer_information.info_left.image_info_bg.label_team_value_1")
+    self._layerLeft._labelTeamValue1 = self._layer_information:getChildByFullName("info_left.image_info_bg.label_team_value_1")
     self._layerLeft._labelTeamValue1:enableOutline(cc.c4b(60, 30, 10, 255), 1)
-    self._layerLeft._labelTeamValue2 = self:getUI("bg.layer_information.info_left.image_info_bg.label_team_value_2")
+    self._layerLeft._labelTeamValue2 = self._layer_information:getChildByFullName("info_left.image_info_bg.label_team_value_2")
     self._layerLeft._labelTeamValue2:enableOutline(cc.c4b(60, 30, 10, 255), 1)
 
     -- cloud info
     self._layerLeft._cloudInfo = {}
-    self._layerLeft._cloudInfo._info = self:getUI("bg.layer_information.info_left.cloud_info")
-    self._layerLeft._cloudInfo._info:setVisible(self:isShowCloudInfo() or self:isShowPveInfo() or self:isShowWeaponInfo() or self:isShowCrossPKLimitInfo())
-    self._layerLeft._cloudInfo._labelEvnDes = self:getUI("bg.layer_information.info_left.cloud_info.image_env_bg.label_evn_des")
-    self._layerLeft._cloudInfo._btnQuestion = self:getUI("bg.layer_information.info_left.cloud_info.image_env_bg.btn_question")
+
+    self._layerLeft._cloudInfo._info = self._layer_information:getChildByFullName("info_left.cloud_info")
+    self._layerLeft._cloudInfo._info:setVisible(self:isShowCloudInfo() or self:isShowPveInfo() or self:isShowWeaponInfo() or self:isShowCrossPKLimitInfo() or self:isShowStakeAtkDef2())
+    self._layerLeft._cloudInfo._info:getChildByFullName("image_env_bg"):setVisible(not self:isShowStakeAtkDef2())
+    self._layerLeft._cloudInfo._labelEvnDes = self._layer_information:getChildByFullName("info_left.cloud_info.image_env_bg.label_evn_des")
+    self._layerLeft._cloudInfo._btnQuestion = self._layer_information:getChildByFullName("info_left.cloud_info.image_env_bg.btn_question")
+
     self._layerLeft._cloudInfo._btnQuestion:setVisible(false)
-    self._layerLeft._cloudInfo._imageSwitchBg = self:getUI("bg.layer_information.info_left.cloud_info.image_switch_bg")
+    self._layerLeft._cloudInfo._imageSwitchBg = self._layer_information:getChildByFullName("info_left.cloud_info.image_switch_bg")
     self._layerLeft._cloudInfo._imageSwitchBg:setPositionX(self._winSize.width / 2)
-    self._layerLeft._cloudInfo._imageSwitchBg:setVisible(self:isShowCloudInfo())
-    self._layerLeft._cloudInfo._btnLeft = self:getUI("bg.layer_information.info_left.cloud_info.image_switch_bg.btn_left")
-    self._layerLeft._cloudInfo._btnRight = self:getUI("bg.layer_information.info_left.cloud_info.image_switch_bg.btn_right")
-    self._layerLeft._cloudInfo._title1 = self:getUI("bg.layer_information.info_left.cloud_info.image_switch_bg.cloud_title_1")
-    self._layerLeft._cloudInfo._title2 = self:getUI("bg.layer_information.info_left.cloud_info.image_switch_bg.cloud_title_2")
-    self._layerLeft._cloudInfo._btnCloudCityGuide = self:getUI("bg.layer_information.btn_cloud_city")
+
+    self._layerLeft._cloudInfo._imageSwitchBg:setVisible(self:isShowCloudInfo() or self:isShowStakeAtkDef2())
+    self._layerLeft._cloudInfo._btnLeft = self._layer_information:getChildByFullName("info_left.cloud_info.image_switch_bg.btn_left")
+    self._layerLeft._cloudInfo._btnRight = self._layer_information:getChildByFullName("info_left.cloud_info.image_switch_bg.btn_right")
+    self._layerLeft._cloudInfo._title1 = self._layer_information:getChildByFullName("info_left.cloud_info.image_switch_bg.cloud_title_1")
+    self._layerLeft._cloudInfo._title2 = self._layer_information:getChildByFullName("info_left.cloud_info.image_switch_bg.cloud_title_2")
+    self._layerLeft._cloudInfo._btnCloudCityGuide = self._layer_information:getChildByFullName("btn_cloud_city")
+
     self._layerLeft._cloudInfo._btnCloudCityGuide:setVisible(self:isShowCloudInfo())
+    if self:isShowStakeAtkDef2() then
+        self._layerLeft._cloudInfo._title1:loadTexture("stake_title_1_forma.png", 1)
+        self._layerLeft._cloudInfo._title2:loadTexture("stake_title_2_forma.png", 1)
+    end
 
     if self:isShowAwakingTaskInfo() then
         local screenSize = {width = MAX_SCREEN_WIDTH, height = MAX_SCREEN_HEIGHT}
         local isPad = (screenSize.width / screenSize.height) <= (3.0 / 2.0)
         self._layerLeft._awakingTaskInfo = {}
-        self._layerLeft._awakingTaskInfo._info = self:getUI("bg.layer_information.info_left.awaking_task_info")
+        self._layerLeft._awakingTaskInfo._info = self._layer_information:getChildByFullName("info_left.awaking_task_info")
         if isPad then
             self._layerLeft._awakingTaskInfo._info:getLayoutParameter():setMargin({ left = screenSize.width / 2, right = 0, top = 0, bottom = 0})
         end
         self._layerLeft._awakingTaskInfo._info:setVisible(self:isShowAwakingTaskInfo())
-        self._layerLeft._awakingTaskInfo._labelTask = self:getUI("bg.layer_information.info_left.awaking_task_info.label_task")
+        self._layerLeft._awakingTaskInfo._labelTask = self._layer_information:getChildByFullName("info_left.awaking_task_info.label_task")
         self._layerLeft._awakingTaskInfo._labelTask:enable2Color(1, cc.c4b(253, 204, 87, 255))
         self._layerLeft._awakingTaskInfo._taskInfo = {}
         self._layerLeft._awakingTaskInfo._taskInfo._labelDes = {}
         self._layerLeft._awakingTaskInfo._taskInfo._labelLoad = {}
         self._layerLeft._awakingTaskInfo._taskInfo._labelValue = {}
         for i=1, 2 do
-            self._layerLeft._awakingTaskInfo._taskInfo._labelDes[i] = self:getUI("bg.layer_information.info_left.awaking_task_info.label_des_" .. i)
-            self._layerLeft._awakingTaskInfo._taskInfo._labelLoad[i] = self:getUI("bg.layer_information.info_left.awaking_task_info.label_current_load_" .. i)
-            self._layerLeft._awakingTaskInfo._taskInfo._labelValue[i] = self:getUI("bg.layer_information.info_left.awaking_task_info.label_team_value_" .. i)
+            self._layerLeft._awakingTaskInfo._taskInfo._labelDes[i] = self._layer_information:getChildByFullName("info_left.awaking_task_info.label_des_" .. i)
+            self._layerLeft._awakingTaskInfo._taskInfo._labelLoad[i] = self._layer_information:getChildByFullName("info_left.awaking_task_info.label_current_load_" .. i)
+            self._layerLeft._awakingTaskInfo._taskInfo._labelValue[i] = self._layer_information:getChildByFullName("info_left.awaking_task_info.label_team_value_" .. i)
             self._layerLeft._awakingTaskInfo._taskInfo._labelValue[i]:enableOutline(cc.c4b(60, 30, 10, 255), 1)
         end
     end
     
     -- icon info
     self._layerLeft._iconInfo = {}
-    self._layerLeft._iconInfo._info = self:getUI("bg.layer_information.info_left.icon_info")
-    self._layerLeft._iconInfo._info:setVisible(self:isShowTreasureInfo() or self:isShowPokedexInfo())
+    self._layerLeft._iconInfo._info = self._layer_information:getChildByFullName("info_left.icon_info")
+    self._layerLeft._iconInfo._info:setVisible(true)
 
-    self._layerLeft._treasureInfo = {}
-    self._layerLeft._treasureInfo._info = self:getUI("bg.layer_information.info_left.icon_info.info_treasure_bg")
-    self._layerLeft._treasureInfo._info:setVisible(self:isShowTreasureInfo())
-    self._layerLeft._treasureInfo._name = self:getUI("bg.layer_information.info_left.icon_info.info_treasure_bg.label_name")
-    self._layerLeft._treasureInfo._name:setFontName(UIUtils.ttfName)
+    self._layerLeft._editInfo = {}
+    self._layerLeft._editInfo._info = self._layerLeft._iconInfo._info:getChildByFullName("info_edit")
+    self._layerLeft._editInfo._info:setVisible(true)
+    self._layerLeft._editInfo._name = self._layerLeft._editInfo._info:getChildByFullName("label_name")
+    self._layerLeft._editInfo._name:setFontName(UIUtils.ttfName)
 
-    self:registerClickEvent(self._layerLeft._treasureInfo._info, function ()
-        self:onButtonChangeTreasureClicked()
+    self:registerClickEvent(self._layerLeft._editInfo._info, function ()
+        self:onButtonEditInfoClicked()
     end)
-
-    self._layerLeft._pokedexInfo = {}
-    self._layerLeft._pokedexInfo._info = self:getUI("bg.layer_information.info_left.icon_info.info_pokedex_bg")
-    self._layerLeft._pokedexInfo._info:setVisible(self:isShowPokedexInfo())
-    self._layerLeft._pokedexInfo._name = self:getUI("bg.layer_information.info_left.icon_info.info_pokedex_bg.label_name")
-    self._layerLeft._pokedexInfo._name:setFontName(UIUtils.ttfName)
-
-    self:registerClickEvent(self._layerLeft._pokedexInfo._info, function ()
-        self:onButtonChangePokedexClicked()
-    end)
-
-    --[[
-    self._layerLeft._treasureInfo = {}
-    self._layerLeft._treasureInfo._info = self:getUI("bg.layer_information.info_left.icon_info")
-    self._layerLeft._treasureInfo._info:setVisible(self:isShowTreasureInfo())
-    self._layerLeft._treasureInfo._name = self:getUI("bg.layer_information.info_left.icon_info.info_bg.label_name")
-    self._layerLeft._treasureInfo._name:setFontName(UIUtils.ttfName)
-
-    
-    self._layerLeft._treasureInfo._icon = {}
-    local treasure_skillFrames = 
-    {
-        "hero_skill_bg1_forma.png",
-        "bigSkillFrame_treasureSkill.png",
-        "hero_skill_bg2_forma.png",
-        "hero_skill_bg2_forma.png",
-        "hero_skill_bg2_forma.png",
-    }
-    for i=1, 5 do
-        self._layerLeft._treasureInfo._icon[i] = self:getUI("bg.layer_information.info_left.icon_info.info_bg.image_icon_" .. i)
-        local frame = self._layerLeft._treasureInfo._icon[i]:getChildByName("icon_bg")
-        frame:loadTexture(treasure_skillFrames[i],1)
-        self:registerClickEvent(self._layerLeft._treasureInfo._icon[i], function ()
-            self:onButtonTreasureIconClicked(i)
-        end)
-    end
-
-    self._layerLeft._treasureInfo._buttonChangeTreasure = self:getUI("bg.layer_information.info_left.icon_info.info_bg.btn_change_treasure")
-    self._layerLeft._treasureInfo._labelChangeTreasure = self:getUI("bg.layer_information.info_left.icon_info.info_bg.btn_change_treasure.label_change")
-    self._layerLeft._treasureInfo._labelChangeTreasure:enableOutline(cc.c4b(60, 30, 10, 255), 1)
-    self._layerLeft._treasureInfo._labelChangeTreasure:setFontName(UIUtils.ttfName)
-    self:registerClickEvent(self._layerLeft._treasureInfo._buttonChangeTreasure, function ()
-        self:onButtonChangeTreasureClicked()
-    end)
-    ]]
 
     self._layerLeft._heroFormation = {}
     self._layerLeft._heroFormation._layer = self:getUI("bg.layer_left.layer_hero_formation")
@@ -1461,7 +1728,7 @@ function NewFormationView:onInit()
         self._layerLeft._layerList._imageInsBubble:runAction(cc.RepeatForever:create(cc.Sequence:create(cc.MoveBy:create(0.5, cc.p(10, 0)), cc.MoveBy:create(0.5, cc.p(-10, 0)))))
     end
 
-    self._btnCitySelect = self:getUI("bg.layer_information.btn_city_select")
+    self._btnCitySelect = self._layer_information:getChildByFullName("btn_city_select")
     self._btnCitySelect:setVisible(self:isShowCitySelectInfo())
 
     if self:isShowCitySelectInfo() then
@@ -1498,21 +1765,26 @@ function NewFormationView:onInit()
     -- filter
     self._layerLeft._layerList._allTeamsData = {}
     self._layerLeft._layerList._allTeamsInit = false
+    self._layerLeft._layerList._allHeroInit = false
+    self._layerLeft._layerList._allHerosData = {}
+    self._teamRaceTypeList = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 12}
+    self._heroRaceTypeList = {0, 1, 2, 4, 3, 5, 6, 7, 8, 9, 10}
     self._layerLeft._layerList._filterType = 100
-    self._layerLeft._layerList._btnFilter = self:getUI("bg.layer_information.info_left.btn_filter")
+    self._layerLeft._layerList._filterHeroType = 0
+    self._layerLeft._layerList._btnFilter = self._layer_information:getChildByFullName("info_left.btn_filter")
     self._layerLeft._layerList._btnFilter:setScaleAnim(true)
     self:registerClickEvent(self._layerLeft._layerList._btnFilter, function ()
         self:onFilterButtonClicked()
     end)
-    self._layerLeft._layerList._layerFilter = self:getUI("bg.layer_information.info_left.layer_filter_bg")
+    self._layerLeft._layerList._layerFilter = self._layer_information:getChildByFullName("info_left.layer_filter_bg")
     self._layerLeft._layerList._layerFilter:setVisible(false)
     self._layerLeft._layerList._layerFilter:setAnchorPoint(0, 0)
     self._layerLeft._layerList._btnFilterType = {}
-    for i=1, 10 do
-        self._layerLeft._layerList._btnFilterType[i] = self:getUI("bg.layer_information.info_left.layer_filter_bg.raceBtn" .. i - 1)
+    for i = 1, 11 do
+        self._layerLeft._layerList._btnFilterType[i] = self._layer_information:getChildByFullName("info_left.layer_filter_bg.raceBtn" .. i - 1)
         self._layerLeft._layerList._btnFilterType[i]:setSwallowTouches(true)
         self:registerClickEvent(self._layerLeft._layerList._btnFilterType[i], function ()
-            self:onFilterTypeButtonClicked(i - 1)
+            self:onFilterTypeButtonClicked(i)
         end)
     end
 
@@ -1544,30 +1816,30 @@ function NewFormationView:onInit()
     arrowMC:setPosition(self._layerRight._layerArrow:getContentSize().width / 2, self._layerRight._layerArrow:getContentSize().height / 2)
     self._layerRight._layerArrow:addChild(arrowMC)
 
-    self._layerRight._layerInformation = self:getUI("bg.layer_information.info_right")
+    self._layerRight._layerInformation = self._layer_information:getChildByFullName("info_right")
     self._layerRight._layerInformation:setVisible(false)
     --[[
-    self._layerRight._labelCurrentFightScore = self:getUI("bg.layer_information.info_right.label_current_fight_score")
+    self._layerRight._labelCurrentFightScore = self._layer_information:getChildByFullName("info_right.label_current_fight_score")
     self._layerRight._labelCurrentFightScore:setFntFile(UIUtils.bmfName_zhandouli_little)
     self._layerRight._labelCurrentFightScore:getVirtualRenderer():setAdditionalKerning(-4)
     ]]
     self._layerRight._layerLeftFormation = {}
-    self._layerRight._layerLeftFormation._layer = self:getUI("bg.layer_information.info_right.layer_left_formation")
+    self._layerRight._layerLeftFormation._layer = self._layer_information:getChildByFullName("info_right.layer_left_formation")
 
-    local label_title1 = self:getUI("bg.layer_information.info_right.layer_left_formation.label_title")
+    local label_title1 = self._layer_information:getChildByFullName("info_right.layer_left_formation.label_title")
     label_title1:enableOutline(cc.c4b(60, 30, 10, 255), 1)
 
-    local layerLeftFormationScore = self:getUI("bg.layer_information.info_right.layer_left_formation.label_score")
+    local layerLeftFormationScore = self._layer_information:getChildByFullName("info_right.layer_left_formation.label_score")
     layerLeftFormationScore:setVisible(false)
 
-    self._layerRight._layerLeftFormationScore = ccui.TextBMFont:create("a", UIUtils.bmfName_zhandouli_little) --self:getUI("bg.layer_information.info_left.layer_right_formation.label_score")
+    self._layerRight._layerLeftFormationScore = ccui.TextBMFont:create("a", UIUtils.bmfName_zhandouli_little) --self._layer_information:getChildByFullName("info_left.layer_right_formation.label_score")
     self._layerRight._layerLeftFormationScore:setScale(0.5)
     self._layerRight._layerLeftFormationScore:setAnchorPoint(cc.p(0.5,0.5))
     self._layerRight._layerLeftFormationScore:setPosition(layerRightFormationScore:getPosition())
     layerLeftFormationScore:getParent():addChild(self._layerRight._layerLeftFormationScore)
 
     for i = 1, NewFormationView.kTeamGridCount do
-        self._layerRight._layerLeftFormation[i] = self:getUI("bg.layer_information.info_right.layer_left_formation.formation_icon_" .. i)
+        self._layerRight._layerLeftFormation[i] = self._layer_information:getChildByFullName("info_right.layer_left_formation.formation_icon_" .. i)
     end
 
     self._layerRight._heroFormation = {}
@@ -1782,6 +2054,20 @@ function NewFormationView:onInit()
         end
     end
 
+    if self:isShowStakeAtkDef2() then
+        self:registerClickEvent(self._layerLeft._cloudInfo._btnLeft, function()
+            self:switchStakeFormation()
+        end)
+
+        self:registerClickEvent(self._layerLeft._cloudInfo._btnRight, function()
+            self:switchStakeFormation()
+        end)
+
+        self:registerClickEvent(self._btnNextFight, function ()
+            self:switchStakeFormation()
+        end)
+    end
+
     self:registerClickEvent(self._btnBattle, function ()
         self:onBattleButtonClicked()
     end)
@@ -1820,17 +2106,18 @@ function NewFormationView:onInit()
     self:registerClickEvent(btnReturn, function ()
         self:onCloseButtonClicked()
     end)
-	
-	local saveBtn = self:getUI("bg.sureBtn")
-	local cancelBtn = self:getUI("bg.cancleBtn")
-	saveBtn:setVisible(self._extend and self._extend.isSimpleFormation)--not self:isShowButtonReturn())
-	cancelBtn:setVisible(self._extend and self._extend.isSimpleFormation)--not self:isShowButtonReturn())
-	self:registerClickEvent(saveBtn, function()
-		self:doSimpleClose()
-	end)
-	self:registerClickEvent(cancelBtn, function()
-		self:close()
-	end)
+    
+    local saveBtn = self:getUI("bg.sureBtn")
+    local cancelBtn = self:getUI("bg.cancleBtn")
+    saveBtn:setVisible(self._extend and self._extend.isSimpleFormation)--not self:isShowButtonReturn())
+    cancelBtn:setVisible(self._extend and self._extend.isSimpleFormation)--not self:isShowButtonReturn())
+    self:registerClickEvent(saveBtn, function()
+        self:doSimpleClose()
+    end)
+    self:registerClickEvent(cancelBtn, function()
+        self:close()
+    end)
+    self:updateBackupInfo()
 end
 
 function NewFormationView:onInitEx()
@@ -1899,6 +2186,7 @@ function NewFormationView:updateUI()
     self:updateLeftTeamFormation()
     self:updateLeftTeamFormationAddition()
     self:updateLeftHeroFormation()
+    self:updateBackupInfo()
     if self:isShowEnemyFormation() then
         self:updateLeftTeamFormationPreview()
         self:updateRightTeamFormationPreview()
@@ -1907,8 +2195,12 @@ function NewFormationView:updateUI()
     end
     --self:onShowDescriptionView()
     self:updateRelative()
-    self:updateFilterType()
     self:updateBattleInfo()
+    if gridType == NewFormationView.kGridTypeTeam then
+        self:updateFilterType()
+    elseif gridType == NewFormationView.kGridTypeHero then
+        self:updateHeroFilterType()
+    end
 
     if self:isShowCloudInfo() then
         self:updateCloudInfo()
@@ -1917,17 +2209,21 @@ function NewFormationView:updateUI()
         end
     end
 
+    if self:isShowStakeAtkDef2() then
+        self:updateStakeInfo()
+    end
+
     if self:isShowPveInfo() then
         self:updatePveInfo()
     end
 
-    if self:isShowTreasureInfo() then
-        self:updateTreasureInfo()
-    end
+    -- if self:isShowTreasureInfo() then
+    --     self:updateTreasureInfo()
+    -- end
 
-    if self:isShowPokedexInfo() then
-        self:updatePokedexInfo()
-    end
+    -- if self:isShowPokedexInfo() then
+    --     self:updatePokedexInfo()
+    -- end
 
     if self:isHaveFixedWeapon() then
         self:showFixedWeaponInfo()
@@ -1962,10 +2258,10 @@ function NewFormationView:showEnemayFormation(isShow)
     self:enableButtonArrow(false)
 
     if isShow then
-        self._btnCareer:setVisible(false)
+        self._extendBG:setVisible(false)
         self._btnBullet:setVisible(false)
         self._labelBullet:setVisible(false)
-        self._layerLeft._relationBuildUI._btnBuilds:setVisible(false)
+        self._backupBG:setVisible(false)
         self._layerLeft._teamFormation._layer:runAction(cc.Sequence:create(cc.FadeOut:create(0.01), cc.CallFunc:create(function()
             self:updateLeftTeamFormationAddition(true)
         end)))
@@ -1994,10 +2290,10 @@ function NewFormationView:showEnemayFormation(isShow)
             self._layerRight._layerInformation:setVisible(false)
             self:enableButtonArrow(true)
             self._layerRight._teamFormation._layer:runAction(cc.FadeIn:create(0.01))
-            self._btnCareer:setVisible(self:isShowButtonCareer())
             self._btnBullet:setVisible(self:isShowBullet())
             self._labelBullet:setVisible(self:isShowBullet())
-            self._layerLeft._relationBuildUI._btnBuilds:setVisible(not self:isShowButtonTraining())
+            self:updateExtendBtn()
+            self:updateBackupInfo()
         end)))
     end
 
@@ -2414,12 +2710,37 @@ function NewFormationView:updateFilterType()
         end
     end
 
-    for i=1, 9 do
-        local isEnabled = teamType[100 + i] and table.getn(teamType[100 + i]) > 0
+    for i=1, 10 do
+        local raceIndex = self._teamRaceTypeList[i + 1]
+        local isEnabled = teamType[100 + raceIndex] and table.getn(teamType[100 + raceIndex]) > 0
         self._layerLeft._layerList._btnFilterType[i + 1]:setSwallowTouches(isEnabled)
         self._layerLeft._layerList._btnFilterType[i + 1]:setEnabled(isEnabled)
         self._layerLeft._layerList._btnFilterType[i + 1]:setSaturation(isEnabled and 0 or -100)
 
+    end
+end
+
+function NewFormationView:updateHeroFilterType(  )
+    local heroType = {}
+    for k, v in pairs(self._layerLeft._layerList._allHerosData) do
+        local heroId = v.id or v.heroId
+        local heroTableData = tab:Hero(heroId)
+        if heroTableData and heroTableData.masterytype then
+            local raceT = tonumber(heroTableData.masterytype)
+            if not heroType[raceT] then
+                heroType[raceT] = {}
+            end
+            if not self:isLoaded(NewFormationView.kGridTypeHero, tonumber(heroId)) then
+                table.insert(heroType[raceT], heroId)
+            end
+        end
+    end
+    for i = 1, 10 do
+        local raceIndex = self._heroRaceTypeList[i + 1]
+        local isEnabled = heroType[raceIndex] and table.getn(heroType[raceIndex]) > 0
+        self._layerLeft._layerList._btnFilterType[i + 1]:setSwallowTouches(isEnabled)
+        self._layerLeft._layerList._btnFilterType[i + 1]:setEnabled(isEnabled)
+        self._layerLeft._layerList._btnFilterType[i + 1]:setSaturation(isEnabled and 0 or -100)
     end
 end
 
@@ -2451,12 +2772,23 @@ function NewFormationView:setFilterMode(isSet)
     end
 end
 
-function NewFormationView:onFilterTypeButtonClicked(filterType)
-    if filterType == self._layerLeft._layerList._filterType then return end
-    self._layerLeft._layerList._filterType = 100 + filterType
-    self._layerLeft._layerList._layerFilter:setVisible(false)
-    self:refreshItemsTableView(true)
-    self:setFilterMode(false)
+function NewFormationView:onFilterTypeButtonClicked(clickIndex)
+    local gridType = self._context._gridType[self._context._formationId]
+    if gridType == NewFormationView.kGridTypeTeam then
+        local filterType = self._teamRaceTypeList[clickIndex]
+        if filterType == self._layerLeft._layerList._filterType then return end
+        self._layerLeft._layerList._filterType = 100 + filterType
+        self._layerLeft._layerList._layerFilter:setVisible(false)
+        self:refreshItemsTableView(true)
+        self:setFilterMode(false)
+    elseif gridType == NewFormationView.kGridTypeHero then
+        local filterType = self._heroRaceTypeList[clickIndex]
+        if filterType == self._layerLeft._layerList._filterHeroType then return end
+        self._layerLeft._layerList._filterHeroType = filterType
+        self._layerLeft._layerList._layerFilter:setVisible(false)
+        self:refreshItemsTableView(true)
+        self:setFilterMode(false)
+    end    
 end
 
 function NewFormationView:onFilterButtonClicked()
@@ -2506,9 +2838,13 @@ function NewFormationView:switchLayerList(iconType, force)
     self._layerLeft._layerList._btnTabHero:setEnabled(NewFormationView.kGridTypeHero ~= iconType)
     self._layerLeft._layerList._btnTabHero:setBright(NewFormationView.kGridTypeHero ~= iconType)
 
-    self._layerLeft._layerList._btnFilter:setEnabled(NewFormationView.kGridTypeTeam == iconType)
-    self._layerLeft._layerList._btnFilter:setSaturation(NewFormationView.kGridTypeTeam == iconType and 0 or -100)
-
+    self._layerLeft._layerList._btnFilter:setEnabled((NewFormationView.kGridTypeTeam == iconType or NewFormationView.kGridTypeHero == iconType))
+    self._layerLeft._layerList._btnFilter:setSaturation((NewFormationView.kGridTypeTeam == iconType or NewFormationView.kGridTypeHero == iconType) and 0 or -100)
+    if NewFormationView.kGridTypeTeam == iconType then
+        self:updateFilterType()
+    elseif NewFormationView.kGridTypeHero == iconType then
+        self:updateHeroFilterType()
+    end
 
     if self:isShowHireTeam() then
         self._layerLeft._layerList._btnTabHireTeam:setEnabled(NewFormationView.kGridTypeHireTeam ~= iconType)
@@ -2523,28 +2859,45 @@ function NewFormationView:switchLayerList(iconType, force)
     self._layerLeft._layerList._imageBubbleRecom:setVisible(false)
 
     if self:isShowPveRecommendHero() then
-        local heroId = 0
-        if not self._pveRecommendHeroCheck then
-            for k, v in ipairs(self._layerLeft._layerList._heroData) do
-                if self:isRecommend(v.id) then
-                    if 1 ~= SystemUtils.loadAccountLocalData("PVERECOMMAENDHERO_" .. v.id) then
-                        heroId = v.id
-                        self._layerLeft._layerList._imageBubbleRecom:setVisible(true)
-                        self._layerLeft._layerList._imageBubbleRecom:runAction(cc.RepeatForever:create(cc.Sequence:create(cc.ScaleTo:create(1, 1.2), 
-                        cc.ScaleTo:create(1, 1.0))))
-                        break
+        if self._formationType == self._formationModel.kFormationTypeWorldBoss then
+            if not self._pveRecommendHeroCheck then
+                local formationData = self._layerLeft._teamFormation._data[self._formationType]
+                local heroId = formationData.heroId or 0
+                if self._recommend and #self._recommend > 0 and not self:isRecommend(heroId) then
+                    self._layerLeft._layerList._imageBubbleRecom:setVisible(true)
+                    self._layerLeft._layerList._imageBubbleRecom:runAction(cc.RepeatForever:create(cc.Sequence:create(cc.ScaleTo:create(1, 1.2), 
+                    cc.ScaleTo:create(1, 1.0))))
+                end
+            end
+            if NewFormationView.kGridTypeHero == iconType then
+                self._layerLeft._layerList._imageBubbleRecom:setVisible(false)
+                self._layerLeft._layerList._imageBubbleRecom:stopAllActions()
+                self._pveRecommendHeroCheck = true
+            end
+        else
+            local heroId = 0
+            if not self._pveRecommendHeroCheck then
+                for k, v in ipairs(self._layerLeft._layerList._heroData) do
+                    if self:isRecommend(v.id) then
+                        if 1 ~= SystemUtils.loadAccountLocalData("PVERECOMMAENDHERO_" .. v.id) then
+                            heroId = v.id
+                            self._layerLeft._layerList._imageBubbleRecom:setVisible(true)
+                            self._layerLeft._layerList._imageBubbleRecom:runAction(cc.RepeatForever:create(cc.Sequence:create(cc.ScaleTo:create(1, 1.2), 
+                            cc.ScaleTo:create(1, 1.0))))
+                            break
+                        end
                     end
                 end
             end
-        end
 
-        if NewFormationView.kGridTypeHero == iconType then
-            self._layerLeft._layerList._imageBubbleRecom:setVisible(false)
-            self._layerLeft._layerList._imageBubbleRecom:stopAllActions()
-            if 0 ~= heroId then
-                SystemUtils.saveAccountLocalData("PVERECOMMAENDHERO_" .. heroId, 1)
+            if NewFormationView.kGridTypeHero == iconType then
+                self._layerLeft._layerList._imageBubbleRecom:setVisible(false)
+                self._layerLeft._layerList._imageBubbleRecom:stopAllActions()
+                if 0 ~= heroId then
+                    SystemUtils.saveAccountLocalData("PVERECOMMAENDHERO_" .. heroId, 1)
+                end
+                self._pveRecommendHeroCheck = true
             end
-            self._pveRecommendHeroCheck = true
         end
     end
 
@@ -2790,42 +3143,43 @@ function NewFormationView:updateRightTeamFormationPreview()
             local teamPositionId = self._enemyFormationData[self._context._formationId][string.format("g%d", i)]
             local teamTableData = nil
             local enemyTeamType = NewFormationIconView.getEnemyTeamTypeByFormationType(self._formationType)
-            if enemyTeamType == NewFormationIconView.kIconTypeInstanceTeam then
-                teamTableData = tab:Npc(teamId)
-            elseif enemyTeamType == NewFormationIconView.kIconTypeArenaTeam then
+
+            local className = nil
+            if enemyTeamType == NewFormationIconView.kIconTypeArenaTeam then
                 teamTableData = tab:Team(teamId)
-            elseif enemyTeamType == NewFormationIconView.kIconTypeAiRenMuWuTeam then
-                teamTableData = tab:Npc(teamId)
-            elseif enemyTeamType == NewFormationIconView.kIconTypeZombieTeam then
-                teamTableData = tab:Npc(teamId)
-            elseif enemyTeamType == NewFormationIconView.kIconTypeDragonTeam then
-                teamTableData = tab:Npc(teamId)
+                local teamData = self._modelMgr:getModel("ArenaModel"):getEnemyDataById(teamId)
+                className = TeamUtils:getClassIconNameByTeamD(teamData, "classlabel", teamTableData, true)
             elseif enemyTeamType == NewFormationIconView.kIconTypeCrusadeTeam then
                 teamTableData = tab:Team(teamId)
+                local teamData = self._modelMgr:getModel("CrusadeModel"):getEnemyTeamDataById(teamId)
+                className = TeamUtils:getClassIconNameByTeamD(teamData, "classlabel", teamTableData, true)
             elseif enemyTeamType == NewFormationIconView.kIconTypeGuildTeam then
                 teamTableData = tab:Team(teamId)
+                local teamData = self._modelMgr:getModel("GuildMapModel"):getEnemyDataById(teamId)
+                className = TeamUtils:getClassIconNameByTeamD(teamData, "classlabel", teamTableData, true)
             elseif enemyTeamType == NewFormationIconView.kFormationTypeLeague then
                 teamTableData = tab:Team(teamId)
+                local teamData = self._modelMgr:getModel("LeagueModel"):getEnemyDataById(teamId)
+                className = TeamUtils:getClassIconNameByTeamD(teamData, "classlabel", teamTableData, true)
             elseif enemyTeamType == NewFormationIconView.kIconTypeMFTeam then
                 teamTableData = tab:Team(teamId)
-            elseif enemyTeamType == NewFormationIconView.kIconTypeCloudTeam then
-                teamTableData = tab:Npc(teamId)
-            elseif enemyTeamType == NewFormationIconView.kIconTypeTrainingTeam then
-                teamTableData = tab:Npc(teamId)
+                local teamData = self._modelMgr:getModel("MFModel"):getEnemyDataById(teamId)
+                className = TeamUtils:getClassIconNameByTeamD(teamData, "classlabel", teamTableData, true)
             elseif enemyTeamType == NewFormationIconView.kIconTypeAdventureTeam then
                 teamTableData = tab:Team(teamId)
-            elseif enemyTeamType == NewFormationIconView.kIconTypeElementalTeam then
-                teamTableData = tab:Npc(teamId)
-            elseif enemyTeamType == NewFormationIconView.kIconTypeWeaponTeam then
-                teamTableData = tab:Npc(teamId)
+                local teamData = self._modelMgr:getModel("AdventureModel"):getEnemyDataById(teamId)
+                className = TeamUtils:getClassIconNameByTeamD(teamData, "classlabel", teamTableData, true)
             elseif enemyTeamType == NewFormationIconView.kIconTypeCrossPKTeam then
                 teamTableData = tab:Team(teamId)
+                local teamData = self._modelMgr:getModel("CrossModel"):getEnemyDataById(teamId)
+                className = TeamUtils:getClassIconNameByTeamD(teamData, "classlabel", teamTableData, true)
             else
                 teamTableData = tab:Npc(teamId)
+                className = TeamUtils:getNpcClassName(teamTableData)
             end
             local iconGrid = self._layerLeft._layerRightFormation._icon[teamPositionId]
             if not iconGrid then break end
-            local imageView = ccui.ImageView:create(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+            local imageView = ccui.ImageView:create(IconUtils.iconPath .. className .. ".png", 1)
             imageView:setScale(0.75)
             --imageView:setFlippedX(true)
             imageView:setPosition(cc.p(iconGrid:getContentSize().width / 2, iconGrid:getContentSize().height / 2))
@@ -2852,7 +3206,9 @@ function NewFormationView:updateLeftTeamFormationPreview(formationId)
             local teamPositionId = self._layerLeft._teamFormation._data[formationId][string.format("g%d", i)]
             local teamTableData = self:getTableData(isHireTeam and NewFormationView.kGridTypeHireTeam or NewFormationView.kGridTypeTeam, teamId)
             local iconGrid = self._layerRight._layerLeftFormation[teamPositionId]
-            local imageView = ccui.ImageView:create(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+            local teamD = self._teamModel:getTeamAndIndexById(teamId)
+            local className = TeamUtils:getClassIconNameByTeamD(teamD, "classlabel", teamTableData, true)
+            local imageView = ccui.ImageView:create(IconUtils.iconPath .. className .. ".png", 1)
             imageView:setScale(0.75)
             imageView:setPosition(cc.p(iconGrid:getContentSize().width / 2, iconGrid:getContentSize().height / 2))
             iconGrid:addChild(imageView)
@@ -2947,8 +3303,8 @@ function NewFormationView:updateRelative(formationId)
     if formationId == self._formationModel.kFormationTypeTraining and not self:isShowBullet() then
         self._layerLeft._labelFormationName:setString("英雄传记编组")
     elseif self._extend and self._extend.isSimpleFormation then
-		self._layerLeft._labelFormationName:setString("推荐阵容编组")
-	else
+        self._layerLeft._labelFormationName:setString("推荐阵容编组")
+    else
         self._layerLeft._labelFormationName:setString(self._formationModel:getFormationNameById(formationId))
     end
     self._layerLeft._labelCurrentFightScore:setScale(0.58)
@@ -2958,7 +3314,6 @@ function NewFormationView:updateRelative(formationId)
     if scale > 1 then scale = 1 end
     self._layerLeft._labelCurrentFightScore:setScale(scale * 0.58)
     --self._layerLeft._btnFormationSelect:setPositionX()
-
     self._layerRight._layerLeftFormationScore:setString("a"..self:getCurrentFightScore())
 
     local team_count = self:getCurrentLoadedTeamCount()
@@ -3001,9 +3356,9 @@ function NewFormationView:updateAwakingTaskInfo()
     if not self:isShowAwakingTaskInfo() then return end
 
     for i=1, 2 do
-        self._layerLeft._awakingTaskInfo._taskInfo._labelDes[i] = self:getUI("bg.layer_information.info_left.awaking_task_info.label_des_" .. i)
-        self._layerLeft._awakingTaskInfo._taskInfo._labelLoad[i] = self:getUI("bg.layer_information.info_left.awaking_task_info.label_current_load_" .. i)
-        self._layerLeft._awakingTaskInfo._taskInfo._labelValue[i] = self:getUI("bg.layer_information.info_left.awaking_task_info.label_team_value_" .. i)
+        self._layerLeft._awakingTaskInfo._taskInfo._labelDes[i] = self._layer_information:getChildByFullName("info_left.awaking_task_info.label_des_" .. i)
+        self._layerLeft._awakingTaskInfo._taskInfo._labelLoad[i] = self._layer_information:getChildByFullName("info_left.awaking_task_info.label_current_load_" .. i)
+        self._layerLeft._awakingTaskInfo._taskInfo._labelValue[i] = self._layer_information:getChildByFullName("info_left.awaking_task_info.label_team_value_" .. i)
     end
 
     local awakingData = self._awakingModel:getAwakingTaskData()
@@ -3221,7 +3576,6 @@ function NewFormationView:updateLeagueBattleInfo(noAnim)
     self._btnBattle:setSaturation(-100)
     self._btnBattle:getChildByTag(NewFormationView.kBattleLightTag):setVisible(false)
     self._isBattleButtonClicked = true
-    -- self._layerLeft._treasureInfo._imageTreasureInfo:setSaturation(-100)
     self:setFormationLocked(true)
     if not noAnim then
         local mc = mcMgr:createViewMC("zhunbeitexiao_leagueanniuzhunbei", false, true, function(_, sender)
@@ -3264,6 +3618,40 @@ function NewFormationView:updateCloudInfo()
 
     if self._extend.allowBattle then
         self:setFormationLocked(not self._extend.allowBattle[self._context._formationId])
+    end
+end
+
+function NewFormationView:updateStakeInfo(  )
+    if not self:isShowStakeAtkDef2() then return end
+    self._layerLeft._cloudInfo._title1:setVisible(self._context._formationId == self._formationModel.kFormationTypeStakeAtk2)
+    self._layerLeft._cloudInfo._title2:setVisible(self._context._formationId == self._formationModel.kFormationTypeStakeDef2)
+
+    local formationId1 = self._context._formationId
+    local formationId2 = self._formationModel.kFormationTypeStakeAtk2 + self._formationModel.kFormationTypeStakeDef2 - formationId1
+    local formationData = self._layerLeft._teamFormation._data[formationId2]
+
+    self._layerLeft._layerRightFormationScore:setString("a" .. self:getCurrentFightScore(formationId2))
+
+    for i = 1, NewFormationView.kTeamGridCount do
+        self._layerLeft._layerRightFormation._icon[i]:removeAllChildren()
+    end
+
+    self._layerLeft._layerRightFormationTitle:setString(self._context._formationId == self._formationModel.kFormationTypeStakeAtk2 and "防守阵容" or "进攻阵容")
+
+    for i = 1, NewFormationView.kTeamMaxCount do
+        repeat
+            local teamId = formationData[string.format("team%d", i)]
+            if 0 == teamId or not teamId then break end
+            local teamPositionId = formationData[string.format("g%d", i)]
+            local teamTableData = tab.team[teamId]
+            local iconGrid = self._layerLeft._layerRightFormation._icon[teamPositionId]
+            if not iconGrid then break end
+            local className = TeamUtils:getClassIconNameByTeamId(teamId, "classlabel", teamTableData, true)
+            local imageView = ccui.ImageView:create(IconUtils.iconPath .. className .. ".png", 1)
+            imageView:setScale(0.75)
+            imageView:setPosition(cc.p(iconGrid:getContentSize().width / 2, iconGrid:getContentSize().height / 2))
+            iconGrid:addChild(imageView)
+        until true
     end
 end
 
@@ -3362,50 +3750,6 @@ function NewFormationView:updateTreasureInfo(relativeUpdate)
         local tfName = tFormationData.name 
         if not tfName or tfName == "" then tfName = "宝物编组" .. tid end
         self._layerLeft._treasureInfo._name:setString(tfName or "宝物编组")
-        --[[
-        for i=1, 5 do
-            local icon = self._layerLeft._treasureInfo._icon[i]:getChildByName("image_icon")
-            icon:loadTexture("hero_skill_bg2_forma.png",1)
-            -- 空事件
-            self:registerClickEvent(icon,function() end)
-            local comId = tFormationData[tostring(i)]
-            if tonumber(comId) and tonumber(comId) ~= 0 then 
-                local skillId,skillD = tfModel:comId2skillId(tonumber(comId))
-                if skillId and skillD then
-                    local fu = cc.FileUtils:getInstance()
-                    local art = skillD.art or skillD.icon
-                    print("art.......", skillId, art)
-                    if art == nil then
-                        dump(skillD,skillId)
-                    end
-                    local skillImgName
-                    if fu:isFileExist(IconUtils.iconPath .. art .. ".jpg") then
-                        skillImgName = IconUtils.iconPath .. art .. ".jpg"
-                    else
-                        skillImgName = IconUtils.iconPath .. art .. ".png"
-                    end
-                    icon:loadTexture(skillImgName,1)
-                    -- icon:setScale(0.5)
-                    self:registerClickEvent(icon,function() 
-                        local comD = tab.comTreasure[comId]
-                        local comInfo = self._modelMgr:getModel("TreasureModel"):getTreasureById(comId)
-                        local spTalent = self._modelMgr:getModel("SkillTalentModel"):getTalentDataInFormat()
-                        self._viewMgr:showHintView("global.GlobalTipView", 
-                            { 
-                                tipType = 2, 
-                                node = icon, 
-                                id = skillId, 
-                                skillType = comD.addattr[1][1], 
-                                skillLevel = comInfo.stage ,
-                                notAutoClose = true,
-                                treasureInfo = {id=comId,stage=comInfo.stage},
-                                spTalent = spTalent
-                            })
-                    end)
-                end
-            end
-        end
-        ]]
     end
 
     if relativeUpdate then
@@ -3897,22 +4241,23 @@ function NewFormationView:loadGridIcon(iconGrid, iconView)
     -- ui
     if iconType == NewFormationView.kGridTypeTeam or iconType == NewFormationView.kGridTypeHireTeam then
         local teamTableData = self:getTableData(iconType, iconId)
+        local hasSurprise = false
         if teamTableData.enemy and teamTableData.soundEnemy then
             -- 兵团上阵 死敌音效
             local hasEnemy = false
             for k, v in pairs(data) do
                 if string.find(tostring(k), "team") and not string.find(tostring(k), "g") and v == teamTableData.enemy then
-                    hasEnemy = true
+                    hasSurprise = true
                     break
                 end
             end
-            if hasEnemy then
-                if self._selectTeamSoundId then
-                    audioMgr:stopSound(self._selectTeamSoundId)
-                    self._selectTeamSoundId = nil
-                end
-                self._selectTeamSoundId = audioMgr:playSound(teamTableData.soundEnemy)
+        end
+        if hasSurprise then
+            if self._selectTeamSoundId then
+                audioMgr:stopSound(self._selectTeamSoundId)
+                self._selectTeamSoundId = nil
             end
+            self._selectTeamSoundId = audioMgr:playSound(teamTableData.soundEnemy)
         elseif teamTableData.soundtrigger then
             -- 兵团上阵 彩蛋音效
             local hasCompanion = false
@@ -4180,6 +4525,17 @@ function NewFormationView:isPositionLocked(gridIndex)
     return false
 end
 
+function NewFormationView:isSortFront( iconId )
+    if not self._extend then return false end
+    local frontList = self._extend.sortFront or {}
+    for k, v in pairs(frontList) do
+        if v == iconId then
+            return true
+        end
+    end
+    return false
+end
+
 function NewFormationView:isFiltered(iconId)
     if 0 == iconId then return false end
 
@@ -4305,6 +4661,46 @@ function NewFormationView:isHireTeam(teamId)
     return false
 end
 
+function NewFormationView:getUsingHireTeamData( formationId )
+    if not self:isShowHireTeam() then return false end
+    if not self._layerLeft._teamFormation._initFormation then return false end
+    formationId = formationId or self._context._formationId
+    local teamId, _ = self:getLoadedHireTeam(formationId)
+    if teamId == 0 then
+        return nil
+    end
+    if self._extend.hireTeamsInit then
+        for _, v in pairs(self._extend.hireTeams) do
+            if v.teamId == teamId then
+                return clone(v)
+            end
+        end
+    end
+    return nil
+end
+
+function NewFormationView:isShowBackupTag( iconId, iconType )
+    if not table.indexof(self._formationModel.kBackupFormation, self._formationType) then
+        return false
+    end
+    if iconType ~= NewFormationView.kGridTypeTeam then return false end
+    local data = self._layerLeft._teamFormation._data[self._context._formationId]
+    local bid = data.bid
+    local backupTs = data.backupTs or {}
+    if bid == nil then
+        return false
+    end
+    local backupData = backupTs[tostring(bid)]
+    if backupData == nil then return false end
+    for i = 1, 3 do
+        local teamId = backupData["bt" .. i]
+        if teamId and teamId ~= 0 and teamId == iconId then
+            return true
+        end
+    end
+    return false
+end
+
 function NewFormationView:isRecommend(iconId)
     if not (self._formationType == self._formationModel.kFormationTypeAiRenMuWu or 
         self._formationType == self._formationModel.kFormationTypeZombie or 
@@ -4318,7 +4714,14 @@ function NewFormationView:isRecommend(iconId)
         self._formationType == self._formationModel.kFormationTypeElemental4 or
         self._formationType == self._formationModel.kFormationTypeElemental5 or
         self._formationType == self._formationModel.kFormationTypeWeapon or
-        self._formationType == self._formationModel.kFormationTypeWeaponDef) then
+        self._formationType == self._formationModel.kFormationTypeStakeAtk1 or
+        self._formationType == self._formationModel.kFormationTypeWeaponDef or 
+        self._formationType == self._formationModel.kFormationTypeProfession1 or 
+        self._formationType == self._formationModel.kFormationTypeProfession2 or 
+        self._formationType == self._formationModel.kFormationTypeProfession3 or 
+        self._formationType == self._formationModel.kFormationTypeProfession4 or 
+        self._formationType == self._formationModel.kFormationTypeProfession5 or 
+        self._formationType == self._formationModel.kFormationTypeWorldBoss) then
         return false
     end
 
@@ -4358,6 +4761,23 @@ function NewFormationView:isRecommend(iconId)
            self._formationType == self._formationModel.kFormationTypeWeaponDef then
         for _, v in ipairs(self._recommend) do
             if v == iconId then
+                return true
+            end
+        end
+    elseif self._formationType == self._formationModel.kFormationTypeStakeAtk1 then
+        for _, v in ipairs(self._recommend) do
+            if tonumber(v) == tonumber(iconId) then
+                return true
+            end
+        end
+    elseif self._formationType == self._formationModel.kFormationTypeWorldBoss or 
+            self._formationType == self._formationModel.kFormationTypeProfession1 or 
+            self._formationType == self._formationModel.kFormationTypeProfession2 or 
+            self._formationType == self._formationModel.kFormationTypeProfession3 or 
+            self._formationType == self._formationModel.kFormationTypeProfession4 or 
+            self._formationType == self._formationModel.kFormationTypeProfession5 then
+        for _, v in pairs(self._recommend) do
+            if tonumber(v) == tonumber(iconId) then
                 return true
             end
         end
@@ -4522,6 +4942,14 @@ function NewFormationView:isCloudCurrentLoadedTeamEmpty()
     return false
 end
 
+function NewFormationView:isStakeCurrentLoadedTeamEmpty(  )
+    local formationId1 = self._formationModel.kFormationTypeStakeAtk2
+    local formationId2 = self._formationModel.kFormationTypeStakeDef2
+    local count1 = self:getCurrentLoadedTeamCountWithFilter(formationId1)
+    local count2 = self:getCurrentLoadedTeamCountWithFilter(formationId2)
+    return count1 > 0 and count2 > 0
+end
+
 function NewFormationView:isLoadedHeroNull(formationId)
     formationId = tonumber(formationId) or tonumber(self._context._formationId)
     local data = self._layerLeft._teamFormation._data[formationId]
@@ -4542,6 +4970,17 @@ function NewFormationView:isCloudLoadedHeroNull(formationId)
     end
 
     return false
+end
+
+function NewFormationView:isStakeLoadedHeroNull(     )
+    local formationId1 = self._formationModel.kFormationTypeStakeAtk2
+    local formationId2 = self._formationModel.kFormationTypeStakeDef2
+    local formationData1 = self._layerLeft._teamFormation._data[formationId1]
+    local heroId1 = formationData1.heroId
+    local formationData2 = self._layerLeft._teamFormation._data[formationId2]
+    local heroId2 = formationData2.heroId
+
+    return heroId1 and heroId1 ~= 0 and heroId2 and heroId2 ~= 0
 end
 
 function NewFormationView:getCurrentAllowLoadCount()
@@ -4615,6 +5054,18 @@ function NewFormationView:isTeamTypeFiltered(teamData, isUserData)
     end]]
     if race ~= self._layerLeft._layerList._filterType then 
         return true
+    end
+    return false
+end
+
+function NewFormationView:isHeroTypeFiltered( heroData )
+    if 0 == self._layerLeft._layerList._filterHeroType then return false end
+    local heroId = heroData.id or heroData.heroId
+    local heroTableData = tab:Hero(heroId)
+    if heroTableData and heroTableData.masterytype then
+        if heroTableData.masterytype ~= self._layerLeft._layerList._filterHeroType then
+            return true
+        end
     end
     return false
 end
@@ -4725,11 +5176,21 @@ function NewFormationView:initHeroListData()
     else
         data = clone(self._heroModel:getData())
     end
-    local t1, t2 = {}, {}
+
+    if not self._layerLeft._layerList._allHeroInit then
+        self._layerLeft._layerList._allHerosData = clone(data)
+        self._layerLeft._layerList._allHeroInit = true
+    end
+
+    local t1, t2, t3 = {}, {}, {}
     for k, v in pairs(data) do
         repeat
+            if self:isHeroTypeFiltered(v) then break end
             if self:isLoaded(NewFormationView.kGridTypeHero, tonumber(k)) then break end
-            if not self:isFiltered(tonumber(k)) then
+            if self:isSortFront(tonumber(k)) then 
+                v.id = tonumber(k)
+                table.insert(t3, v)
+            elseif not self:isFiltered(tonumber(k)) then
                 v.id = tonumber(k)
                 table.insert(t1, v)
             else
@@ -4753,6 +5214,14 @@ function NewFormationView:initHeroListData()
     table.sort(t2, function(a, b)
         return a.score > b.score
     end)
+
+    table.sort(t3, function ( a, b )
+        return a.score > b.score
+    end)
+
+    for i = 1, #t3 do
+        self._layerLeft._layerList._heroData[#self._layerLeft._layerList._heroData + 1] = t3[i]
+    end
 
     for i = 1, #t1 do
         self._layerLeft._layerList._heroData[#self._layerLeft._layerList._heroData + 1] = t1[i]
@@ -4992,7 +5461,7 @@ function NewFormationView:updateState()
     local iconType = self._layerLeft._hittedIcon:getIconType()
     local iconSubtype = self._layerLeft._hittedIcon:getIconSubtype()
     local isHaveCurrentTeam = self:isHaveCurrentTeam(iconId)
-	--[[
+    --[[
     if self._layerLeft._isItemsLayerHitted then
         if not self._layerLeft._isBeganFromTeamIconGrid and not self._layerLeft._cloneHittedIcon then
             self._layerLeft._cloneHittedIcon = self._layerLeft._hittedIcon:clone()
@@ -5022,7 +5491,7 @@ function NewFormationView:updateState()
         self._layerLeft._isHittedIconSwitched = true
         self._layerLeft._hittedIcon:release()
     end
-	]]
+    ]]
     local validTeamFormation = function(valid)
         if valid then
             local gridIndex = self:getCurrentLeftHittedGridIndex(self._layerLeft._mPosition)
@@ -5273,7 +5742,7 @@ function NewFormationView:fillRelationBuilds(iconType, iconId)
             repeat
                 local buildId = v[1]
                 local buildType = v[2]
-                local items = self._config._formationBuild[buildId]["build" .. buildType]
+                local items = self._config._formationBuild[buildId] and self._config._formationBuild[buildId]["build" .. buildType]
                 if not items then break end
                 if not teams[iconId].relationIds[buildId] then
                     teams[iconId].relationIds[buildId] = {
@@ -5308,7 +5777,7 @@ function NewFormationView:fillRelationBuilds(iconType, iconId)
             repeat
                 local buildId = v[1]
                 local buildType = v[2]
-                local items = self._config._formationBuild[buildId]["build" .. buildType]
+                local items = self._config._formationBuild[buildId] and self._config._formationBuild[buildId]["build" .. buildType]
                 if not items then break end
                 if not heroes[iconId].relationIds[buildId] then
                     heroes[iconId].relationIds[buildId] = {
@@ -5339,7 +5808,7 @@ function NewFormationView:fillRelationBuilds(iconType, iconId)
         repeat
             local buildId = v[1]
             local buildType = v[2]
-            local items = self._config._formationBuild[buildId]["build" .. buildType]
+            local items = self._config._formationBuild[buildId] and self._config._formationBuild[buildId]["build" .. buildType]
             if not items then break end
             local data = nil
             if buildType < 3 then
@@ -5535,16 +6004,34 @@ function NewFormationView:hasRelationEffect(iconType, iconId)
 end
 
 function NewFormationView:onButtonBuildsClicked()
-    local allBuilds = self:getAllRelationBuilds()
-    -- self._layerLeft._relationBuildUI._layerBg
-    -- self._layerLeft._relationBuildUI._scrollviewBuilds
-    -- self._layerLeft._relationBuildUI._layerBuildItem
-    --NewFormationView.kRelationBuildTag = 5000
+    local formationData = self._layerLeft._teamFormation._data[self._context._formationId]
 
+    local teams = {}
+    local heroId = formationData.heroId
+    for i = 1, NewFormationView.kTeamMaxCount do
+        local teamId = tonumber(formationData["team" .. i])
+        if teamId and 0 ~= teamId then
+            teams[teamId] = true
+        end
+    end
+    local backupIds = {}
+    if formationData.bid and formationData.backupTs then
+        local ts = formationData.backupTs[tostring(formationData.bid)] or {}
+        for i = 1, 3 do
+            local id = ts["bt" .. i]
+            if id and id ~= 0 and not teams[id] then
+                teams[id] = true
+                table.insert(backupIds, id)
+            end
+        end
+    end
+    local allBuilds = self._formationModel:getAllRelationBuilds(teams, heroId)
+    local data = {}
     local count = 0
     for k, v in ipairs(allBuilds) do
-        if (v[1] and table.nums(v[1]) > 0) or (v[2] and table.nums(v[2]) > 0) or (v[3] and table.nums(v[3]) > 0) then
+        if (v[1] and table.nums(v[1]) > 0) or (v[2] and table.nums(v[2]) > 0) or (v[3] and table.nums(v[3]) > 0) or (v[4] and table.nums(v[4]) > 0) then
             count = count + 1
+            data[k] = v
         end
     end
     count = math.min(count, 5)
@@ -5553,344 +6040,7 @@ function NewFormationView:onButtonBuildsClicked()
         self._viewMgr:showTip(lang("TIP_BUZHEN_MEIGUANLIAN"))
         return
     end
-    self._layerLeft._relationBuildUI._layer:setVisible(true)
-    local height1 = self._layerLeft._relationBuildUI._scrollviewHeight
-    local height2 = self._layerLeft._relationBuildUI._layerBuildItemHeight
-    local totalHeight = math.max(height2 * count, height1)
-    self._layerLeft._relationBuildUI._scrollviewBuilds:setInnerContainerSize(cc.size(self._layerLeft._relationBuildUI._scrollviewBuilds:getContentSize().width, totalHeight))
-    self._layerLeft._relationBuildUI._scrollviewBuilds:jumpToTop()
-
-    for i=1, 5 do
-        local layerItem = self._layerLeft._relationBuildUI._scrollviewBuilds:getChildByTag(NewFormationView.kRelationBuildTag + i)
-        if layerItem then
-            layerItem:setVisible(false)
-        end
-    end
-
-    for i=1, count do
-        local layerItem = self._layerLeft._relationBuildUI._scrollviewBuilds:getChildByTag(NewFormationView.kRelationBuildTag + i)
-        if not layerItem then
-            layerItem = self._layerLeft._relationBuildUI._layerBuildItem:clone()
-            layerItem:setTag(NewFormationView.kRelationBuildTag + i)
-            self._layerLeft._relationBuildUI._scrollviewBuilds:addChild(layerItem, 5)
-        end
-        layerItem = self._layerLeft._relationBuildUI._scrollviewBuilds:getChildByTag(NewFormationView.kRelationBuildTag + i)
-        layerItem:setPosition(0, totalHeight - height2 * i)
-        layerItem:setVisible(true)
-    end
-
-    local index = 1
-    for buildType, buildValue in ipairs(allBuilds) do
-        local count1 = buildValue[1] and table.nums(buildValue[1]) or 0
-        local count2 = buildValue[2] and table.nums(buildValue[2]) or 0
-        local count3 = buildValue[3] and table.nums(buildValue[3]) or 0
-        if count1 > 0 or count2 > 0 or count3 > 0 then
-            local layerItem = self._layerLeft._relationBuildUI._scrollviewBuilds:getChildByTag(NewFormationView.kRelationBuildTag + index)
-            if layerItem then
-                local buildData = self._config._formationBuild[buildType]
-                if buildData then
-                    local imageIcon = layerItem:getChildByFullName("image_build_icon")
-                    imageIcon:loadTexture("guanlian_" .. buildType .. ".png", 1)
-                    local labelBuildDes = layerItem:getChildByFullName("label_build_des")
-                    labelBuildDes:setString(lang(buildData["lang1"]))
-                    local labelEffect1 = layerItem:getChildByFullName("label_effect_1")
-                    labelEffect1:setString(lang(buildData["lang2"]))
-
-                    if count1 > 0 or count3 > 0 then
-                        for i=1, 7 do
-                            local item = layerItem:getChildByFullName("layer_effect_1.item_" .. i)
-                            item:setVisible(false)
-                        end
-
-                        local items = {}
-                        local heroes = {}
-                        local teams = {}
-                        for k, v in pairs(buildValue[3]) do
-                            table.insert(heroes, {id = k, itemType = 2})
-                        end
-
-                        for k, v in pairs(buildValue[1]) do
-                            table.insert(teams, {id = k, itemType = 1})
-                        end
-
-                        table.sort(teams, function(a, b)
-                            return a.id < b.id
-                        end)
-
-                        for i=1, #heroes do
-                            items[#items + 1] = heroes[i]
-                        end
-
-                        for i=1, #teams do
-                            items[#items + 1] = teams[i]
-                        end
-
-                        for i=1, #items do
-                            local itemData = items[i]
-                            if itemData then
-                                local itemTableData = nil
-                                local iconFileName = ""
-                                local frameFileName = ""
-                                local scale = 1.0
-                                if 1 == itemData.itemType then
-                                    itemTableData = tab:Team(itemData.id)
-                                    iconFileName = itemTableData.art1 .. ".jpg"
-                                    frameFileName = "globalImageUI_squality_jin.png"
-                                    scale = 0.5
-                                elseif 2 == itemData.itemType then
-                                    itemTableData = tab:Hero(itemData.id)
-                                    iconFileName = itemTableData.herohead .. ".jpg"
-                                    frameFileName = "globalImageUI4_heroBg1.png"
-                                    scale = 0.5
-                                end
-                                if itemTableData then
-                                    local item = layerItem:getChildByFullName("layer_effect_1.item_" .. i)
-                                    item:setVisible(true)
-                                    item:setScale(scale)
-                                    item:loadTexture(iconFileName, 1)
-                                    local itemFrame = item:getChildByTag(NewFormationView.kRelationBuildIconFrame)
-                                    if not itemFrame then
-                                        itemFrame = ccui.ImageView:create()
-                                        itemFrame:setTag(NewFormationView.kRelationBuildIconFrame)
-                                        item:addChild(itemFrame, 5)
-                                    end
-                                    itemFrame = item:getChildByTag(NewFormationView.kRelationBuildIconFrame)
-                                    itemFrame:setPosition(item:getContentSize().width / 2, item:getContentSize().height / 2)
-                                    itemFrame:loadTexture(frameFileName, 1)
-                                end
-                            end
-                        end
-                    end
-
-                    local labelEffect2 = layerItem:getChildByFullName("label_effect_2")
-                    labelEffect2:setString(lang(buildData["lang3"]))
-
-                    if count2 > 0 then
-                        for i=1, 7 do
-                            local item = layerItem:getChildByFullName("layer_effect_2.item_" .. i)
-                            item:setVisible(false)
-                        end
-
-                        local items = {}
-
-                        for k, v in pairs(buildValue[2]) do
-                            table.insert(items, {id = k, itemType = 1})
-                        end
-
-                        table.sort(items, function(a, b)
-                            return a.id < b.id
-                        end)
-
-                        for i=1, #items do
-                            local itemData = items[i]
-                            if itemData then
-                                local itemTableData = nil
-                                local iconFileName = ""
-                                local frameFileName = ""
-                                local scale = 1.0
-                                if 1 == itemData.itemType then
-                                    itemTableData = tab:Team(itemData.id)
-                                    iconFileName = itemTableData.art1 .. ".jpg"
-                                    frameFileName = "globalImageUI_squality_jin.png"
-                                    scale = 0.5
-                                elseif 2 == itemData.itemType then
-                                    itemTableData = tab:Hero(itemData.id)
-                                    iconFileName = itemTableData.herohead .. ".jpg"
-                                    frameFileName = "globalImageUI4_heroBg1.png"
-                                    scale = 0.5
-                                end
-                                if itemTableData then
-                                    local item = layerItem:getChildByFullName("layer_effect_2.item_" .. i)
-                                    item:setVisible(true)
-                                    item:setScale(scale)
-                                    item:loadTexture(iconFileName, 1)
-                                    local itemFrame = item:getChildByTag(NewFormationView.kRelationBuildIconFrame)
-                                    if not itemFrame then
-                                        itemFrame = ccui.ImageView:create()
-                                        itemFrame:setTag(NewFormationView.kRelationBuildIconFrame)
-                                        item:addChild(itemFrame, 5)
-                                    end
-                                    itemFrame = item:getChildByTag(NewFormationView.kRelationBuildIconFrame)
-                                    itemFrame:setPosition(item:getContentSize().width / 2, item:getContentSize().height / 2)
-                                    itemFrame:loadTexture(frameFileName, 1)
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-            index = index + 1
-        end
-    end
-end
-
-function NewFormationView:getAllRelationBuilds()
-    --[[
-    self._config._formationBuild = tab.formation_build
-    self._config._formationTeam = tab.formation_team
-    self._config._formationHero = tab.formation_hero
-    self._config._relationBuild = {}
-    ]]
-    --dump(self._config._formationBuild, "self._config._formationBuild")
-    --dump(self._config._formationTeam, "self._config._formationTeam")
-    --dump(self._config._formationHero, "self._config._formationHero")
-    local formationData = self._layerLeft._teamFormation._data[self._context._formationId]
-    if not formationData then return end
-
-    if not self._config._formationBuildReverse then
-        self._config._formationBuildReverse = {}
-        local builds = self._config._formationBuild
-        for k, v in ipairs(builds) do
-            self._config._formationBuildReverse[k] = {}
-            for i=1, 3 do
-                local build = v["build" .. i]
-                for _, v0 in ipairs(build) do
-                    if not self._config._formationBuildReverse[k][v0] then
-                        self._config._formationBuildReverse[k][v0] = {}
-                    end
-                    table.insert(self._config._formationBuildReverse[k][v0], i)
-                end
-            end
-        end
-    end
-
-    --dump(self._config._formationBuildReverse, "self._config._formationBuildReverse[k][v0]", 10)
-
-    local teams = {}
-    local heroId = formationData.heroId
-    for i=1, NewFormationView.kTeamMaxCount do
-        local teamId = tonumber(formationData["team" .. i])
-        if teamId and 0 ~= teamId then
-            --table.insert(teams, tonumer(formationData["team" .. i]))
-            teams[teamId] = true
-        end
-    end
-
-    local allBuilds = {}
-    for i = 1, 5 do
-        allBuilds[i] = {{}, {}, {}}
-    end
-
-    local buildsReverse = self._config._formationBuildReverse
-
-    --dump(teams, "teams", 5)
-    for teamId, _ in pairs(teams) do
-        repeat
-            local builds = self._config._formationTeam[teamId]
-            if not builds then break end
-            builds = builds["build"]
-            if not builds then break end
-            --dump(builds, "builds", 5)
-            for _, build in ipairs(builds) do
-                local buildId1 = build[1]
-                --print("buildId1", buildId1)
-                local buildId2 = build[2]
-                --print("buildId2", buildId2)
-                local relationItems = self._config._formationBuild[buildId1]["build" .. buildId2]
-                --dump(relationItems, "relationItems", 5)
-                if buildId2 < 3 then
-                    for _, item in ipairs(relationItems) do
-                        if teams[item] then
-                            --[[
-                            if not allBuilds[buildId1] then
-                                allBuilds[buildId1] = {{}, {}}
-                            end
-                            ]]
-                            local buildIds = buildsReverse[buildId1][teamId]
-                            if buildIds then
-                                for _, id in ipairs(buildIds) do
-                                    allBuilds[buildId1][id][teamId] = true
-                                end
-                            end
-                            buildIds = buildsReverse[buildId1][item]
-                            if buildIds then
-                                for _, id in ipairs(buildIds) do
-                                    allBuilds[buildId1][id][item] = true
-                                end
-                            end
-                        end
-                    end
-                else
-                    for _, item in ipairs(relationItems) do
-                        if heroId == item then
-                            --[[
-                            if not allBuilds[buildId1] then
-                                allBuilds[buildId1] = {{}, {}}
-                            end
-                            ]]
-                            local buildIds = buildsReverse[buildId1][teamId]
-                            if buildIds then
-                                for _, id in ipairs(buildIds) do
-                                    allBuilds[buildId1][id][teamId] = true
-                                end
-                            end
-                            buildIds = buildsReverse[buildId1][item]
-                            if buildIds then
-                                for _, id in ipairs(buildIds) do
-                                    allBuilds[buildId1][id][item] = true
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        until true
-    end
-
-    if heroId and 0 ~= heroId then
-        local builds = self._config._formationHero[heroId]
-        if builds then 
-            builds = builds["build"]
-            --dump(builds, "builds", 5)
-            if builds then 
-                for _, build in ipairs(builds) do
-                    local buildId1 = build[1]
-                    local buildId2 = build[2]
-                    local relationItems = self._config._formationBuild[buildId1]["build" .. buildId2]
-                    if buildId2 < 3 then
-                        for _, item in ipairs(relationItems) do
-                            if teams[item] then
-                                --[[
-                                if not allBuilds[buildId1] then
-                                    allBuilds[buildId1] = {{}, {}}
-                                end
-                                ]]
-                                local buildIds = buildsReverse[buildId1][heroId]
-                                for _, id in ipairs(buildIds) do
-                                    allBuilds[buildId1][id][heroId] = true
-                                end
-                                buildIds = buildsReverse[buildId1][item]
-                                for _, id in ipairs(buildIds) do
-                                    allBuilds[buildId1][id][item] = true
-                                end
-                            end
-                        end
-                    end
-                    --[[
-                    if buildId2 < 3 then
-                        for _, item in ipairs(relationItems) do
-                            if teams[item] then
-                                allBuilds[buildId1][1][teamId] = true
-                                allBuilds[buildId1][2][item] = true
-                            end
-                        end
-                    else
-                        for _, item in ipairs(relationItems) do
-                            if heroId == item then
-                                allBuilds[buildId1][1][teamId] = true
-                                allBuilds[buildId1][2][item] = true
-                            end
-                        end
-                    end
-                    ]]
-                end
-            end
-        end
-    end
-
-    --dump(allBuilds, "allBuilds", 10)
-
-    return allBuilds
+    self._viewMgr:showDialog("formation.FormationCombinationDialog", {relationData = data, backupIds = backupIds})
 end
 
 function NewFormationView:onIconTouchBegan(iconView, x, y)
@@ -6159,6 +6309,9 @@ function NewFormationView:onLayerLeftTouchEnded(_, x, y, _, specifiedIndex)
                     if iconGrid:isStateValid() then
                         self:loadGridIcon(iconGrid, self._layerLeft._cloneHittedIcon)
                         isFormationReplaced = true
+                        if self:isShowBackupTag(iconId, iconType) then
+                            self._viewMgr:showTip(lang("backup_Tips3"))
+                        end
                     else
                         self._layerLeft._cloneHittedIcon:removeFromParent()
                     end
@@ -6277,7 +6430,13 @@ function NewFormationView:onLayerLeftTouchEnded(_, x, y, _, specifiedIndex)
     if isFormationReplaced then
         self:updateRelative()
         self:refreshItemsTableView()
-        self:updateFilterType()
+        self:updateBackupInfo()
+        local gridType = self._context._gridType[self._context._formationId]
+        if gridType == NewFormationView.kGridTypeTeam then
+            self:updateFilterType()
+        elseif gridType == NewFormationView.kGridTypeHero then
+            self:updateHeroFilterType()
+        end
     end
     --self:onShowDescriptionView(iconType, iconId)
     if self._layerLeft._hittedIcon and self._layerLeft._hittedIcon.onClickingEnded then
@@ -6423,12 +6582,16 @@ function NewFormationView:onLayerRightTouchCancelled(_, x, y)
 end
 
 function NewFormationView:showItemFlag(item)
-    if not self:isShowCloudInfo() then return end
     local found = false
     local itemType = item:getIconType()
     local itemId = item:getIconId()
 
     if self:isFiltered(itemId) then return false end
+
+    if not self:isShowCloudInfo() then
+        item:showBackupTag(self:isShowBackupTag(itemId, itemType))
+        return 
+    end
 
     local formationId = self._formationModel.kFormationTypeCloud1 + self._formationModel.kFormationTypeCloud2 - self._context._formationId
     local formationData = self._layerLeft._teamFormation._data[formationId]
@@ -6449,6 +6612,7 @@ function NewFormationView:showItemFlag(item)
     if not found then 
         item:showRedFlag(false)
         item:showBlueFlag(false)
+        item:showBackupTag(self:isShowBackupTag(itemId, itemType))
         return 
     end
 
@@ -6544,6 +6708,9 @@ function NewFormationView:itemsTableViewCellAtIndex(tableView, idx)
             item:showFilter(self:isFiltered(iconId))
             item:showRecommand(self:isRecommend(iconId))
         end
+        -- if not self:isFiltered(iconId) then
+        --     item:showBackupTag(self:isShowBackupTag(iconId, iconType))
+        -- end
         if iconType == NewFormationView.kGridTypeHero then
             item:showScenarioHero(self:isScenarioHero(iconId))
         end
@@ -6564,6 +6731,9 @@ function NewFormationView:itemsTableViewCellAtIndex(tableView, idx)
             item:showFilter(self:isFiltered(iconId))
             item:showRecommand(self:isRecommend(iconId))
         end
+        -- if not self:isFiltered(iconId) then
+        --     item:showBackupTag(self:isShowBackupTag(iconId, iconType))
+        -- end
         if iconType == NewFormationView.kGridTypeHero then
             item:showScenarioHero(self:isScenarioHero(iconId))
         end
@@ -6625,6 +6795,32 @@ function NewFormationView:isSaveRequired(formationId)
         return true
     end
 
+    if table.indexof(self._formationModel.kBackupFormation, self._context._formationId) then
+        if ta.bid ~= tb.bid then
+            return true
+        end
+
+        local backupData = clone(tab.backupMain)
+        local taBackupTs = ta.backupTs or {}
+        local tbBackupTs = tb.backupTs or {}
+        for k, v in pairs(backupData) do
+            local data1 = taBackupTs[tostring(v.id)] or {}
+            local data2 = tbBackupTs[tostring(v.id)] or {}
+            if data1["bt1"] ~= data2["bt1"] then
+                return true
+            end
+            if data1["bt2"] ~= data2["bt2"] then
+                return true
+            end
+            if data1["bt3"] ~= data2["bt3"] then
+                return true
+            end
+            if data1["bpos"] ~= data2["bpos"] then
+                return true
+            end
+        end
+    end
+
     return false
 end
 
@@ -6646,14 +6842,14 @@ function NewFormationView:doSimpleClose()
                         end,
                         callback2 = function()
                         end},true) --]]
-		self._viewMgr:showTip(lang("hero_comment_4"))
+        self._viewMgr:showTip(lang("hero_comment_4"))
         return
     end
     if self._closeCallBack then
-		local closeFormation = function()
-			self:doClose()
-		end
-		self._closeCallBack(idList, closeFormation)
+        local closeFormation = function()
+            self:doClose()
+        end
+        self._closeCallBack(idList, closeFormation)
     end
 --    self:doClose()
 end
@@ -6740,101 +6936,98 @@ function NewFormationView:doCloudClose()
     end
 end
 
-function NewFormationView:onButtonTreasureIconClicked(index)
-    print("onButtonTreasureIconClicked", index)
-end
-
-function NewFormationView:onButtonChangeTreasureClicked()
-    print("onButtonChangeTreasureClicked")
+function NewFormationView:onButtonEditInfoClicked(  )
     if self:isFormationLocked() then return end
-    if not self:isShowCloudInfo() then
-        self:doChangeTreasureClicked()
-    else
-        self:doChangeCloudTreasureClicked()
-    end
-end
-
-function NewFormationView:doChangeTreasureClicked()
-    local changeTFormFunc = function( )
-        local formationData = self._layerLeft._teamFormation._data[self._context._formationId]
-        self._viewMgr:showDialog("treasure.TreasureSelectFormDialog",{
-            tFormId = formationData.tid or 1,
-            formationId = self._context._formationId,
-            callback = function( formId )
-                -- self._layerLeft._teamFormation._data = clone(self._formationModel:getFormationData())
-                -- self._layerLeft._teamFormation._allowLoadCount = self:getCurrentAllowLoadCount()
-                formationData.tid = formId
-                self:updateTreasureInfo(true)
-            end})
-    end
     -- 改变宝物编组前先保存编组
-    if self:isSaveRequired() then
-        self:doSave(function(success)
-            if not success then
-                self._viewMgr:showTip(lang("TIP_BUZHEN_3"))
-                return
-            end
-            changeTFormFunc()
-        end)
-    else
-        changeTFormFunc()
-    end
-end
 
-function NewFormationView:doChangeCloudTreasureClicked()
-    local changeTFormFunc = function( )
-        local formationData = self._layerLeft._teamFormation._data[self._context._formationId]
-        self._viewMgr:showDialog("treasure.TreasureSelectFormDialog",{
-            tFormId = formationData.tid or 1,
-            formationId = self._context._formationId,
-            callback = function( formId )
-                -- self._layerLeft._teamFormation._data = clone(self._formationModel:getFormationData())
-                -- self._layerLeft._teamFormation._allowLoadCount = self:getCurrentAllowLoadCount()
-                formationData.tid = formId
-                self:updateTreasureInfo(true)
-            end})
-    end
-    -- 改变宝物编组前先保存编组
-    local formationId1 = self._context._formationId
-    local formationId2 = self._formationModel.kFormationTypeCloud1 + self._formationModel.kFormationTypeCloud2 - formationId1
-    if self:isSaveRequired(formationId1) or self:isSaveRequired(formationId2) then
-        self:doCloudSave(function(success)
-            if not success then
-                self._viewMgr:showTip(lang("TIP_BUZHEN_3"))
-                return
-            end
-            changeTFormFunc()
-        end)
-    else
-        changeTFormFunc()
-    end
-end
-
-function NewFormationView:onButtonChangePokedexClicked()
-    print("onButtonChangePokedexClicked")
-    if self:isFormationLocked() then return end
+    local formationData = self._layerLeft._teamFormation._data[self._context._formationId]
     local pFormation = self._pokedexModel:getPFormation()
-    UIUtils:reloadLuaFile("pokedex.PokedexSFromDialog")
-    self._viewMgr:showDialog("pokedex.PokedexSFromDialog", {data = pFormation, callback = function()
-        self:updatePokedexInfo(true)
-    end})
+    self._formationModel:showFormationEditView({
+        isShowTreasure = self:isShowTreasureInfo(),
+        isShowPokedex = self:isShowPokedexInfo(),
+        tFormId = formationData.tid or 1,
+        formationId = self._context._formationId,
+        pokedexData = pFormation,
+        hireTeamData = self:getUsingHireTeamData(),
+        callback = function ( formId )
+            formationData.tid = formId
+            self:updateRelative()
+            -- self:updatePokedexInfo(true)
+            -- self:updateTreasureInfo(true)
+        end,
+        fieldCallback = function ( areaSkillTeam )
+            formationData.areaSkillTeam = areaSkillTeam
+        end
+    })
 end
 
+-- function NewFormationView:onButtonChangeTreasureClicked()
+--     if self:isFormationLocked() then return end
+--     if not self:isShowCloudInfo() then
+--         self:doChangeTreasureClicked()
+--     else
+--         self:doChangeCloudTreasureClicked()
+--     end
+-- end
+
+-- function NewFormationView:doChangeTreasureClicked()
+--     local changeTFormFunc = function( )
+--         local formationData = self._layerLeft._teamFormation._data[self._context._formationId]
+--         self._viewMgr:showDialog("treasure.TreasureSelectFormDialog",{
+--             tFormId = formationData.tid or 1,
+--             formationId = self._context._formationId,
+--             callback = function( formId )
+--                 -- self._layerLeft._teamFormation._data = clone(self._formationModel:getFormationData())
+--                 -- self._layerLeft._teamFormation._allowLoadCount = self:getCurrentAllowLoadCount()
+--                 formationData.tid = formId
+--                 self:updateTreasureInfo(true)
+--             end})
+--     end
+--     -- 改变宝物编组前先保存编组
+--     if self:isSaveRequired() then
+--         self:doSave(function(success)
+--             if not success then
+--                 self._viewMgr:showTip(lang("TIP_BUZHEN_3"))
+--                 return
+--             end
+--             changeTFormFunc()
+--         end)
+--     else
+--         changeTFormFunc()
+--     end
+-- end
+
+-- function NewFormationView:doChangeCloudTreasureClicked()
+--     local changeTFormFunc = function( )
+--         local formationData = self._layerLeft._teamFormation._data[self._context._formationId]
+--         self._viewMgr:showDialog("treasure.TreasureSelectFormDialog",{
+--             tFormId = formationData.tid or 1,
+--             formationId = self._context._formationId,
+--             callback = function( formId )
+--                 -- self._layerLeft._teamFormation._data = clone(self._formationModel:getFormationData())
+--                 -- self._layerLeft._teamFormation._allowLoadCount = self:getCurrentAllowLoadCount()
+--                 formationData.tid = formId
+--                 self:updateTreasureInfo(true)
+--             end})
+--     end
+--     -- 改变宝物编组前先保存编组
+--     local formationId1 = self._context._formationId
+--     local formationId2 = self._formationModel.kFormationTypeCloud1 + self._formationModel.kFormationTypeCloud2 - formationId1
+--     if self:isSaveRequired(formationId1) or self:isSaveRequired(formationId2) then
+--         self:doCloudSave(function(success)
+--             if not success then
+--                 self._viewMgr:showTip(lang("TIP_BUZHEN_3"))
+--                 return
+--             end
+--             changeTFormFunc()
+--         end)
+--     else
+--         changeTFormFunc()
+--     end
+-- end
 
 function NewFormationView:onBattleButtonClicked()
-    if not self:isShowCloudInfo() then
-        if self:isSaveRequired() then
-            self:doSave(function(success)
-                if not success then
-                    self._viewMgr:showTip(lang("TIP_BUZHEN_3"))
-                    return
-                end
-                self:doBattle()
-            end)
-            return
-        end
-        self:doBattle()
-    else
+    if self:isShowCloudInfo() then
         local formationId1 = self._context._formationId
         local formationId2 = self._formationModel.kFormationTypeCloud1 + self._formationModel.kFormationTypeCloud2 - formationId1
         if self:isSaveRequired(formationId1) or self:isSaveRequired(formationId2) then
@@ -6848,6 +7041,32 @@ function NewFormationView:onBattleButtonClicked()
             return
         end
         self:doCloudBattle()
+    elseif self:isShowStakeAtkDef2() then
+        local formationId1 = self._context._formationId
+        local formationId2 = self._formationModel.kFormationTypeStakeAtk2 + self._formationModel.kFormationTypeStakeDef2 - formationId1
+        if self:isSaveRequired(formationData1) then
+            self:doSave(function ( success )
+                if not success then
+                    self._viewMgr:showTip("TIP_BUZHEN_3")
+                    return
+                end
+                self:doStakeBattle()
+            end)
+            return
+        end
+        self:doStakeBattle()
+    else
+        if self:isSaveRequired() then
+            self:doSave(function(success)
+                if not success then
+                    self._viewMgr:showTip(lang("TIP_BUZHEN_3"))
+                    return
+                end
+                self:doBattle()
+            end)
+            return
+        end
+        self:doBattle()
     end
 end
 
@@ -6924,6 +7143,11 @@ function NewFormationView:doBattle()
         self._viewMgr:showSelectDialog(lang("TIP_YINDAOBUZHEN_BUMAN"), "", function()
             beforeBattle()
         end, "")
+    elseif self._formationModel:isFieldSkillEmpty(self._formationType, self:getUsingHireTeamData()) and not self._formationModel:isShowFieldDialogByType(self._formationType) then
+        self._formationModel:setShowFieldDialogByType(self._formationType)
+        self._viewMgr:showSelectDialog(lang("LINGYUTIPS_COMMON"), "", function()
+            beforeBattle()
+        end, "")
     else
         beforeBattle()
     end
@@ -6958,15 +7182,93 @@ function NewFormationView:doCloudBattle()
             self._battleCallBack(formationId1, battleData1[1], formationId2, battleData2[1])
         end
     end
-
     if not self:isTeamLoadedFull() and self:isShowBattleTip() and not self._formationModel.getFormationDialogShowed() then
         self._formationModel.setFormationDialogShowed(true)
         self._viewMgr:showSelectDialog(lang("TIP_YINDAOBUZHEN_BUMAN"), "", function()
             battle()
         end, "")
+    elseif self._formationModel:isFieldSkillEmpty(self._formationModel.kFormationTypeCloud1, self:getUsingHireTeamData()) and not self._formationModel:isShowFieldDialogByType(self._formationModel.kFormationTypeCloud1) then
+        self._formationModel:setShowFieldDialogByType(self._formationModel.kFormationTypeCloud1)
+        self._viewMgr:showSelectDialog(lang("LINGYUTIPS_LIGHT"), "", function()
+            battle()
+        end, "")
+    elseif self._formationModel:isFieldSkillEmpty(self._formationModel.kFormationTypeCloud2, self:getUsingHireTeamData()) and not self._formationModel:isShowFieldDialogByType(self._formationModel.kFormationTypeCloud2) then
+        self._formationModel:setShowFieldDialogByType(self._formationModel.kFormationTypeCloud2)
+        self._viewMgr:showSelectDialog(lang("LINGYUTIPS_DARK"), "", function()
+            battle()
+        end, "")
+    else
+        if self._backupModel:isOpen() then
+            local teamUsing = self:getUsingTeamList()
+            local formationId1 = self._formationModel.kFormationTypeCloud1
+            local formationData1 = self._layerLeft._teamFormation._data[formationId1]
+            local formationId2 = self._formationModel.kFormationTypeCloud2
+            local formationData2 = self._layerLeft._teamFormation._data[formationId2]
+            local isHaveConflictTeam1 = self._backupModel:isHaveConflictTeam(formationData1.backupTs, formationData1.bid, clone(teamUsing))
+            local isHaveConflictTeam2 = self._backupModel:isHaveConflictTeam(formationData2.backupTs, formationData2.bid, clone(teamUsing))
+            if isHaveConflictTeam1 or isHaveConflictTeam2 then
+                self._viewMgr:showSelectDialog(lang("backup_Tips8"), "", function (  )
+                    battle()
+                end, "")
+                return
+            end
+            local isHaveEmptySeat1 = self._backupModel:isHaveEmptySeat(formationData1.backupTs, formationData1.bid, {}, clone(teamUsing))
+            local isHaveEmptySeat2 = self._backupModel:isHaveEmptySeat(formationData2.backupTs, formationData2.bid, {}, clone(teamUsing))
+            if isHaveEmptySeat1 or isHaveEmptySeat2 then
+                self._viewMgr:showSelectDialog(lang("backup_Tips9"), "", function (  )
+                    battle()
+                end, "")
+                return
+            end
+        end
+        battle()
+    end
+end
+
+function NewFormationView:doStakeBattle(  )
+    if not self:isStakeCurrentLoadedTeamEmpty() then
+        self._viewMgr:showTip(lang("STAKE_USER2_TIPS"))
+        return
+    end
+
+    if not self:isStakeLoadedHeroNull() then
+        self._viewMgr:showTip(lang("STAKE_USER1_TIPS"))
+        return
+    end
+
+    local battle = function()
+        local formationId1 = self._formationModel.kFormationTypeStakeAtk2
+        local formationData1 = self._layerLeft._teamFormation._data[formationId1]
+        local formationId2 = self._formationModel.kFormationTypeStakeDef2
+        local formationData2 = self._layerLeft._teamFormation._data[formationId2]
+        local battleData1 = self._formationModel:initBattleData(formationId1, clone(formationData1))
+        local battleData2 = self._formationModel:initBattleData(formationId2, clone(formationData2))
+        if self._battleCallBack and type(self._battleCallBack) == "function" then
+            self._battleCallBack(formationId1, battleData1[1], formationId2, battleData2[1])
+        end
+    end
+
+    if self._formationModel:isFieldSkillEmpty(self._formationModel.kFormationTypeStakeAtk2, self:getUsingHireTeamData()) and not self._formationModel:isShowFieldDialogByType(self._formationModel.kFormationTypeStakeAtk2) then
+        self._formationModel:setShowFieldDialogByType(self._formationModel.kFormationTypeStakeAtk2)
+        self._viewMgr:showSelectDialog(lang("LINGYUTIPS_ATTACK"), "", function()
+            battle()
+        end, "")
+    elseif self._formationModel:isFieldSkillEmpty(self._formationModel.kFormationTypeStakeDef2, self:getUsingHireTeamData()) and not self._formationModel:isShowFieldDialogByType(self._formationModel.kFormationTypeStakeDef2) then
+        self._formationModel:setShowFieldDialogByType(self._formationModel.kFormationTypeStakeDef2)
+        self._viewMgr:showSelectDialog(lang("LINGYUTIPS_DEFEND"), "", function()
+            battle()
+        end, "")
     else
         battle()
     end
+
+    -- if not self:isTeamLoadedFull() and self:isShowBattleTip() and not self._formationModel.getFormationDialogShowed() then
+    --     self._formationModel.setFormationDialogShowed(true)
+    --     self._viewMgr:showSelectDialog(lang("TIP_YINDAOBUZHEN_BUMAN"), "", function()
+    --         battle()
+    --     end, "")
+    -- else
+    -- end
 end
 
 function NewFormationView:doSave(callback)
@@ -7093,6 +7395,55 @@ function NewFormationView:switchCloudFormation()
     if self:isSaveRequired(formationId1) or self:isSaveRequired(formationId2) then
         self._viewMgr:lock(-1)
         self:doCloudSave(function(success)
+            if not success then
+                self._viewMgr:showTip(lang("TIP_BUZHEN_3"))
+                return
+            end
+            doSwitchFormation()
+            self._viewMgr:unlock()
+        end)
+    else
+        self._viewMgr:lock(-1)
+        doSwitchFormation()
+        self._viewMgr:unlock()
+    end
+end
+
+function NewFormationView:switchStakeFormation(  )
+    local formationId1 = self._context._formationId
+    local formationId2 = self._formationModel.kFormationTypeStakeAtk2 + self._formationModel.kFormationTypeStakeDef2 - formationId1
+
+    if self._context._formationId == formationId2 then return end
+
+    local doSwitchFormation = function (  )
+        self._context._formationId = formationId2
+        self._layerLeft._teamFormation._data = clone(self._formationModel:getFormationData())
+        self._layerLeft._teamFormation._allowLoadCount = self:getCurrentAllowLoadCount()
+        self:updateUI()
+
+        for i = 1, NewFormationView.kTeamGridCount do
+            local iconTeamGrid = self._layerLeft._teamFormation._grid[i]
+            if iconTeamGrid:isStateFull() then
+                iconTeamGrid:onLoaded()
+            end
+        end
+
+        local iconGrid = self._layerLeft._heroFormation._grid
+        if iconGrid:isStateFull() then
+            iconGrid:onLoaded()
+        end
+
+        for i = 1, NewFormationView.kInsMaxCount do
+            local iconGrid = self._layerLeft._insFormation._grid[i]
+            if iconGrid:isStateFull() then
+                iconGrid:onLoaded()
+            end
+        end
+    end
+
+    if self:isSaveRequired(formationId1) or self:isSaveRequired(formationId2) then
+        self._viewMgr:lock(01)
+        self:doSave(function ( success )
             if not success then
                 self._viewMgr:showTip(lang("TIP_BUZHEN_3"))
                 return

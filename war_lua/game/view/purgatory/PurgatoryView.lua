@@ -101,6 +101,7 @@ function PurgatoryView:initView(  )
     self._stageInfos = self._purModel:getStageInfos()
     self:addTableView()
     self:updateInfo()
+    self:updatePrompt()
 
     self._purModel:showBuffSelectDialog(nil, function (  )
         self:checkWinFirstStageGuide()
@@ -298,7 +299,14 @@ function PurgatoryView:onHide()
 
 end
 
+function PurgatoryView:updatePrompt(  )
+    local isHaveRedPrompt = self._purModel:isHaveRedPrompt()
+    local rewardBtn = self:getUI('bg.panel.buttons.rewardBtn')
+    UIUtils.addRedPoint(rewardBtn, isHaveRedPrompt)
+end
+
 function PurgatoryView:updateView(  )
+    self:updatePrompt()
     if self._reflashTop then
         return
     end
@@ -854,7 +862,7 @@ end
 function PurgatoryView:initBattleData( stageId )
     local battleData = clone(self._stageInfos[stageId])
     local cfg = tab.purFight[stageId]
-    dump(cfg,"cfg----------")
+    -- dump(cfg,"cfg----------")
 
     local enemyFormation = {}
     -- 组布阵信息
@@ -877,8 +885,23 @@ function PurgatoryView:initBattleData( stageId )
     hero.star = cfg.herostar or 1
     hero.level = 1
     local slevel = cfg.heroskill or 1
+    for i = 1, 5 do
+        hero["sl" .. i] = slevel
+    end
     hero.slevel = {slevel, slevel, slevel, slevel, slevel}
+    -- hero.slot = {}
+    -- hero.slot.s = slevel
     hero.hAb = cfg.herobase
+
+    battleData.lv = cfg.lv or 1
+
+    if hero.exSkill then
+        if hero.exSkill[1] then
+            hero.slot = {}
+            hero.slot.sid = hero.exSkill[1]
+            hero.slot.s = hero.exSkill[2]
+        end
+    end
 
     -- 初始化npc数据
     battleData.npc = {}
@@ -896,10 +919,21 @@ function PurgatoryView:initBattleData( stageId )
         end
         count = count + 1
     end
-    -- 拼接觉醒
+    if battleData.treasures then
+        hero.treasure = {}
+        for k, v in pairs(battleData.treasures) do
+            hero.treasure[k] = {stage = v, treasureDev = {}, inTForm = true}
+        end
+    end    
+    local heroSpellPower = cfg["herospellpower"]
+    if heroSpellPower and #heroSpellPower == 2 then
+        local enemyBuff = hero.buff or {}
+        enemyBuff[heroSpellPower[1]] = (enemyBuff[heroSpellPower[1]] or 0) + heroSpellPower[2]
+        hero.buff = enemyBuff
+    end
 
 
-    dump(battleData,"battleData============")
+    -- dump(battleData,"battleData============")
 
     return battleData
 end
@@ -928,7 +962,7 @@ function PurgatoryView:afterPurgatoryBattle( data,callback,token )
     if data.win then
         win = 1
     end
-    dump(data,"afterPurgatoryBattle",2)
+    -- dump(data,"afterPurgatoryBattle",2)
     -- 后端统计数据要加入time by guojun 2016.9.6
     local crash
     if data.isSurrender then
@@ -946,7 +980,7 @@ function PurgatoryView:afterPurgatoryBattle( data,callback,token )
                 token =token}
     self._serverMgr:sendMsg("PurgatoryServer", "atkAfterPurgatory", 
         param, true, {}, function(result)
-        dump(result)
+        -- dump(result)
         data.reward = result.reward
         if result["cheat"] == 1 then
             data.failed = true

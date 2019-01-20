@@ -12,33 +12,33 @@ local NewFormationView = require("game.view.formation.NewFormationView")
 function NewFormationView:onInitEx()
     self._userModel = self._modelMgr:getModel("UserModel")
     self._godWarInfo = {}
-    self._godWarInfo._layer = self:getUI("bg.layer_information.info_left.god_war_info")
+    self._godWarInfo._layer = self._layer_information:getChildByFullName("info_left.god_war_info")
     self._godWarInfo._layer:setVisible(true)
-    self._godWarInfo._btnLeft = self:getUI("bg.layer_information.info_left.god_war_info.image_switch_bg.btn_left")
+    self._godWarInfo._btnLeft = self._layer_information:getChildByFullName("info_left.god_war_info.image_switch_bg.btn_left")
     self:registerClickEvent(self._godWarInfo._btnLeft, function()
         self:onButtonLeftClicked()
     end)
-    self._godWarInfo._btnRight = self:getUI("bg.layer_information.info_left.god_war_info.image_switch_bg.btn_right")
+    self._godWarInfo._btnRight = self._layer_information:getChildByFullName("info_left.god_war_info.image_switch_bg.btn_right")
     self:registerClickEvent(self._godWarInfo._btnRight, function()
         self:onButtonRightClicked()
     end)
-    self._godWarInfo._labelTitle = self:getUI("bg.layer_information.info_left.god_war_info.image_switch_bg.label_title")
+    self._godWarInfo._labelTitle = self._layer_information:getChildByFullName("info_left.god_war_info.image_switch_bg.label_title")
     self._godWarInfo._labelTitle:enable2Color(1, cc.c4b(255, 232, 125, 255))
     self._godWarInfo._labelTitle:enableOutline(cc.c4b(60, 30, 10, 255), 1)
-    self._godWarInfo._labelRemainTime1 = self:getUI("bg.layer_information.info_left.god_war_info.image_switch_bg.label_remain_time_1")
+    self._godWarInfo._labelRemainTime1 = self._layer_information:getChildByFullName("info_left.god_war_info.image_switch_bg.label_remain_time_1")
     self._godWarInfo._labelRemainTime1:enableOutline(cc.c4b(60, 30, 10, 255), 1)
-    self._godWarInfo._labelRemainTime2 = self:getUI("bg.layer_information.info_left.god_war_info.image_switch_bg.label_remain_time_2")
+    self._godWarInfo._labelRemainTime2 = self._layer_information:getChildByFullName("info_left.god_war_info.image_switch_bg.label_remain_time_2")
     self._godWarInfo._labelRemainTime2:enableOutline(cc.c4b(60, 30, 10, 255), 1)
-    self._godWarInfo._labelRemainTime3 = self:getUI("bg.layer_information.info_left.god_war_info.image_switch_bg.label_remain_time_3")
+    self._godWarInfo._labelRemainTime3 = self._layer_information:getChildByFullName("info_left.god_war_info.image_switch_bg.label_remain_time_3")
     self._godWarInfo._labelRemainTime3:enableOutline(cc.c4b(60, 30, 10, 255), 1)
-    --self._godWarInfo._layerFormationSelect = self:getUI("bg.layer_information.info_left.city_battle_info.layer_formation_select")
-    --self._godWarInfo._buttonQuickFormat = self:getUI("bg.layer_information.info_left.god_war_info.layer_formation_select.btn_quick_format")
-    self._godWarInfo._buttonSwapFormation = self:getUI("bg.layer_information.info_left.god_war_info.layer_formation_select.btn_swap_formation")
+    --self._godWarInfo._layerFormationSelect = self._layer_information:getChildByFullName("info_left.city_battle_info.layer_formation_select")
+    --self._godWarInfo._buttonQuickFormat = self._layer_information:getChildByFullName("info_left.god_war_info.layer_formation_select.btn_quick_format")
+    self._godWarInfo._buttonSwapFormation = self._layer_information:getChildByFullName("info_left.god_war_info.layer_formation_select.btn_swap_formation")
     self:registerClickEvent(self._godWarInfo._buttonSwapFormation, function()
         self:onButtonSwapClicked()
     end)
 
-    self._godWarInfo._buttonQuickSave = self:getUI("bg.layer_information.info_left.god_war_info.layer_formation_select.btn_quick_save")
+    self._godWarInfo._buttonQuickSave = self._layer_information:getChildByFullName("info_left.god_war_info.layer_formation_select.btn_quick_save")
     self:registerClickEvent(self._godWarInfo._buttonQuickSave, function()
         --self:onButtonQuickFormatClicked()
         self:onButtonSaveClicked()
@@ -48,16 +48,16 @@ function NewFormationView:onInitEx()
     self._godWarInfo._formationPreview._dirty = true
     for i=1, 3 do
         self._godWarInfo._formationPreview[i] = {}
-        self._godWarInfo._formationPreview[i]._layer = self:getUI("bg.layer_information.info_left.god_war_info.layer_formation_select.layer_formation_" .. i)
+        self._godWarInfo._formationPreview[i]._layer = self._layer_information:getChildByFullName("info_left.god_war_info.layer_formation_select.layer_formation_" .. i)
         self:registerClickEvent(self._godWarInfo._formationPreview[i]._layer, function()
             self:onButtonFormationSelectClicked(i)
         end)
-        self._godWarInfo._formationPreview[i]._labelIndex = self:getUI("bg.layer_information.info_left.god_war_info.layer_formation_select.layer_formation_" .. i .. ".label_index")
+        self._godWarInfo._formationPreview[i]._labelIndex = self._layer_information:getChildByFullName("info_left.god_war_info.layer_formation_select.layer_formation_" .. i .. ".label_index")
         self._godWarInfo._formationPreview[i]._labelIndex:enableOutline(cc.c4b(60, 30, 10, 255), 1)
-        self._godWarInfo._formationPreview[i]._imageSelected = self:getUI("bg.layer_information.info_left.god_war_info.layer_formation_select.layer_formation_" .. i .. ".image_selected")
+        self._godWarInfo._formationPreview[i]._imageSelected = self._layer_information:getChildByFullName("info_left.god_war_info.layer_formation_select.layer_formation_" .. i .. ".image_selected")
         self._godWarInfo._formationPreview[i]._formationUI = {}
         for j=1, NewFormationView.kTeamGridCount do
-            self._godWarInfo._formationPreview[i]._formationUI[j] = self:getUI("bg.layer_information.info_left.god_war_info.layer_formation_select.layer_formation_" .. i .. ".formation_icon_" .. j)
+            self._godWarInfo._formationPreview[i]._formationUI[j] = self._layer_information:getChildByFullName("info_left.god_war_info.layer_formation_select.layer_formation_" .. i .. ".formation_icon_" .. j)
         end
     end
 
@@ -297,7 +297,8 @@ function NewFormationView:updateFormationPreview(updateAll)
                 local teamPositionId = formationData[string.format("g%d", i)]
                 local teamTableData = tab:Team(teamId)
                 local iconGrid = self._godWarInfo._formationPreview[currentIndex]._formationUI[teamPositionId]
-                local imageView = ccui.ImageView:create(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+                local className = TeamUtils:getClassIconNameByTeamId(teamId, "classlabel", teamTableData)
+                local imageView = ccui.ImageView:create(IconUtils.iconPath .. className .. ".png", 1)
                 imageView:setScale(0.75)
                 imageView:setPosition(cc.p(iconGrid:getContentSize().width / 2, iconGrid:getContentSize().height / 2))
                 iconGrid:addChild(imageView)
@@ -462,6 +463,8 @@ function NewFormationView:onButtonSwapClicked()
         {
             container = self, 
             formationData = clone(self._layerLeft._teamFormation._data),
+            swapType = 1,
+            formationId = self._formationModel.kFormationTypeGodWar1,
             callback1 = function(newFormationData)
                 for formationId = self._formationModel.kFormationTypeGodWar1, self._formationModel.kFormationTypeGodWar3 do
                     self._layerLeft._teamFormation._data[formationId] = clone(newFormationData[formationId])
@@ -503,16 +506,23 @@ function NewFormationView:onButtonChangeTreasureClicked()
     print("onButtonChangeTreasureClicked")
     if self:isFormationLocked() then return end
     local changeTFormFunc = function( )
+        local changeTFormFunc = function( )
         local formationData = self._layerLeft._teamFormation._data[self._context._formationId]
-        self._viewMgr:showDialog("treasure.TreasureSelectFormDialog",{
+        local pFormation = self._pokedexModel:getPFormation()
+        self._modelMgr:getModel("FormationModel"):showFormationEditView({
+            isShowTreasure = self:isShowTreasureInfo(),
+            isShowPokedex = self:isShowPokedexInfo(),
             tFormId = formationData.tid or 1,
             formationId = self._context._formationId,
-            callback = function( formId )
-                -- self._layerLeft._teamFormation._data = clone(self._formationModel:getFormationData())
-                -- self._layerLeft._teamFormation._allowLoadCount = self:getCurrentAllowLoadCount()
+            pokedexData = pFormation,
+            hireTeamData = self:getUsingHireTeamData(),
+            callback = function ( formId )
                 formationData.tid = formId
-                self:updateTreasureInfo()
-            end})
+                -- self:updatePokedexInfo(true)
+                -- self:updateTreasureInfo(true)
+            end
+            })
+    end
     end
     -- 改变宝物编组前先保存编组
     if self:getSaveRequiredInfo() then

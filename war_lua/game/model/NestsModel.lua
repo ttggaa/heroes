@@ -25,7 +25,6 @@ function NestsModel:setData(data)
             self._nestsData[k] = v
         end
         self:reflashData("update")
-        dump(self._nestsData)
 
     end
 end

@@ -65,7 +65,6 @@ function LeagueAwardView:onInit()
     -- 五点刷新，自己控制数据，早一秒刷新
     self:registerTimer(5,0,0,function( )
         print("regisetTimer.............")
-        anum:setString(0)
         self._activeNum = 0
         local anum = self._activePanel:getChildByName("num")
         anum:setString("0")
@@ -83,7 +82,6 @@ function LeagueAwardView:onInit()
             tempTodayTime = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(nowTime,"%Y-%m-%d 05:00:00"))
             if nowTime >= tempTodayTime and nowTime < tempTodayTime+10 and resetInFiveClock then
                 resetInFiveClock = false
-                anum:setString(0)
                 self._activeNum = 0
                 local anum = self._activePanel:getChildByName("num")
                 anum:setString("0")

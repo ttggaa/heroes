@@ -19,8 +19,6 @@ function LimitItemsServer:onGetLimitItemsInfo(result, error)
 		return
 	end
 
-	self._ltAwkModel:setIsReqed(true)
-	self._ltAwkModel:setData(result)
 	self:callback(result, error)
 end
 
@@ -47,12 +45,12 @@ function LimitItemsServer:onGetLimitItemsBox(result, error)
 end
 
 function LimitItemsServer:onPushNotice(result)
-	-- dump(result, "onPushNotice", 10)
+	dump(result, "onPushNotice", 10)
 	if result == nil or next(result) == nil then
 		return
 	end
 
-	self._ltAwkModel:insertNotice(result)
+	self._ltAwkModel:insertNoticeById(result)
 end
 
 function LimitItemsServer:handleAboutServerData(result)

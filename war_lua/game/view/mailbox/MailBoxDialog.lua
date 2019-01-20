@@ -54,8 +54,12 @@ function MailBoxDialog:onInit()
 end
 
 function MailBoxDialog:reflashUI(data)
-    dump(data, "data=========", 10)
+   --  dump(data, "data=========", 10)
+   --  local tempTable = clone(data)
+   -- tempTable["att"][1] = {"heroshadows",1001,10}
+
     self._mail = data
+    dump(self._mail)
     local maxHeight = 0
     self._content:setVisible(true)
     if table.nums(self._mail.att) ~= 0 then
@@ -233,7 +237,7 @@ function MailBoxDialog:setAttachment()
             if mailIcon then
                 self._appendList:pushBackCustomItem(mailIcon)
             end  
-         elseif _type == "avatarFrame" then
+        elseif _type == "avatarFrame" then
 
             local frameData = tab:AvatarFrame(itemId)
             param = {itemId = itemId, itemData = frameData,eventStyle = 0}
@@ -243,7 +247,27 @@ function MailBoxDialog:setAttachment()
             mailIcon:setContentSize(cc.size(76, 78))
             if mailIcon then
                 self._appendList:pushBackCustomItem(mailIcon)
-            end  
+            end
+        elseif _type == "rune" then
+            local itemData = tab:Rune(itemId)
+            mailIcon = IconUtils:createHolyIconById({suitData = itemData,num=itemNum})
+            mailIcon:setScale(0.75)
+            mailIcon:setContentSize(cc.size(76, 78))
+            if mailIcon then
+                self._appendList:pushBackCustomItem(mailIcon)
+            end
+        elseif _type == "heroShadow" then
+            local itemData = tab:HeroShadow(itemId)
+            mailIcon =IconUtils:createShadowIcon({itemData = itemData,count = itemNum})
+            mailIcon.iconColor.nameLab:setVisible(false)
+            mailIcon:setScale(0.78)
+            mailIcon:setContentSize(cc.size(78, 78))
+            if mailIcon then
+                self._appendList:pushBackCustomItem(mailIcon)
+            end
+            local quality = itemData.avaQuality and (itemData.avaQuality + 3) or 1
+            local color = UIUtils.colorTable["ccUIBaseColor"..quality]
+            mailIcon.iconColor.nameLab:setColor(color)
         elseif _type == "tool" then
             local toolD = tab:Tool(itemId)
             local param = {itemId = itemId,itemData = toolD,num = itemNum,eventStyle = 1, swallowTouches = true, effect = true}

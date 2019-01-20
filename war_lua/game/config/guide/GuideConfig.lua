@@ -4,7 +4,7 @@
     Datetime:    2015-12-21 16:12:05
     Description: File description
 --]]
-local debug = false
+local debug = true
 if GameStatic.showGuideDebug ~= nil then 
 	debug = GameStatic.showGuideDebug
 end

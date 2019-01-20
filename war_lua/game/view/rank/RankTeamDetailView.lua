@@ -12,6 +12,8 @@ function RankTeamDetailView:ctor(params)
     self._teamId = tonumber(params.data.team.teamId)
     self._heroData = params.data.heros or {}
     self._runes = params.data.runes or {}
+    self._battleArray = params.data.battleArray
+    self._pTalents = params.data.pTalents
     self._teamModel = self._modelMgr:getModel("TeamModel")
     -- self._crusadeModel = self._modelMgr:getModel("CrusadeModel")
     -- self._arenaModel = self._modelMgr:getModel("ArenaModel")
@@ -54,8 +56,13 @@ function RankTeamDetailView:onInit()
     local label_title1 = self:getUI("bg.layer.layer_right.team_info_1.label_title")
     UIUtils:setTitleFormat(label_title1, 3)
     self._teamInfo2 = self:getUI("bg.layer.layer_right.team_info_2")
+    self._teamInfo3 = self:getUI("bg.layer.layer_right.team_info_3")
+    self._teamInfo2:setVisible(false)
+    self._teamInfo3:setVisible(false)
     local label_title2 = self:getUI("bg.layer.layer_right.team_info_2.label_title")
     UIUtils:setTitleFormat(label_title2, 3)
+    local label_title3 = self:getUI("bg.layer.layer_right.team_info_3.label_title")
+    UIUtils:setTitleFormat(label_title3, 3)
 
     self._isAwaking,self._awakingLvl = TeamUtils:getTeamAwaking(self._teamData)
     self:updateLeftPanel()
@@ -63,6 +70,7 @@ function RankTeamDetailView:onInit()
     -- 新逻辑:增加放大镜按钮点击出 cg图 by guojun 
     UIUtils:createShowCGBtn( self:getUI("bg.layer.layer_left") ,{id=self._teamId,isTeam=true,pos = cc.p(240,410)} )
     UIUtils:createHolyDetailBtn( self:getUI("bg.layer.layer_left") ,{teamData = self._teamData,runes = self._runes,pos = cc.p(240,350)} )
+    UIUtils:createExclusiveInfoNode(self:getUI("bg.layer.layer_left"), {teamData = self._teamData, pos = cc.p(240, 290)})
 end
 
 function RankTeamDetailView:updateLeftPanel()
@@ -70,11 +78,11 @@ function RankTeamDetailView:updateLeftPanel()
     --   teamName, art1, art2, art3 ,art4
     local teamName = self._teamTableData.name
     local steam = self._teamTableData.steam
-    if self._isAwaking then
+    -- if self._isAwaking then
         teamName,_,_,steam = TeamUtils:getTeamAwakingTab(self._teamData)
-    end
-
-	self._classType:setBackGroundImage(IconUtils.iconPath .. self._teamTableData.classlabel .. ".png", 1)
+    -- end
+    local className = TeamUtils:getClassIconNameByTeamD(self._teamData, "classlabel", self._teamTableData)
+	self._classType:setBackGroundImage(IconUtils.iconPath .. className .. ".png", 1)
     self._classType:setAnchorPoint(0.5,0.5)
     self._classType:setScaleAnim(true)
     self._classType:setPosition(28,22)
@@ -168,7 +176,7 @@ function RankTeamDetailView:updateRightPanel()
 	local label_life_des = self._teamInfo1:getChildByFullName("label_life_des")
     -- label_life_des:setColor(UIUtils.colorTable.ccUIBaseColor1)
     -- label_life_des:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor,2)
-	label_zizhi_des:setString(tonumber(self._teamTableData.zizhi)+12)
+	label_zizhi_des:setString(self._modelMgr:getModel("TeamModel"):getTeamZiZhiText(tonumber(self._teamTableData.zizhi)))
 	local tempEquips = {}
     for i=1,4 do
     	local tempEquip = {}
@@ -179,7 +187,7 @@ function RankTeamDetailView:updateRightPanel()
         table.insert(tempEquips, tempEquip)
     end
 
-    local backData, backSpeed, atkSpeed = BattleUtils.getTeamBaseAttr(self._teamData, tempEquips, self._pokedexData)
+    local backData, backSpeed, atkSpeed = BattleUtils.getTeamBaseAttr(self._teamData, tempEquips, self._pokedexData, nil, nil, nil, nil, nil, self._battleArray, self._pTalents)
 	-- dump(backData,"backData===>")
     -- local attr = BattleUtils.getTeamBaseAttr_treasure(self._treasureData)
     local teamModel = self._modelMgr:getModel("TeamModel")
@@ -228,13 +236,21 @@ function RankTeamDetailView:updateRightPanel()
     value = TeamUtils.getNatureNums(value)
     label_life_des:setString(value)
 
-    local dazhaoImg = self._teamInfo2:getChildByFullName("dazhao")
+    local showSkill = self._teamModel:getTeamSkillShowSort(self._teamData, true)
+    local teamInfoNode = self._teamInfo2
+    local iconScale = 0.8
+    if #showSkill == 5 then
+        teamInfoNode = self._teamInfo3
+        iconScale = 0.7
+    end
+    teamInfoNode:setVisible(true)
+    local dazhaoImg = teamInfoNode:getChildByFullName("dazhao")
     dazhaoImg:setZOrder(10)
     dazhaoImg:setVisible(false)
-	--展示技能Icon
+    --展示技能Icon
     local rune = self._teamData.rune
-	for i = 1, 4 do
-        local iconPanel = self._teamInfo2:getChildByFullName("layer_skill_icon_" .. i)
+	for i = 1, #showSkill do
+        local iconPanel = teamInfoNode:getChildByFullName("layer_skill_icon_" .. i)
         local labelName = iconPanel:getChildByFullName("label_skill_name")
         labelName:setFontName(UIUtils.ttfName)
         labelName:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
@@ -242,10 +258,11 @@ function RankTeamDetailView:updateRightPanel()
         local labelLevel = iconPanel:getChildByFullName("label_skill_level")
         local imageLocked = iconPanel:getChildByFullName("image_skill_locked")
 
-        local lv = self._teamData["sl" .. i]
+        local showIndex = showSkill[i]
+        local lv = self._teamData["sl" .. showIndex] or 0
         local skillLevel = lv
-        local skillType = self._teamTableData.skill[i][1]
-        local skillId = self._teamTableData.skill[i][2]
+        local skillType = self._teamTableData.skill[showIndex][1]
+        local skillId = self._teamTableData.skill[showIndex][2]
         local skillTableData = SkillUtils:getTeamSkillByType(skillId, skillType)
 
         --圣徽加成 技能等级
@@ -269,13 +286,8 @@ function RankTeamDetailView:updateRightPanel()
         labelLevel:setVisible(skillLevel > 0)
         imageLocked:setVisible(skillLevel <= 0)
         -- dump(skillTableData,"skillTableData")
-        local icon = IconUtils:createTeamSkillIconById({teamSkill = skillTableData, teamData = self._teamData, level = lv,addLevel=addLevel, eventStyle = 1})
-        icon:setScale(0.8)
-        icon:setPosition(cc.p(-5, -5))
-        iconPanel:addChild(icon)
-        labelName:setString(lang(skillTableData.name))
-
         labelLevel:setString("Lv." .. lv)
+        
         if skillLevel > 0 and addLevel > 0 and ((uSkill and i == 1) or (sSkill and i ~= 1)) then
             local addTxt = ccui.Text:create()
             addTxt:setFontName(UIUtils.ttfName)
@@ -285,10 +297,21 @@ function RankTeamDetailView:updateRightPanel()
             addTxt:setColor(UIUtils.colorTable.ccUIBaseColor9)
             addTxt:setPosition(labelLevel:getPositionX()+labelLevel:getContentSize().width,labelLevel:getPositionY())
             iconPanel:addChild(addTxt,2)
+        else
+            addLevel = 0
         end
+        local icon = IconUtils:createTeamSkillIconById({teamSkill = skillTableData, teamData = self._teamData, level = lv,addLevel=addLevel, eventStyle = 1})
+        icon:setScale(iconScale)
+        icon:setPosition(cc.p(-5, -5))
+        iconPanel:addChild(icon)
+        labelName:setString(lang(skillTableData.name))
         if skillTableData.dazhao and skillTableData.dazhao == 1 then 
             dazhaoImg:setVisible(true)  
-            dazhaoImg:setPosition(iconPanel:getPositionX()+18, iconPanel:getPositionY()+64)    
+            local dazhaoPos = cc.p(iconPanel:getPositionX()+18, iconPanel:getPositionY()+64)
+            if #showSkill == 5 then
+                dazhaoPos = cc.p(iconPanel:getPositionX()+18, iconPanel:getPositionY()+55)
+            end
+            dazhaoImg:setPosition(dazhaoPos)    
             -- 大招跟着icon缩放
             -- local dazhaoImg = ccui.ImageView:create()
             -- dazhaoImg:loadTexture("label_big_skill_hero.png",1)
@@ -299,6 +322,21 @@ function RankTeamDetailView:updateRightPanel()
             -- dazhaoParent:addChild(dazhaoImg)     
         end
 
+        local lingyuImg = iconPanel:getChildByFullName("lingyuImg")
+        if lingyuImg then
+            lingyuImg:setVisible(false)
+        end
+        if skillTableData.lingyu and skillTableData.lingyu == 1 then
+            if not lingyuImg then
+                lingyuImg = ccui.ImageView:create()
+                lingyuImg:loadTexture("label_big_skill_lingyu.png", 1)
+                lingyuImg:setPosition(15, iconPanel:getContentSize().height - 15)
+                lingyuImg:setRotation(-25)
+                iconPanel:addChild(lingyuImg)
+                lingyuImg:setScale(0.85)
+            end
+            lingyuImg:setVisible(true)
+        end
     end
 
 end
@@ -313,7 +351,7 @@ function RankTeamDetailView:getHolyExtPorp(rune)
         for i=1,6 do
             local key = rune[tostring(i)]
             if key and key ~= 0 then
-                local stoneData = self._runes[tostring(key)]
+                local stoneData = self._runes[tostring(key)] or self._runes[key]
                 lv = lv + stoneData.lv-1
             end
         end

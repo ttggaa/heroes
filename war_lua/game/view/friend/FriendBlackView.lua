@@ -110,15 +110,16 @@ function FriendBlackView:creatCell(data, idx)
 
 	--avatar
 	local headIcon = item:getChildByFullName("avatar")
+    local headP = {avatar = data["avatar"], tp = 4,avatarFrame = data["avatarFrame"], plvl = data["plvl"]}
 	if not headIcon then
-		headIcon = IconUtils:createHeadIconById({avatar = data["avatar"], tp = 4,avatarFrame = data["avatarFrame"]}) 
+		headIcon = IconUtils:createHeadIconById(headP) 
 	    headIcon:setAnchorPoint(0, 0.5)
 	    headIcon:setPosition(19, item:getContentSize().height/2)
         headIcon:setScale(0.95)
 	    headIcon:setName("avatar")
 	    item:addChild(headIcon, 2)
 	else
-		IconUtils:updateHeadIconByView(self._avatar,{avatar = data["avatar"], tp = 4,avatarFrame = data["avatarFrame"]}) 
+		IconUtils:updateHeadIconByView(self._avatar, headP) 
 	end
 
 	--name
@@ -136,7 +137,8 @@ function FriendBlackView:creatCell(data, idx)
 
 	--lv
     local lvLab = item:getChildByFullName("lvLab")  
-    lvLab:setString("等级: " .. (data["lvl"] or data["lv"]))
+    local inParam = {lvlStr = "等级: " .. (data["lvl"] or data["lv"]), lvl = (data["lvl"] or data["lv"]), plvl = data.plvl, disY = 15}
+    UIUtils:adjustLevelShow(lvLab, inParam, 1)
     -- lvLab:setPosition(120, 48)
     
     --alliance

@@ -22,9 +22,16 @@ function ArrowSever:onSyncArrowData(result, error)
 	if error ~= 0 then
 		return
 	end
-	-- dump(result, "onSyncArrowData", 10)
+	dump(result, "onSyncArrowData", 10)
 	
 	--重置数据
+	local boxReward = {}
+	local arrowData = self._arrowModel:getData()
+    if arrowData and arrowData["arrow"] and arrowData["arrow"]["rewards"] then
+        boxReward = clone(arrowData["arrow"]["rewards"])
+    end
+    self._arrowModel:setBeforeSyncBoxData(boxReward)
+
 	self._userModel:getData().arrowNum = -1
 	self._arrowModel:initData()
 	self:handleAboutServerData(result)

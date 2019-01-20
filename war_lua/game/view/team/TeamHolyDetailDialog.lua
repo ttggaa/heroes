@@ -46,9 +46,9 @@ function TeamHolyDetailDialog:updateLeftPanel()
     --   teamName, art1, art2, art3 ,art4
     local teamName = self._teamTableData.name
     local steam = self._teamTableData.steam
-    if self._isAwaking then
+    -- if self._isAwaking then
         teamName,_,_,steam = TeamUtils:getTeamAwakingTab(self._teamData)
-    end
+    -- end
     
     local teamImg = self:getUI("bg.layer.layer_left.teamPanel.team_img")
     teamImg:loadTexture("asset/uiother/steam/" .. steam .. ".png")
@@ -335,7 +335,9 @@ function TeamHolyDetailDialog:processData( data )
         value.quality = runeTab.quality 
         value.jackType = runeTab.type  
         value.make = runeTab.make
-        if v.p and type(v.p) ~= "" then 
+        if v.p and type(v.p) == "table" then
+
+        elseif v.p and type(v.p) ~= "" then 
        		value.p = json.decode(v.p)
        	else
        		value.p = {}

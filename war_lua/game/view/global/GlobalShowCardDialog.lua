@@ -102,7 +102,9 @@ function GlobalShowCardDialog:reflashUI(data)
 	local toolD = tab:Tool(data.itemId)
 	print(data.itemId)
 	dump(data)
-	local teamD = tab:Team(data.itemId-3000)
+    --由于team表中的新阵营加了超出4位数的结构，所以这里通过以前的方法获取碎片数据就有问题了 dongcheng 2018.6.2
+--    local teamD = tab:Team(data.itemId - 3000)
+	local teamD = tab:Team(tonumber(string.sub(data.itemId, 2)))
 	if not teamD then
 		-- local 
 	end
@@ -465,10 +467,12 @@ function GlobalShowCardDialog:initTeamDes( teamId )
 		end
 	end
 	-- [[单独设置左下 信息 板子内容
+	local zizhiNum = teamD.zizhi or 1
+	zizhiNum = self._modelMgr:getModel("TeamModel"):getTeamZiZhiText(zizhiNum)
 	local leftBottomPanel = self:getUI("bg1.leftBottomPanel")
 	local settingTab = {
 		{name="zhenying",value=lang("RACE_" .. (teamD.race[1] or 101))},
-		{name="zizhi",value=(teamD.zizhi or 1)+12},
+		{name="zizhi",value=zizhiNum},
 		{name="num",value=self._modelMgr:getModel("TeamModel"):getTeamVolume({teamId = teamD.id})},
 		{name="zhenyingdes",value="阵营："},
 		{name="zizhides",value="资质："},
@@ -499,6 +503,9 @@ function GlobalShowCardDialog:initTeamDes( teamId )
 			end
 		end
 	end
+	local zizhiTemp = leftBottomPanel:getChildByFullName("zizhi")
+	local zizhiImgTemp = leftBottomPanel:getChildByFullName("zizhiImg")
+	zizhiImgTemp:setPositionX(zizhiTemp:getPositionX() + zizhiTemp:getContentSize().width + zizhiImgTemp:getContentSize().width / 2)
 	-- 兵团类型
 	local classImg = rightTopPanel:getChildByFullName("class")
 	classImg:loadTexture(IconUtils.iconPath .. teamD.classlabel .. ".png",1)

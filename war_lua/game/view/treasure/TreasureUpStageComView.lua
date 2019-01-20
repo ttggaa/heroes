@@ -76,7 +76,6 @@ function TreasureUpStageComView:initBasicInfo(id,stage )
 	local panelW, panelH = self._attPanel:getContentSize().width,self._attPanel:getContentSize().height+5
 	self._panelH = panelH
 	local x,y = panelW/2+60,self._fightPanel:getPositionY()	
-	
 	local idx = 0
 	self._panels = {}
 	self._new:setVisible(false)
@@ -155,7 +154,7 @@ function TreasureUpStageComView:initBasicInfo(id,stage )
 		formationSkillType = BattleUtils.kIconTypeHeroSpecialty
 	end
 	-- des = BattleUtils.getDescription(formationSkillType, skillId, attributes, 1)
-	des = "[color=fae0bc, fontsize=20]" .. self:generateDes(math.min(stage+1,maxComStage)) .. "[-]" -- "[color=fae0bc, fontsize=20]" .. BattleUtils.getDescription(formationSkillType, skillId, attributes, 1) .. "[-]"
+	des = "[color=fae0bc, fontsize=20]" .. self:generateDes(math.min(stage+1,maxComStage)).."[-]" -- "[color=fae0bc, fontsize=20]" .. BattleUtils.getDescription(formationSkillType, skillId, attributes, 1) .. "[-]"
 	-- print("skilldes ...... ....",des)
 	local skillDesRich = RichTextFactory:create(des,skillDes:getContentSize().width,skillDes:getContentSize().height)
     skillDesRich:formatText()
@@ -170,11 +169,11 @@ function TreasureUpStageComView:initBasicInfo(id,stage )
 	--]]
 	y = y - 50
 	skillDes:setPositionY(y)
+	y = y - (46 -skillDesRich:getRealSize().height )
 	y = y - skillDesRich:getRealSize().height
 	-- for i,v in ipairs(self._panels) do
 	-- 	v:setPosition(panelW, y+offsety-idx*panelH)
 	-- end
-
 	local disData = tab.comTreasure[id]
     local unlockData = disData.unlockaddattr
     local addAttrsData = disData.addattr
@@ -215,7 +214,7 @@ function TreasureUpStageComView:initBasicInfo(id,stage )
         local addValue = addAttrsData[unlockIdx][2]
 
         -- dump(addAttrsData)
-
+        
         local des = lang("HEROMASTERYDES_" .. addValue)
         if des == "" then
             des = lang("PLAYERSKILLDES2_" .. addValue)

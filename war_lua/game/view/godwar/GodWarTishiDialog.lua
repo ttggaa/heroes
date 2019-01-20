@@ -46,7 +46,7 @@ function GodWarTishiDialog:reflashUI(data)
     self:registerClickEvent(gotoBtn, function()
         self._serverMgr:sendMsg("GodWarServer", "getJoinList", {}, true, {}, function (result)
             self:close()
-            ViewManager:getInstance():switchView("godwar.GodWarView")
+            ViewManager:getInstance():showView("godwar.GodWarView")
         end)
     end)
 end

@@ -557,7 +557,7 @@ function TreasureSelectSkillView:initEditPanel( )
 	end)
 	self:registerClickEventByName("bg.layer.editPanel.listBtn",function() 
 		-- 展示编组列表
-		self._viewMgr:showDialog("treasure.TreasureSelectFormDialog",{tFormId = self._curFormId,callback = function( formId )
+		self._modelMgr:getModel("FormationModel"):showFormationEditView({tFormId = self._curFormId, isOnly = "treasure", callback = function( formId )
 			if formId and self._tFModel:getData()[formId] then
 				print("formId in changing....back ...........",formId)
 				self._curFormId = formId 

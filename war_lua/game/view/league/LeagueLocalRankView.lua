@@ -348,7 +348,8 @@ function LeagueLocalRankView:reflashNo1( data )
 	-- levelBg:setVisible(true)
 	-- detailBtn:setVisible(true)
 	name:setString(data.name)
-	level:setString("Lv." .. (data.lvl or ""))
+	local inParam = {lvlStr = "Lv." .. (data.level or data.lvl or 0), lvl = (data.level or data.lvl or 0), plvl = data.plvl}
+    UIUtils:adjustLevelShow(level, inParam, 1)
 	local guildName = data.guildName 	
 	if guildName and guildName ~= "" then 
 		guild:setVisible(true)
@@ -722,7 +723,7 @@ function LeagueLocalRankView:createRoleHead(data,headNode,scaleNum)
 	local lvl = data.lvl
 
     local tencetTp = data["qqVip"]
-	local icon = IconUtils:createHeadIconById({avatar = avatarName,tp = 3 ,level = lvl,avatarFrame = data["avatarFrame"], tencetTp = tencetTp})
+	local icon = IconUtils:createHeadIconById({avatar = avatarName,tp = 3 ,level = lvl,avatarFrame = data["avatarFrame"], tencetTp = tencetTp, plvl = data.plvl})
 	icon:setName("avatarIcon")
 	icon:setAnchorPoint(cc.p(0.5,0.5))
 	icon:setScale(scale)

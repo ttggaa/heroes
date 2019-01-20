@@ -37,7 +37,7 @@ function HandbookView:getAsyncRes()
 end
 
 function HandbookView:setNavigation()
-	self._viewMgr:showNavigation("global.UserInfoView",{titleTxt = "领主手册"})
+    self._viewMgr:showNavigation("global.UserInfoView",{titleTxt = "领主手册"})
 end
 
 function HandbookView:onBeforeAdd(callback, errorCallback)
@@ -55,7 +55,9 @@ function HandbookView:onBeforeAdd(callback, errorCallback)
 end
 
 function HandbookView:initData()
-    self._tableData = {}
+    self._tableData = {}    
+    self._specialIndex = nil    -- 斯坦德威克特殊处理index
+    self._specialNum = 0        -- 斯坦德威克事件影响的任务个数
     for k, v in pairs(tab.gameplayOpen) do
         table.insert(self._tableData, v)
     end
@@ -70,27 +72,45 @@ function HandbookView:initData()
 
     local newTab = {}
     for i = 1, #self._tableData do
+        local data = self._tableData[i]
         local userLv = self._userModel:getPlayerLevel()
         if userLv < self._tableData[i].requiresLevel then   
             if self._maxPreviewIndex == nil then
                 self._maxPreviewIndex = math.min(i + self._previewCount, self._gamePlayOpenLen)
             end
-
             -- 未开启最多显示六个
             if i <= self._maxPreviewIndex then
-                table.insert(newTab, self._tableData[i])
+                if data.LinkGroup and data.LinkGroup == 1 then
+                    self._specialNum = self._specialNum + 1
+                    if not self._specialIndex then
+                        self._specialIndex = #newTab + 1
+                        local dataTemp = {}
+                        dataTemp.id = "special"
+                        table.insert(newTab, dataTemp)
+                        table.insert(newTab, dataTemp)
+                    end
+                end
+                table.insert(newTab, data)
             else
                 break
             end
         else
-            table.insert(newTab, self._tableData[i])
-
-            self._newOpenLv = math.max(self._newOpenLv, self._tableData[i].requiresLevel)
+            if data.LinkGroup and data.LinkGroup == 1 then
+                self._specialNum = self._specialNum + 1
+                if not self._specialIndex then
+                    self._specialIndex = #newTab + 1
+                    local dataTemp = {}
+                    dataTemp.id = "special"
+                    table.insert(newTab, dataTemp)
+                    table.insert(newTab, dataTemp)
+                end
+            end
+            table.insert(newTab, data)
+            self._newOpenLv = math.max(self._newOpenLv, data.requiresLevel)
         end
     end
-
     self._tableData = newTab
-
+    -- dump(self._tableData,"_tableData==>",5)
     self._checkData = self._hModel:getCheckData()
 end
 
@@ -118,7 +138,8 @@ function HandbookView:onInit()
 
     self:formatLabel(self:getUI("bg.layer.outputLabel"), nil, "产出:",  UIUtils.ttfName_Title, nil)
 
-    self:formatLabel(self:getUI("bg.layer.titleBg.titleLabel"), UIUtils.colorTable.ccUIBaseTextColor2, "冒险任务", UIUtils.ttfName_Title,nil)
+    self:formatLabel(self:getUI("bg.layer.titleBg.titleLabel"), UIUtils.colorTable.ccUIBaseTextColor2, 
+        "冒险任务", UIUtils.ttfName_Title,nil)
 
     self:formatLabel(self:getUI("bg.layer.taskTitle"), UIUtils.colorTable.ccUIBaseTextColor2,
         "完成所有任务可获得",  UIUtils.ttfName_Title)
@@ -251,7 +272,7 @@ function HandbookView:reflashUI(isInit)
     -- 跳到最后一个标示“新” 优先级（2）
     if jumpTab == nil then
         for i = 1, #self._tableData do
-            if SystemUtils["enable" .. self._tableData[i].system]() 
+            if self._tableData[i].id ~= "special" and SystemUtils["enable" .. self._tableData[i].system]() 
                 and userlvl >= self._tableData[i].requiresLevel 
                 and not self:hasChecked(self._tableData[i]) then
                 jumpTab = i
@@ -276,12 +297,14 @@ function HandbookView:reflashUI(isInit)
         if jumpTab == nil then
             -- 跳转到下一个未解锁功能
             for i = 1, #self._tableData do
-                if not SystemUtils["enable" .. self._tableData[i].system] then
-                    self._viewMgr:showTip("systemOpen或gameplayOpen表问题")
-                end
-                if not SystemUtils["enable" .. self._tableData[i].system]() or userlvl < self._tableData[i].requiresLevel then
-                    jumpTab = i
-                    break
+                if self._tableData[i].id ~= "special" then
+                    if not SystemUtils["enable" .. self._tableData[i].system] then
+                        self._viewMgr:showTip("systemOpen或gameplayOpen表问题")
+                    end
+                    if not SystemUtils["enable" .. self._tableData[i].system]() or userlvl < self._tableData[i].requiresLevel then
+                        jumpTab = i
+                        break
+                    end
                 end
             end
 
@@ -436,16 +459,28 @@ function HandbookView:reflashHandbookInfo()
         end
     end
 
+    if not self._nameLabel._lockTxt then
+        local lockTxt = cc.Label:createWithTTF("(需要斯坦德威克活动结束)", UIUtils.ttfName_Title, 20)
+        lockTxt:setColor(cc.c3b(181,0,3))
+        --    lockTxt:enable2Color(1, cc.c4b(213, 184, 118, 255))
+        -- lockTxt:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
+        lockTxt:setAnchorPoint(0,0.5)
+        self._nameLabel._lockTxt = lockTxt
+        self:getUI("bg.layer"):addChild(lockTxt)
+    end
+    self._nameLabel._lockTxt:setVisible(false)
+    self._nameLabel._lockTxt:setPosition(self._nameLabel:getPositionX()+self._nameLabel:getContentSize().width+5, self._nameLabel:getPositionY()-2)
     if curData.system == "Weapon" then
         if self._modelMgr:getModel("WeaponsModel"):getWeaponState() ~= 4 then
+            self._nameLabel._lockTxt:setVisible(true)
             UIUtils:setGray(self._goBtn, true)
             self._goBtn.state = 1
             self._goBtn.desStr = lang("TIPS_SIEGE_LORDBOOK_OPEN_1")
         end
     end
-
     if curData.system == "DailySiege" then
         if not self._modelMgr:getModel("SiegeModel"):isSiegeDailyOpen() then
+            self._nameLabel._lockTxt:setVisible(true)
             UIUtils:setGray(self._goBtn, true)
             self._goBtn.state = 1
             self._goBtn.desStr = lang(curData.buttonTips)
@@ -476,9 +511,62 @@ function HandbookView:reflashHandbookInfo()
         end
     end
 
+    -- 宝物升星
+    if curData.system == "TreasureStar" then 
+        local sTimeData = tab.sTimeOpen[103]
+        local isTimeOpen = self:isInOpenTime()
+        if not isTimeOpen then
+            self._goBtn.state = 1
+            local des = lang(sTimeData.systemTimeOpenTip)
+            des = string.gsub(des,"%b{}",function( catchStr )
+                local str = catchStr
+                str = str.gsub(str,"{","")  
+                str = str.gsub(str,"}","")
+                local _,_,nowDaySec = self:isInOpenTime() -- self._modelMgr:getModel("UserModel"):getOpenServerTime()
+                -- local nowDaySec = self._modelMgr:getModel("UserModel"):getOpenServerTime()
+                local openDay = math.ceil(nowDaySec/86400)
+                print("nowDaySec",nowDaySec,nowDaySec/86400,openDay)
+                openDay = sTimeData.opentime - openDay
+
+                str = str.gsub(str,"$serveropen",openDay)  
+                str = loadstring("return " .. str)
+                local _,result = trycall("count",str) 
+                return result or catchStr
+            end)
+            self._goBtn.desStr = des
+        end
+    end
+
     self._getBtn:setVisible(self._canGetAward ~= 2)
     self._getMC:setVisible(self._canGetAward == 1)
     self._gotIcon:setVisible(self._canGetAward == 2)
+end
+
+-- 宝物升星跳转判断专用
+function HandbookView:isInOpenTime( )
+    local tabId = 103
+    local serverBeginTime = ModelManager:getInstance():getModel("UserModel"):getData().sec_open_time
+    if serverBeginTime then
+        local sec_time = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(serverBeginTime,"%Y-%m-%d 05:00:00"))
+        if serverBeginTime < sec_time then   --过零点判断
+            serverBeginTime = sec_time - 86400
+        end
+    end
+    local serverHour = tonumber(TimeUtils.date("%H",serverBeginTime)) or 0
+    local nowTime = ModelManager:getInstance():getModel("UserModel"):getCurServerTime()
+    local openDay = tab:STimeOpen(tabId).opentime-1
+    local openTimeNotice = tab:STimeOpen(tabId).openhour
+    local openHour = string.format("%02d:00:00",openTimeNotice)
+    local openTime = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(serverBeginTime + openDay*86400,"%Y-%m-%d " .. openHour))
+    local leftTime = openTime - nowTime
+    local isOpen = leftTime <= 0
+    -- 显示页签时间
+    local noticeTime = tab:STimeOpen(tabId).notice-1
+    local showTabTime = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(serverBeginTime + noticeTime*86400,"%Y-%m-%d " .. openHour))
+    local showLeftTime = showTabTime - nowTime
+    local isPreDay = showLeftTime <= 0
+
+    return isOpen,isPreDay,leftTime
 end
 
 -- 判断是否属于sTimeOpen表，有开始时间限制
@@ -702,30 +790,53 @@ end
 
 function HandbookView:tableCellAtIndex(table, idx)
     local cell = table:dequeueCell()
-    if nil == cell then
-        cell = cc.TableViewCell:new()
-        local item = self:createItem(self._tableData[idx+1], idx)
-        item:setPosition(item:getContentSize().width*0.5,item:getContentSize().height*0.5)
-        cell:addChild(item)
-        cell.item = item
+    if not cell then 
+        cell = cc.TableViewCell:new()  
     else
-        self:updateItem(cell.item, self._tableData[idx+1], idx)
+        cell:removeAllChildren()
     end
-    -- print("idx item",idx,item)
+    local data = self._tableData[idx+1]
+    local isSpecial = self._specialIndex and idx+1 < self._specialIndex + 2 and  idx+1 >= self._specialIndex
+    local item = self:createItem(data, idx,isSpecial,cell)
+    item:setPosition(item:getContentSize().width*0.5,item:getContentSize().height*0.5)
+    cell:addChild(item)
+    cell.item = item
+    if self._specialIndex and idx+1 == self._specialIndex then
+        cell:setZOrder(1)
+    else
+        cell:setZOrder(2)
+    end
     return cell
+
+    -- local data = self._tableData[idx+1]    
+    -- local isSpecial = self._specialIndex and idx+1 < self._specialIndex + 2 and  idx+1 >= self._specialIndex
+    -- if nil == cell then
+    --     cell = cc.TableViewCell:new()        
+    --     local item = self:createItem(data, idx,isSpecial)
+    --     item:setPosition(item:getContentSize().width*0.5,item:getContentSize().height*0.5)
+    --     cell:addChild(item)
+    --     cell.item = item
+    -- else
+    --     self:updateItem(cell.item, data, idx,isSpecial)
+    -- end
+    -- return cell
 end
 
 function HandbookView:numberOfCellsInTableView(table)
     -- print("table num...",#self._tableData)
-   return #self._tableData
+    return #self._tableData
 end
 
-function HandbookView:createItem(data, idx)
+function HandbookView:createItem(data, idx, isSpecial,cell)
+    if isSpecial then
+        local item = self:createSpecialItem(idx,cell)
+        return item
+    end
     local index = idx + 1
     local item = ccui.Layout:create()
---    item:setBackGroundColorOpacity(200)
---    item:setBackGroundColorType(1)
---    item:setBackGroundColor(cc.c3b(255, 255, 255))
+    --    item:setBackGroundColorOpacity(200)
+    --    item:setBackGroundColorType(1)
+    --    item:setBackGroundColor(cc.c3b(255, 255, 255))
     item:setContentSize(103, 150)
     item:setTouchEnabled(true)
     item:setSwallowTouches(false)
@@ -779,7 +890,13 @@ function HandbookView:createItem(data, idx)
     item:addChild(lockIcon) 
 
     if index == self._curIndex then
-        aniNode:addChild(self._selectMc)
+        if self._selectMc:getParent() == nil then
+            item.aniNode:addChild(self._selectMc)
+        else
+            --切换时有时多刷新一次  临时解决方案
+            self._selectMc:removeFromParent()
+            item.aniNode:addChild(self._selectMc)
+        end
     end
 
     local lvLabel = cc.Label:createWithTTF(data.requiresLevel .. "级", UIUtils.ttfName_Title, 20)
@@ -795,7 +912,7 @@ function HandbookView:createItem(data, idx)
 
     local nameLabel = cc.Label:createWithTTF(lang(data.tabName), UIUtils.ttfName_Title, 18)
     nameLabel:setColor(cc.c3b(251,240,186))
---    nameLabel:enable2Color(1, cc.c4b(213, 184, 118, 255))
+    --    nameLabel:enable2Color(1, cc.c4b(213, 184, 118, 255))
     nameLabel:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
     nameLabel:setPosition(51, 16)
     item.nameLabel = nameLabel
@@ -859,10 +976,78 @@ function HandbookView:createItem(data, idx)
 
     return item
 end
+function HandbookView:createSpecialItem(idx,cell)
+    local item = ccui.Layout:create()
+    --    item:setBackGroundColorOpacity(200)
+    --    item:setBackGroundColorType(1)
+    --    item:setBackGroundColor(cc.c3b(255, 255, 255))
+    item:setContentSize(103, 150)
+    item:setTouchEnabled(true)
+    item:setSwallowTouches(false)
+    item:setAnchorPoint(cc.p(0.5,0.5))
+    item:setScaleAnim(true)
+    local getImage
+    if idx+1 == self._specialIndex then 
+        -- 特殊底板
+        local specialBox = ccui.ImageView:create()
+        specialBox:loadTexture("specialBox_handBook.png",1)
+        specialBox:setContentSize(self._tableCellWidth*(self._specialNum+2),75)
+        specialBox:setScale9Enabled(true)
+        specialBox:setCapInsets(cc.rect(62,30,1,1))
+        specialBox:setAnchorPoint(cc.p(0,0))
+        specialBox:setPosition(-15, 0)
+        cell:addChild(specialBox,-2)
 
+        -- 特殊连线
+        local specialLine = ccui.ImageView:create()
+        specialLine:loadTexture("specialLine1_handBook.png",1)
+        specialLine:setPosition(item:getContentSize().width*0.5,50)
+        specialLine:setContentSize(self._tableCellWidth*(self._specialNum+1),9)
+        specialLine:setScale9Enabled(true)
+        specialLine:setCapInsets(cc.rect(9,4,1,1))
+        specialLine:setAnchorPoint(cc.p(0,0.5))
+        cell:addChild(specialLine,-1)
+        if self._modelMgr:getModel("WeaponsModel"):getWeaponState() == 4 then
+            specialLine:loadTexture("specialLine2_handBook.png",1)        
+        end
+
+        getImage = ccui.ImageView:create()
+        getImage:loadTexture("world_siege_handBook.png",1)
+        getImage:setPosition(item:getContentSize().width*0.5,item:getContentSize().height*0.5-8)
+        item:addChild(getImage)
+        local nameLabel = cc.Label:createWithTTF(lang("SIEGE_EVENT_HANDBOOK_NAME_1"), UIUtils.ttfName_Title, 18)
+        nameLabel:setColor(cc.c3b(251,240,186))
+        --    nameLabel:enable2Color(1, cc.c4b(213, 184, 118, 255))
+        nameLabel:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
+        nameLabel:setPosition(50, 16)
+        item:addChild(nameLabel)
+        self:addClickTouchEvent(item, function()
+            self._viewMgr:showDialog("global.GlobalRuleDescView",{desc = lang("SIEGE_EVENT_HANDBOOK_TEXT_1")},true)
+        end)
+    else
+        getImage = ccui.ImageView:create()
+        getImage:loadTexture("i_101.png",1)
+        getImage:setPosition(item:getContentSize().width*0.5-5,item:getContentSize().height*0.5-8)
+        item:addChild(getImage)
+        local nameLabel = cc.Label:createWithTTF(lang("SIEGE_EVENT_HANDBOOK_NAME_2"), UIUtils.ttfName_Title, 18)
+        nameLabel:setColor(cc.c3b(251,240,186))
+        --    nameLabel:enable2Color(1, cc.c4b(213, 184, 118, 255))
+        nameLabel:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
+        nameLabel:setPosition(56, 16)
+        item:addChild(nameLabel)
+        self:addClickTouchEvent(item, function()
+            self._viewMgr:showDialog("global.GlobalRuleDescView",{desc = lang("SIEGE_EVENT_HANDBOOK_TEXT_2")},true)
+        end)
+    end
+    if self._modelMgr:getModel("WeaponsModel"):getWeaponState() ~= 4 then
+        UIUtils:setGray(getImage, true)
+    end
+    return item
+end
+--[[
 function HandbookView:updateItem(item, data, idx)
-    local index = idx + 1
 
+    local index = idx + 1
     local isLock = false
     -- 多于五个未开启，统一显示锁
     if index == self._maxPreviewIndex and self._maxPreviewIndex < self._gamePlayOpenLen then
@@ -928,7 +1113,7 @@ function HandbookView:updateItem(item, data, idx)
         item.completeIcon:setVisible(self._taskData[tostring(data.id)] and self._taskData[tostring(data.id)].status == 2)
     end
 end
-
+]]
 -- 显示左边气泡
 function HandbookView:showLeftBubble(tp)
     if self._leftBubble == nil then
@@ -1040,15 +1225,14 @@ function HandbookView:getTipType(offsetX)
 
     local minId = math.floor((maxOffsetX - offsetX)/self._tableCellWidth)
     local maxId = #self._tableData + 1 - math.floor((offsetX - minOffsetX)/self._tableCellWidth)
-
     local leftTp = nil
     local rightTp = nil
 
-    if minId > 0 then
+    if minId > 0 and minId <= #self._tableData then
         for i = 1, minId do
             local data = self._tableData[i]
             local userLv = self._userModel:getPlayerLevel()
-            if SystemUtils["enable" .. data.system]() and userLv >= data.requiresLevel then
+            if data.id ~= "special" and SystemUtils["enable" .. data.system]() and userLv >= data.requiresLevel then
                 if self._taskData[tostring(data.id)] and self._taskData[tostring(data.id)].status == 1 then
                     leftTp = "reward"
                     break
@@ -1059,12 +1243,12 @@ function HandbookView:getTipType(offsetX)
         end
     end
 
-    if maxId < #self._tableData then
+    if maxId > 0 and maxId < #self._tableData then
         for i = maxId, #self._tableData do
             local data = self._tableData[i]
             local userLv = self._userModel:getPlayerLevel()
 --            print(data.requiresLevel)
-            if SystemUtils["enable" .. data.system]() and userLv >= data.requiresLevel then
+            if data.id ~= "special" and SystemUtils["enable" .. data.system]() and userLv >= data.requiresLevel then
                 if self._taskData[tostring(data.id)] and self._taskData[tostring(data.id)].status == 1 then
                     rightTp = "reward"
                     break
@@ -1087,7 +1271,7 @@ function HandbookView:jumpToTipCell(direction, tipTp)
         for i = minId, 1, -1 do
             local data = self._tableData[i]
             local userLv = self._userModel:getPlayerLevel()
-            if SystemUtils["enable" .. data.system]() and userLv >= data.requiresLevel then
+            if data.id ~= "special" and SystemUtils["enable" .. data.system]() and userLv >= data.requiresLevel then
                 if tipTp == "reward" and self._taskData[tostring(data.id)] and self._taskData[tostring(data.id)].status == 1 then
                     jumpId = i
                     break
@@ -1107,7 +1291,7 @@ function HandbookView:jumpToTipCell(direction, tipTp)
         for i = maxId, #self._tableData do
             local data = self._tableData[i]
             local userLv = self._userModel:getPlayerLevel()
-            if SystemUtils["enable" .. data.system]() and userLv >= data.requiresLevel then
+            if data.id ~= "special" and SystemUtils["enable" .. data.system]() and userLv >= data.requiresLevel then
                 if tipTp == "reward" and self._taskData[tostring(data.id)] and self._taskData[tostring(data.id)].status == 1 then
                     jumpId = i
                     break
@@ -1299,14 +1483,14 @@ function HandbookView:goView15()
     end
 end
 function HandbookView:goView16() 
-	if not SystemUtils:enablePrivilege() then
+    if not SystemUtils:enablePrivilege() then
         self._viewMgr:showTip(lang("TIP_Privilege"))
         return 
     end
     self._viewMgr:showView("privileges.PrivilegesView") 
 end
 function HandbookView:goView17() 
-	if not SystemUtils:enableFormation() then
+    if not SystemUtils:enableFormation() then
         self._viewMgr:showTip(lang("TIP_TASK_TIP_LOCK"))
         return 
     end
@@ -1545,6 +1729,125 @@ function HandbookView:goView50()
         return 
     end
     self._viewMgr:showView("team.TeamHolyView", {})
+end
+
+-- 后援
+function HandbookView:goView52() 
+    if not SystemUtils:enableBackup() then
+        self._viewMgr:showTip(lang("TIP_Backup"))
+        return
+    end
+    self._modelMgr:getModel("BackupModel"):showBackupGradeView()
+end
+
+-- 战阵
+function HandbookView:goView55() 
+    if not SystemUtils:enableBattleArray()  then
+        self._viewMgr:showTip(lang("TIP_BattleArray"))
+        return
+    end
+    self._viewMgr:showView("battleArray.BattleArrayEnterView")
+end
+
+
+-- 荣耀竞技场 56
+function HandbookView:goView56() 
+    self._modelMgr:getModel("GloryArenaModel"):lOpenGloryArena()
+end
+
+
+-- 巅峰天赋 57
+function HandbookView:goView57() 
+    if not SystemUtils:enableParagonTalent() then
+        self._viewMgr:showTip(lang("TIP_BattleArray"))
+        return
+    end
+
+    self._viewMgr:showView("paragon.ParagonTalentView")
+end
+-- 周常任务 59
+function HandbookView:goView59()
+    if not SystemUtils:enableWeeklyTask() then
+        self._viewMgr:showTip(lang("TIP_TASK_TIP_LOCK"))
+        return 
+    end
+    self._viewMgr:showView("task.TaskView",{viewType = 4})
+end
+function HandbookView:goView60()
+    local worldBossModel = self._modelMgr:getModel("WorldBossModel")
+    local isOpen,_,desc = worldBossModel:checkLevelAndServerTime()
+    if isOpen then
+        local opState, _, isOpenDay = worldBossModel:checkOpenTime()
+        if opState ~= worldBossModel.notOpen then
+            self._viewMgr:showView("worldboss.WorldBossView",{},true)
+        else
+            if not isOpenDay then
+                self._viewMgr:showTip(lang("worldBoss_Tips6"))
+            else
+                self._viewMgr:showTip(lang("worldBoss_Tips2"))
+            end
+        end
+    else
+        self._viewMgr:showTip(desc)
+    end
+end
+
+--军团试炼
+function HandbookView:goView61()
+    local lvOpen,isNotWeekend = self._modelMgr:getModel("ProfessionBattleModel"):getOpenState()
+    if not lvOpen then
+        self._viewMgr:showTip(lang("TIP_ArmyTest"))
+        return
+    end
+    if not isNotWeekend then
+        self._viewMgr:showTip(lang("TIP_ArmyTest_Lock"))
+        return
+    end
+    self._serverMgr:sendMsg("ProfessionBattleServer", "getInfo", {}, true, {}, function(result)
+        self._viewMgr:showDialog("pve.ProfessionBattleDialog")
+    end)
+end
+-- 跨服诸神
+function HandbookView:goView53()
+    if not SystemUtils:enableCrossGodWar() then
+        self._viewMgr:showTip(lang("CrossGodWar"))
+        return
+    end
+    local godWarConstData = self._modelMgr:getModel("UserModel"):getGodWarConstData()
+    local openTime = godWarConstData.FIRST_RACE_BEG + 43200 + 3*7*24*60*60
+    openTime = TimeUtils.formatTimeToFiveOclock(openTime)
+    local curTime = self._modelMgr:getModel("UserModel"):getCurServerTime()
+    if curTime<=openTime then
+        self._viewMgr:showTip(lang("crossFight_tips_5"))
+    elseif self:checkIsTimeInIllegalTime() then
+        self._viewMgr:showTip(lang("crossFight_tips_6"))
+    else
+        self._serverMgr:sendMsg("CrossGodWarServer", "enter", {}, true, {}, function(result)
+            UIUtils:reloadLuaFile("crossGod.CrossGodWarView")
+            self._viewMgr:showView("crossGod.CrossGodWarView")
+        end)
+    end 
+end
+
+-- 检测诸神时间
+function HandbookView:checkIsTimeInIllegalTime()
+    local godWarConstData = self._modelMgr:getModel("UserModel"):getGodWarConstData()
+    local weekTime = 7*24*60*60
+    local openTime = godWarConstData.FIRST_RACE_BEG + 43200 + 3*weekTime
+    openTime = TimeUtils.formatTimeToFiveOclock(openTime)
+    local curTime = self._modelMgr:getModel("UserModel"):getCurServerTime()
+    local week = tonumber(TimeUtils.getDateString(curTime, "%w"))
+    if week==1 then
+        local timeEnd = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(curTime,"%Y-%m-%d 05:00:00"))--5:00
+        if ((timeEnd-openTime)/weekTime)%2==1 then--只隔一周，不是跨服诸神的开启周，周一三点到五点可以进
+            return false
+        end
+        local timeStart = timeEnd - 2*60*60
+        if curTime>=timeStart and curTime<=timeEnd then
+            return true
+        end
+    end
+    return false
 end
 
 function HandbookView:onDestroy()

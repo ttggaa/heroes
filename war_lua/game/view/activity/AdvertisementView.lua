@@ -127,7 +127,7 @@ function AdvertisementView:updateAdShowImg()
 			self:adjustTrain()
 
 		--策划配表控制位置
-		elseif curSysData["imgPos"] then
+		elseif curSysData["imgPos"] and not adInfo then
 			for k,v in ipairs(curSysData["imgPos"]) do
 				local resTemp = imgPath .. adImgName .. "_" .. k .. ".png"
 				if fu:isFileExist(resTemp) then
@@ -700,6 +700,24 @@ function AdvertisementView:initAdConfigList()
 		["ad_wuyao_awake"] = {  				--觉醒巫妖
 			res = {
 				[1] = {"ad_wuyao_awake_1", 16, 464},
+			}, 
+			},
+
+		["ad_dahuayinhang"] = {  				--注册送礼
+			btn = {
+				[1] = {"ad_dahuayinhang_btn", 470, 45, function()
+					print("AD_zheceAward_url:", GameStatic.AD_zheceAward_url)  
+					sdkMgr:loadUrl({url = GameStatic.AD_zheceAward_url})
+					end},
+			}, 
+			},
+
+		["ad_TVLottery"] = {  					--英雄助力抽电视
+			btn = {
+				[1] = {"ad_TVLottery_btn", 491, 132, function()
+					print("AD_tvLottery_url:", GameStatic.AD_tvLottery_url)  
+					sdkMgr:loadUrl({url = GameStatic.AD_tvLottery_url})
+					end},
 			}, 
 			},
 	}

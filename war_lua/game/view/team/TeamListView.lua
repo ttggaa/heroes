@@ -179,6 +179,13 @@ function TeamListView:createTeamListCard(inTable)
     addTeam:setName("addTeam")
     cardbg:addChild(addTeam, 20) -- 3
 
+    -- 后援
+    local backupTag = cc.Sprite:createWithSpriteFrameName("globalImageUI4_backupTag.png")
+    backupTag:setAnchorPoint(0, 1)
+    backupTag:setPosition(0, CARD_HEIGHT - 65)
+    backupTag:setName("backupTag")
+    cardbg:addChild(backupTag, 20) -- 3
+
     -- 红点
     local onTeamIcon = cc.Sprite:createWithSpriteFrameName("globalImageUI_bag_keyihecheng.png")
     onTeamIcon:setAnchorPoint(1, 1)
@@ -247,7 +254,7 @@ function TeamListView:updateHaveTeamUI(inView, inTable)
     local backQuality = self._teamModel:getTeamQualityByStage(teamD["stage"])
     -- 觉醒数据
     local isAwaking, aLvl = TeamUtils:getTeamAwaking(teamD)
-    local teamName, art1, art2, art3 = TeamUtils:getTeamAwakingTab(teamD)
+    local teamName, art1, art2, art3 , art4, cteam = TeamUtils:getTeamAwakingTab(teamD)
 
     local cardClip = inView:getChildByFullName("cardClip")
     cardClip:setSaturation(0)
@@ -264,10 +271,10 @@ function TeamListView:updateHaveTeamUI(inView, inTable)
 
     local roleSp = cardClip:getChildByFullName("roleSp")
     if roleSp then
-        local fileName = "asset/uiother/cteam/ct_" .. teamId .. ".jpg"
-        if isAwaking == true then
-            fileName = "asset/uiother/cteam/cta_" .. teamId .. ".jpg"
-        end
+        local fileName = cteam or "asset/uiother/cteam/ct_" .. teamId .. ".jpg"
+        -- if isAwaking == true then
+        --     fileName = "asset/uiother/cteam/cta_" .. teamId .. ".jpg"
+        -- end
         UIUtils:asyncLoadTexture(roleSp, fileName)
     end
 
@@ -278,7 +285,7 @@ function TeamListView:updateHaveTeamUI(inView, inTable)
 
     local classlabel = cardClip:getChildByFullName("classlabel")
     if classlabel then
-        local tclasslabel = systeam.classlabel1
+        local tclasslabel = TeamUtils:getClassIconNameByTeamD(teamD, "classlabel1", systeam)
         classlabel:setSpriteFrame(tclasslabel .. ".png")
     end
 
@@ -306,6 +313,17 @@ function TeamListView:updateHaveTeamUI(inView, inTable)
         else
             addTeam:setVisible(false)
         end
+    end
+
+    local backupTag = inView:getChildByFullName("backupTag")
+    if backupTag and not teamD.isInFormation then
+        if teamD.isInBackup == true then
+            backupTag:setVisible(true)
+        else
+            backupTag:setVisible(false)
+        end
+    else
+        backupTag:setVisible(false)
     end
 
     -- 名字
@@ -340,7 +358,8 @@ function TeamListView:updateHaveTeamUI(inView, inTable)
     -- 红点
     local onTeamIcon = inView:getChildByFullName("onTeamIcon")
     if onTeamIcon then
-        if (teamD.isInFormation == true and teamD.onTeam == true) or (teamD.onTree == 1) then 
+        local isRedShow = self._teamModel:checkTeamRedSKillRedPoint(teamD)
+        if (teamD.isInFormation == true and teamD.onTeam == true) or (teamD.onTree == 1) or isRedShow or ((teamD.isInFormation == true or teamD.isInBackup == true) and teamD.onExclusive) then 
             onTeamIcon:setVisible(true)
         else
             onTeamIcon:setVisible(false)
@@ -418,9 +437,14 @@ function TeamListView:updateNoTeamUI(inView, inTable)
         addTeam:setVisible(false)
     end
 
+    local backupTag = inView:getChildByFullName("backupTag")
+    if backupTag then
+        backupTag:setVisible(false)
+    end
+
     local classlabel = cardClip:getChildByFullName("classlabel")
     if classlabel then
-        local tclasslabel = systeam.classlabel1
+        local tclasslabel = TeamUtils:getClassIconNameByTeamD(teamD, "classlabel1", systeam)
         classlabel:setSpriteFrame(tclasslabel .. ".png")
     end
 
@@ -464,7 +488,8 @@ function TeamListView:updateNoTeamUI(inView, inTable)
         -- 红点提示
         local teamModel = self._modelMgr:getModel("TeamModel")
         if onTeamIcon then
-            if next(teamModel:getCanGatTeams()) ~= nil then 
+            local isRedShow = self._teamModel:checkTeamRedSKillRedPoint(teamD)
+            if next(teamModel:getCanGatTeams()) ~= nil or isRedShow then 
                 onTeamIcon:setVisible(true)
             else
                 onTeamIcon:setVisible(false)
@@ -1241,6 +1266,7 @@ function TeamListView:getUnActiveTeam(inTeamId)
     self._activeTeamId = inTeamId
     local param = {goodsId = systeam.goods, goodsNum = teamStar.sum, extraParams = nil}
     self._serverMgr:sendMsg("ItemServer", "useItem", param, true, {}, function (result)
+        self._teamModel:initSKillRedDataById(inTeamId)    --初始化红色兵团 特技数据  by wangyan
         self:getUnActiveTeamFinish(result)
     end)
 end

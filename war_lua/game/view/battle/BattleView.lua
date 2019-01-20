@@ -26,7 +26,9 @@ local settingKey = {"fuben", "arena", "airen", "zombie", "fuben",
                     "cloudcity", "gvg", "gvg", "training", "adventure",
                     "heroduel", "gboss1", "gboss2", "gboss3", "godwar",
                     "elemental1", "elemental2", "elemental3", "elemental4", "elemental5",
-                    "siegeatk", "siegedef", "siegeatk", "siegedef", "serverarena","serverarenafuben","climbtower","guildfam",}
+                    "siegeatk", "siegedef", "siegeatk", "siegedef", "serverarena",
+                    "serverarenafuben","climbtower","guildfam","crossGodwar","woodpile_1",
+                    "woodpile_2", "gloryarena", "", "wordboss", "legin"}
 
 -- 投降没有提示的战斗类型
 local BM_SURRENDER_NO_TIP_MAP =
@@ -59,6 +61,12 @@ local BM_SURRENDER_NO_TIP_MAP =
     [_BattleUtils.BATTLE_TYPE_Siege_Atk_WE] = true,
     [_BattleUtils.BATTLE_TYPE_Siege_Def_WE] = true,
     [_BattleUtils.BATTLE_TYPE_GuildFAM] = true,
+    [_BattleUtils.BATTLE_TYPE_CrossGodWar] = true,
+    [_BattleUtils.BATTLE_TYPE_WoodPile_1] = true,
+    [_BattleUtils.BATTLE_TYPE_WoodPile_2] = true,
+    [_BattleUtils.BATTLE_TYPE_Legion] = true,
+
+
 }
 -- 有战报的战斗类型
 local BM_SURRENDER_HAS_REPORT_MAP =
@@ -74,6 +82,8 @@ local BM_SURRENDER_HAS_REPORT_MAP =
     [_BattleUtils.BATTLE_TYPE_HeroDuel] = true,
     [_BattleUtils.BATTLE_TYPE_GodWar] = true,
     [_BattleUtils.BATTLE_TYPE_ClimbTower] = true,
+    [_BattleUtils.BATTLE_TYPE_CrossGodWar] = true,
+    [_BattleUtils.BATTLE_TYPE_GloryArena] = true,
 }
 -- 没有输的战斗类型
 local BM_SURRENDER_NO_LOSE_MAP =
@@ -87,6 +97,10 @@ local BM_SURRENDER_NO_LOSE_MAP =
     [_BattleUtils.BATTLE_TYPE_Siege_Def] = true,
     [_BattleUtils.BATTLE_TYPE_Siege_Atk_WE] = true,
     [_BattleUtils.BATTLE_TYPE_Siege_Def_WE] = true,
+    [_BattleUtils.BATTLE_TYPE_Siege_Def_WE] = true,
+    [_BattleUtils.BATTLE_TYPE_WoodPile_1] = true,
+    [_BattleUtils.BATTLE_TYPE_WoodPile_2] = true,
+    [_BattleUtils.BATTLE_TYPE_WORDBOSS] = true,
 }
 local BM_viewTabs = 
 {
@@ -128,6 +142,12 @@ local BM_viewTabs =
     [_BattleUtils.BATTLE_TYPE_ServerArenaFuben] = "battle.BattleResultCommon",
     [_BattleUtils.BATTLE_TYPE_ClimbTower] = "battle.BattleResultCommon",
     [_BattleUtils.BATTLE_TYPE_GuildFAM] = "battle.BattleResultCrusade",--BattleResultGuildMap",
+    [_BattleUtils.BATTLE_TYPE_CrossGodWar] = "battle.BattleResultCrossGodWar",
+    [_BattleUtils.BATTLE_TYPE_WoodPile_1] = "battle.BattleResultStake",
+    [_BattleUtils.BATTLE_TYPE_WoodPile_2] = "battle.BattleResultStake",
+    [_BattleUtils.BATTLE_TYPE_GloryArena] = "battle.BattleResultGloryArena",
+    [_BattleUtils.BATTLE_TYPE_WORDBOSS] = "battle.BattleResultWorldBoss",
+    [_BattleUtils.BATTLE_TYPE_Legion] = "battle.BattleResultLegions"
 }
 
 function AppExit()
@@ -606,6 +626,8 @@ function BattleView:onBattleBegin(data)
         [BattleUtils.BATTLE_TYPE_GVGSiege]      = 1,
         [BattleUtils.BATTLE_TYPE_HeroDuel]      = 1,
         [BattleUtils.BATTLE_TYPE_GodWar]        = 1,
+        [BattleUtils.BATTLE_TYPE_CrossGodWar]   = 1,
+        [BattleUtils.BATTLE_TYPE_GloryArena]   = 1,
     }
     if mode and modeT[mode] then
         -- 竞技场和联盟探索PVP和GVG 强制自动战斗
@@ -673,7 +695,10 @@ function BattleView:onBattleBegin(data)
             self._speedBtn:setTouchEnabled(false)
         end
         local auto = SystemUtils.loadAccountLocalData(settingKey[mode] .. "Auto")
-
+        if mode == BattleUtils.BATTLE_TYPE_WoodPile_1 or mode == BattleUtils.BATTLE_TYPE_WoodPile_2 then
+            -- 木桩默认自动战斗不强制
+            auto = true
+        end
         if auto then
             self._autoBtn:loadTextureNormal("autoBtn_battleSelected.png", 1)
             self._battleScene:setSkillAuto(true)
@@ -721,6 +746,8 @@ function BattleView:onBattleEnd(data)
         [BattleUtils.BATTLE_TYPE_GVGSiege]      = 1,
         [BattleUtils.BATTLE_TYPE_HeroDuel]      = 1,
         [BattleUtils.BATTLE_TYPE_GodWar]        = 1,
+        [BattleUtils.BATTLE_TYPE_CrossGodWar]   = 1,
+        [BattleUtils.BATTLE_TYPE_GloryArena]    = 1,
     }
     if mode and modeT[mode] then
         SystemUtils.saveAccountLocalData(settingKey[mode] .. "Speed", self._battleSpeed)
@@ -857,6 +884,10 @@ function BattleView:onBattleEnd(data)
                         battleinfo.result.leftData = right
                         battleinfo.result.rightData = left
                     end
+                    if _G._autoBattleSchedule then
+                        --这个时候表示自动战斗脚本检测，所以直接使用通用的结算界面，避免出错
+                        viewname = "battle.BattleResultStakeWin"
+                    end
                     self._resultView = self._viewMgr:showDialog(viewname, battleinfo, true, true, nil, true)
                     self._viewMgr:enableIndulge()
                 end
@@ -864,12 +895,19 @@ function BattleView:onBattleEnd(data)
                 if mode == BattleUtils.BATTLE_TYPE_Guide then
                     -- 等黑屏
                     self._viewMgr:doGuideBattleOver2()
-                elseif (
-                        (mode == BattleUtils.BATTLE_TYPE_Fuben and self._battleInfo.isBranch) or
+                elseif ((mode == BattleUtils.BATTLE_TYPE_Fuben and self._battleInfo.isBranch) or
                         BM_SURRENDER_NO_TIP_MAP[mode]) and data.isSurrender then
-                    ScheduleMgr:delayCall(100, self, function()
-                        self:close(true)
-                    end)
+                    if data.isErrorExit then
+                        ViewManager:getInstance():showTip("挑战时间已过期")
+                        ScheduleMgr:delayCall(500, self, function()
+                            self:close(true)
+                        end)
+                    else
+                        ScheduleMgr:delayCall(100, self, function()
+                            self:close(true)
+                        end)
+                    end
+                    
                 elseif (BM_SURRENDER_HAS_REPORT_MAP[mode] and self._battleInfo.isReport)
                         or mode == BattleUtils.BATTLE_TYPE_GVG or mode == BattleUtils.BATTLE_TYPE_GVGSiege then
                     if self._battleInfo.isShare then
@@ -893,11 +931,13 @@ function BattleView:onBattleEnd(data)
                 --     -- 好友切磋 沿用支线
                 else
                     local win = data.win
-                    if self._battleInfo.reverse then
+                    if self._battleInfo.reverse or (mode == BattleUtils.BATTLE_TYPE_CrossGodWar and self._battleInfo.enemyInfo.isMySelf) then
                         win = not win
                     end
                     if win then
-                        viewName = viewName .. "Win"
+                        if _BattleUtils.BATTLE_TYPE_GloryArena ~= mode then
+                            viewName = viewName .. "Win"
+                        end
                         showResultViewFunc(viewName)
                     else
                         local saturation = 0
@@ -911,10 +951,12 @@ function BattleView:onBattleEnd(data)
                             if saturation <= -100 then
                                 self:unlock()
                                 ScheduleMgr:unregSchedule(self._updateId)
-                                if BM_SURRENDER_NO_LOSE_MAP[mode] or (mode == BattleUtils.BATTLE_TYPE_League and result.isTimeUp) then
-                                    viewName = viewName .. "Win"
-                                else
-                                    viewName = viewName .. "Lose"
+                                if _BattleUtils.BATTLE_TYPE_GloryArena ~= mode then
+                                    if BM_SURRENDER_NO_LOSE_MAP[mode] or (mode == BattleUtils.BATTLE_TYPE_League and result.isTimeUp) then
+                                        viewName = viewName .. "Win"
+                                    else
+                                        viewName = viewName .. "Lose"
+                                    end
                                 end
                                 showResultViewFunc(viewName)
                             end
@@ -988,7 +1030,8 @@ function BattleView:loadingDone()
     local iconlock = (BattleUtils.BATTLE_TYPE_Arena == self._battleInfo.mode 
         or BattleUtils.BATTLE_TYPE_ServerArena == self._battleInfo.mode 
         or BattleUtils.BATTLE_TYPE_GuildPVP == self._battleInfo.mode
-        or BattleUtils.BATTLE_TYPE_GodWar == self._battleInfo.mode)
+        or BattleUtils.BATTLE_TYPE_GodWar == self._battleInfo.mode
+        or BattleUtils.BATTLE_TYPE_CrossGodWar == self._battleInfo.mode)
     -- 上面的技能按钮被移至屏幕外,新按钮创建
     local skillIcon = self:getUI("uiLayer.bottomLayer.skill_new")
     local panel = skillIcon:getParent()
@@ -1558,7 +1601,7 @@ function BattleView:onPauseBtnClicked()
             [BattleUtils.BATTLE_TYPE_AiRenMuWu]         = 1,
             [BattleUtils.BATTLE_TYPE_Zombie]            = 1,
             [BattleUtils.BATTLE_TYPE_CloudCity]         = 1,
-
+            [BattleUtils.BATTLE_TYPE_Legion]            = 1,
         }
         if mode and modeT[mode] then
             str = lang("TIPS_QUIT_PVE")

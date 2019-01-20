@@ -502,6 +502,9 @@ function RankView:updateSelfItem2()
 	-- 觉醒
 	rankData.ast = teamData.ast
 	rankData.aLvl = teamData.aLvl
+	-- 加入皮肤字段
+	rankData.sId = teamData.sId
+
 	local headNode = self._selfItem2:getChildByFullName("headNode")
 	headNode:removeAllChildren()
 	self:createTeamHead(rankData,headNode)
@@ -676,17 +679,20 @@ function RankView:updateSelfItem25()
 	-- 觉醒
 	rankData.ast = teamData.ast
 	rankData.aLvl = teamData.aLvl
+    -- 加入皮肤字段
+	rankData.sId = teamData.sId
+
 	local headNode = self._selfItem4:getChildByFullName("headNode")
 	headNode:removeAllChildren()
 	self:createTeamHead(rankData,headNode)
 end
 
 function RankView:createRoleHead(data,headNode,scaleNum)
-	local avatarName = data.avatar
+	local avatarName = tonumber(data.avatar)
 	local scale = scaleNum and scaleNum or 0.8
 	if avatarName == 0 or not avatarName then avatarName = 1203 end	
 	local lvl = data.lvl
-	local icon = IconUtils:createHeadIconById({avatar = avatarName,tp = 3 ,level = lvl,avatarFrame = data["avatarFrame"]})
+	local icon = IconUtils:createHeadIconById({avatar = avatarName,tp = 3 ,level = lvl,avatarFrame = data["avatarFrame"], plvl = data["plvl"]})
 	icon:setName("avatarIcon")
 	icon:setAnchorPoint(cc.p(0.5,0.5))
 	icon:setScale(scale)
@@ -695,17 +701,17 @@ function RankView:createRoleHead(data,headNode,scaleNum)
 end
 
 function RankView:createTeamHead(data,headNode,scaleNum)
-	local teamId = data.teamId
+	local teamId = tonumber(data.teamId)
 	local scale = scaleNum and scaleNum or 0.7
 	if teamId then
-		local sysTeam = tab:Team(tonumber(teamId))
+		local sysTeam = tab:Team(teamId)
 		if not sysTeam then
 			teamId = 101
 			sysTeam = tab:Team(101)
 		end
 		-- dump(sysTeam,"sysTeam")
         -- itemIcon = IconUtils:createSysTeamIconById({sysTeamData = sysTeam})
-        local inTeamData = {teamId=teamId,level=data.tLevel or data.level,star=data.star,ast=data.ast,aLvl=data.aLvl}
+        local inTeamData = {teamId=teamId,level=data.tLevel or data.level,star=data.star,ast=data.ast,aLvl=data.aLvl,sId=data.sId}
         if not data.stage or 0 == data.stage then
         	data.stage = 1
         end
@@ -722,10 +728,10 @@ function RankView:createTeamHead(data,headNode,scaleNum)
 end
 
 function RankView:createHeroHead(data,headNode,scaleNum)
-	local heroId = data.heroId
+	local heroId = tonumber(data.heroId)
 	local scale = scaleNum and scaleNum or 0.7
 	if heroId then	
-        local sysHeroData = clone(tab:Hero(tonumber(heroId)))
+        local sysHeroData = clone(tab:Hero(heroId))
 		if not sysHeroData then
 			sysHeroData = clone(tab:Hero(60001))
 		end
@@ -776,7 +782,8 @@ function RankView:reflashNo1( data )
 	local name = self._leftBoard:getChildByFullName("name")
 	name:setString(data.name)
 	local level = self._leftBoard:getChildByFullName("level")
-	level:setString("Lv." .. (data.level or data.lvl or 0))
+	local inParam = {lvlStr = "Lv." .. (data.level or data.lvl or 0), lvl = data.level or data.lvl, plvl = data.plvl}
+	UIUtils:adjustLevelShow(level, inParam, 1)
 	local guild = self._leftBoard:getChildByFullName("guild")
 	local guildName = data.guildName 
 		

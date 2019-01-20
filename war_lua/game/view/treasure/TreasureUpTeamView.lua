@@ -37,6 +37,8 @@ function TreasureUpTeamView:onInit()
     self._touchLab:setVisible(true)
     self._touchLab:setOpacity(0)
 
+    self._teamScroll = self:getUI("bg.bg1.teamScroll")
+
     self._desNode = self:getUI("bg.desNode")
     self._desNode:setOpacity(0)
     self._desNode:setCascadeOpacityEnabled(true)
@@ -87,56 +89,91 @@ function TreasureUpTeamView:reflashUI(data)
 	-- dump(teams)
 	local count = 1
 	for k,v in pairs(teams) do
-		if tonumber(v.volume) == volume and count <= 10 then
+		if tonumber(v.volume) == volume then
 			table.insert(gifts,{"team",tonumber(v.teamId),0})
 			count = count+1
 		end
 	end
 	self._gifts = gifts
-
+    
+    
     local colMax = 5
-    local itemHeight,itemWidth = 140,115
-    local maxHeight = itemHeight * math.ceil( #gifts / colMax) + 80
-    local maxHeight = self._bg1:getContentSize().height
 
-    local x = 0
-    local y = 0
-
-    -- print("gifts===",#gifts)
-    local offsetX,offsetY = 0,0
+    local offsetX,offsetY = 0,20
     local row = math.ceil( #gifts / colMax)
     local col = #gifts
     if col > colMax then
         col = colMax
     end
 
+    local height = self._teamScroll:getContentSize().height
+    if row > 2 then
+        height = row * (115 + offsetY)+20
+    end
+
+    self._teamScroll:setInnerContainerSize(cc.size(self.bgWidth,height))
+    -- self._teamScroll:jumpToTop()
+    local itemHeight,itemWidth = 140,115
+    -- local maxHeight = itemHeight * math.ceil( #gifts / colMax) + 80
+    local maxHeight = self._teamScroll:getInnerContainerSize().height
+
+    local x = 0
+    local y = 0
+
+    -- print("gifts===",#gifts)
+    
+
     offsetX = (self.bgWidth-(col-1)*itemWidth)*0.5
     --    矫正 - (row - 2) * 15  2行 +15 2行不加
-    offsetY = maxHeight/2 + row*itemHeight/2 - itemHeight/2 - 15  --maxHeight/2 - row * itemHeight/2 + (row -1) * itemHeight + itemHeight / 2 --offsetY + (row-1)*itemHeight +self.bgHeight/2 + 60
+    local tRow = row < 2 and 2 or row
     
     x = x+offsetX-itemWidth
-    y = y+offsetY
+    y = height-60
   
   	--创建item
     local showItems
+    print("#gifts =========== ",#gifts)
     showItems = function( idx )
        -- print("=============idx=====",idx)
        	if idx > #gifts then
        		return
        	end
         x = x + itemWidth
+        local isAnim = false
         if idx ~= 1 and (idx-1) % colMax == 0 then 
             x =  offsetX
             y = y - itemHeight
+            if (idx / 5) >= 2 then
+                isAnim = true
+            end
         end
-        self:createItem(gifts[idx], x, y, idx,showItems)
+        if isAnim then
+            self:runAction(cc.Sequence:create({
+                cc.DelayTime:create(0.5),
+                cc.CallFunc:create(function ( ... )
+                    local percent = ((math.ceil(idx/colMax)+1) / row) * 100
+                    if idx ~= #gifts then
+                        percent = percent - 100 / row
+                    else
+                        percent = 100
+                    end
+                    self._teamScroll:scrollToPercentVertical(percent,0.1,false)
+                end),
+                cc.DelayTime:create(0.1),
+                cc.CallFunc:create(function ( ... )
+                    self:createItem(gifts[idx], x, y, idx,showItems)
+                end)
+            }))
+        else
+            self:createItem(gifts[idx], x, y, idx,showItems)
+        end
     end
 
     local sizeSchedule
     local step = 0.5
     local stepConst = 50
     local bg1Height = 200
-    self._bg1:setContentSize(cc.size(self.bgWidth,bg1Height))
+    -- self._bg1:setContentSize(cc.size(self.bgWidth,bg1Height))
     self._bg1:setOpacity(0)
     self:animBegin(function( )
         self._bg1:setOpacity(255)
@@ -147,7 +184,7 @@ function TreasureUpTeamView:reflashUI(data)
             end
             bg1Height = bg1Height+stepConst
             if bg1Height < maxHeight then
-                self._bg1:setContentSize(cc.size(self.bgWidth,bg1Height))
+                -- self._bg1:setContentSize(cc.size(self.bgWidth,bg1Height))
             else
             	self._desNode:runAction(
             		cc.Spawn:create(
@@ -155,7 +192,7 @@ function TreasureUpTeamView:reflashUI(data)
 	            		cc.FadeIn:create(0.1)
             		)
             	)  
-                self._bg1:setContentSize(cc.size(self.bgWidth,maxHeight))
+                -- self._bg1:setContentSize(cc.size(self.bgWidth,maxHeight))
                 ScheduleMgr:unregSchedule(sizeSchedule)
                 self:addDecorateCorner()
                 -- title动画
@@ -178,8 +215,8 @@ function TreasureUpTeamView:createItem( data,x,y,index,nextFunc )
 	-- dump(teamData)
 	local quality = self._modelMgr:getModel("TeamModel"):getTeamQualityByStage(teamData.stage)
     local item = IconUtils:createTeamIconById({teamData = teamData,sysTeamData = teamD, quality = quality[1] , quaAddition = quality[2]})
-    item:setSwallowTouches(true)
-    item:setAnchorPoint(cc.p(0,0))
+    item:setSwallowTouches(false)
+    item:setAnchorPoint(cc.p(0,1))
     item:setPosition(cc.p(x,y))
     item:setScaleAnim(false)
     item:setCascadeOpacityEnabled(true)
@@ -209,9 +246,9 @@ function TreasureUpTeamView:createItem( data,x,y,index,nextFunc )
     buffDes._endNum = beforeValue--+ self._buffValue
     table.insert(self._buffDeses,buffDes)
     print(beforeValue)
-   
+    print("team num ================== ",index)
     item:setAnchorPoint(cc.p(0.5,0.5))
-    self._bg1:addChild(item)
+    self._teamScroll:addChild(item)
 
     item:setOpacity(0)
     item:setCascadeOpacityEnabled(true)
@@ -323,7 +360,7 @@ function TreasureUpTeamView:getTeamAttrValue(teamData,attrId)
     local attr = self._modelMgr:getModel("TeamModel"):getTeamTreasure(teamData.volume)
     -- dump(attr)
     -- 基础数据
-    local backData, backSpeed, atkSpeed = BattleUtils.getTeamBaseAttr(teamData, tempEquips, self._modelMgr:getModel("PokedexModel"):getScore())
+    local backData, backSpeed, atkSpeed = BattleUtils.getTeamBaseAttr(teamData, tempEquips, self._modelMgr:getModel("PokedexModel"):getScore(), nil, nil, nil, nil, nil, self._modelMgr:getModel("BattleArrayModel"):getData(), self._modelMgr:getModel("ParagonModel"):getData())
     -- copy from team
     local treasureAttr = self._modelMgr:getModel("TeamModel"):getTeamTreasureAttrData(teamData.teamId)
     local heroAttr = self._modelMgr:getModel("TeamModel"):getTeamHeroAttrByTeamId(teamData.teamId)

@@ -740,7 +740,8 @@ function TeamTalentDialog:updateTeamAmin()
     teamName:setColor(UIUtils.colorTable["ccColorQuality" .. backQuality[1]])
 
     local classLabelIcon = self:getUI("bg.leftPanel.image_frame.teamclassImg")
-    classLabelIcon:loadTexture(IconUtils.iconPath .. tab:Team(self._teamData.teamId).classlabel .. ".png", 1)
+    local className = TeamUtils:getClassIconNameByTeamD(self._teamData, "classlabel")
+    classLabelIcon:loadTexture(IconUtils.iconPath .. className .. ".png", 1)
     local image_frame = self:getUI("bg.leftPanel.image_frame")
     local posX = image_frame:getContentSize().width - classLabelIcon:getContentSize().width*classLabelIcon:getScaleX() - teamName:getContentSize().width
     posX = posX*0.5

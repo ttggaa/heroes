@@ -225,6 +225,7 @@ function StarChartsResonanceDialog:updateUI()
     self:setBottomText()
     self:setNotOpenStatus()
     self:refreshBtnStatus()
+    self:setBottomDesc()
 end
 
 function StarChartsResonanceDialog:resetBorderStatus()
@@ -247,6 +248,13 @@ function StarChartsResonanceDialog:resetBorderStatus()
     self._useTxtNum1:setString(self._fragCount)
     self:setBottomText()
     self:refreshBtnStatus()
+    self:setBottomDesc()
+end
+
+function StarChartsResonanceDialog:setBottomDesc()
+    local bottomDesc = self:getUI("bg.bg1.bottomDesc")
+    local desStr = self.selectType == 1 and "消耗同名英雄碎片获得星魂" or "消耗万能碎片获得星魂"
+    bottomDesc:setString(desStr)
 end
 
 function StarChartsResonanceDialog:registerClickTouchWithLight(view,clickCallback)

@@ -9,6 +9,7 @@ RuneLotteryModel.lotteryType = 37
 function RuneLotteryModel:ctor()
     RuneLotteryModel.super.ctor(self)
     self._userModel = self._modelMgr:getModel("UserModel")
+    self._playDayModel = self._modelMgr:getModel("PlayerTodayModel")
     -- 活动周期
     self._circle = 1
     -- 活动数据
@@ -133,20 +134,36 @@ end
 
 function RuneLotteryModel:isLotteryOpen()
 	local isOpen = false
-	if not self._acData then
-		self._acData = self._acModel:getDataByType(RuneLotteryModel.lotteryType)
+    if not self._acModel then
+        self._acModel = self._modelMgr:getModel("ActivityModel")
+    end
+	if not self._acData or table.nums(self._acData) == 0 then
+		self._acData = self._acModel:getAcShowDataByType(RuneLotteryModel.lotteryType)
 	end
-    -- dump(self._acData,"RuneLotteryModel==>",5)
+    local userLvl = self._userModel:getPlayerLevel()
     local startTime = self._acData and self._acData.start_time or 0
     local endTime = self._acData and self._acData.end_time or 0
     local currTime = self._userModel:getCurServerTime()
 
-    -- print("==================,currTime====",currTime)
 	isOpen = startTime <= currTime and endTime > currTime
+    local levelLimit = self._acData.level_limit or 0
+    isOpen = isOpen and userLvl >= levelLimit
     return isOpen
 end
 
+function RuneLotteryModel:isHaveFreeCount()
+    local infoNum = self._playDayModel:getDayInfo(89)
+    if not infoNum or infoNum == 0 then
+        return true
+    end
+
+    return false
+end
+
 function RuneLotteryModel:isLuckyLotteryRed()
+    if self:isHaveFreeCount() then
+        return true
+    end
     return false
 end
 

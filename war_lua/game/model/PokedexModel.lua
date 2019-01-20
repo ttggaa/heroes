@@ -10,8 +10,8 @@ local PokedexModel = class("PokedexModel", BaseModel)
 function PokedexModel:ctor()
     PokedexModel.super.ctor(self)
     self._data = {}
-    self._score = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-    self._level = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+    self._score = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+    self._level = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
     self._checkScore = BattleUtils.checkPokedexScoreData(self._score)
     self:listenReflash("ItemModel", self.checkTips)
     -- self:listenReflash("TeamModel", self.processData)

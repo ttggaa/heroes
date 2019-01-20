@@ -147,7 +147,7 @@ function IntanceRecordView:updateBattleInfo(inNode, inResult, inType)
     nameLab:setColor(UIUtils.colorTable.ccUIBaseTextColor2)
 
     local iconBg = inNode:getChildByName("iconBg")
-    local avatar = IconUtils:createHeadIconById({avatar = userInfo.avatar, level = userInfo.lvl , tp = 4, avatarFrame = userInfo.avatarFrame})
+    local avatar = IconUtils:createHeadIconById({avatar = userInfo.avatar, level = userInfo.lvl , tp = 4, avatarFrame = userInfo.avatarFrame, plvl = userInfo.plvl})
     iconBg:addChild(avatar)
 
     local battleBg = inNode:getChildByName("battleBg")

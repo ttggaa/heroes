@@ -15,13 +15,14 @@ function BackflowModel:ctor()
     -- 监听物品数据变化更改提示状态
     -- self:listenReflash("ItemModel", self.checkTips)
     self._baseData = {}
+    self._data.returnTask = true
     self:registerTimer(5, 0, 12, function ()
         self:updateEverday()
     end)
 end
 
 function BackflowModel:setData(data)
-    self:progressBackflowData(data)
+    self:progressBackflowData(data,true)
     self:reflashData()
 end
 
@@ -46,10 +47,11 @@ function BackflowModel:updateEverday()
     end)
 end
 
-function BackflowModel:progressBackflowData(data)
+function BackflowModel:progressBackflowData(data,isInit)
     dump(data, "data==========", 10)
     local backData = data
     local returnWalfare = backData.returnWalfare
+    if not returnWalfare then return end 
     local loginWalfare = returnWalfare.loginWalfare or {}
 
     -- 回归福利
@@ -60,15 +62,6 @@ function BackflowModel:progressBackflowData(data)
         local indexId = tostring(i)
         local tData = loginWalfare[indexId]
         if tData then
-            local barrack = {}
-            if tData.barrack then
-                local barrackAward = json.decode(tData.barrack)
-                barrack.award = barrackAward
-                barrack.barrackReceived = tonumber(tData.barrackReceived)
-                barrack.tableType = 1
-                barrackData[i] = barrack
-            end
-
             local login = {}
             if tData.login then
                 local loginAward = json.decode(tData.login)
@@ -77,25 +70,14 @@ function BackflowModel:progressBackflowData(data)
                 login.tableType = 2
                 loginData[i] = login
             end
-        end
-    end
-
-    -- 活跃度奖励
-    local activeRewards = returnWalfare.activeRewards or {}
-    local countNum = table.nums(activeRewards)
-    local activeData = {}
-    for i=1,countNum do
-        local indexId = tostring(i)
-        local tData = activeRewards[indexId]
-        if tData then
-            local active = {}
-            if tData.reward then
-                local activeAward = json.decode(tData.reward)
-                active.award = activeAward
-                active.st = tonumber(tData.st)
-                active.limit = tonumber(tData.limit)
-                active.tableType = 3
-                activeData[i] = active
+            if tData.barrack then
+                local barrackAward = json.decode(tData.barrack)
+                if not login.loginAward then
+                    login.loginAward = {}
+                end
+                for k,v in pairs(barrackAward) do
+                    table.insert(login.loginAward, v)
+                end
             end
         end
     end
@@ -132,37 +114,71 @@ function BackflowModel:progressBackflowData(data)
         rechargeData.rechargeNum = rechargeWalfare.rechargeNum
     end
 
-    -- 回归许愿
-    local returnBless = returnWalfare.returnBless or {}
-    local blessData = {}
-    if returnBless.donateRate then
-        blessData.donateRate = json.decode(returnBless.donateRate)
-        blessData.exploreSupply = json.decode(returnBless.exploreSupply)
-        blessData.heroAttr = returnBless.heroAttr
-        blessData.lastRefreshTime = returnBless.lastRefreshTime
-        blessData.blessed = returnBless.blessed
-        blessData.surplusTimes = returnBless.surplusTimes
+    -- 回归许愿 废弃
+    -- local returnBless = returnWalfare.returnBless or {}
+    -- local blessData = {}
+    -- if returnBless.donateRate then
+    --     blessData.donateRate = json.decode(returnBless.donateRate)
+    --     blessData.exploreSupply = json.decode(returnBless.exploreSupply)
+    --     blessData.heroAttr = returnBless.heroAttr
+    --     blessData.lastRefreshTime = returnBless.lastRefreshTime
+    --     blessData.blessed = returnBless.blessed
+    --     blessData.surplusTimes = returnBless.surplusTimes
+    -- end
+    if not self._taskTb then
+        self._taskTb = clone(tab.activetask)
+    end
+    if not self._integralreward then
+        self._integralreward = clone(tab.integralreward)
+    end
+    local returnTask = returnWalfare.returnTask or {}
+    local taskIds = returnTask.taskIds or {}
+    local rewardIds = returnTask.rewardIds or {}
+
+    -- dump(taskIds,"taskIds===>",5)
+    if isInit and not returnWalfare.returnTask then
+        self._data.returnTask = false
+    end
+    local taskData = {}
+    for k,v in pairs(self._taskTb) do
+        v.status = 0
+        if taskIds[tostring(k)] and taskIds[tostring(k)] == 1 then
+            v.status = 1
+        end
+        table.insert(taskData, v)
     end
 
+    local taskRewardData = {}
+    for k,v in pairs(self._integralreward) do
+        v.status = 0
+        if rewardIds[tostring(k)] and rewardIds[tostring(k)] == 1 then
+            v.status = 1
+        end
+        table.insert(taskRewardData, v)
+    end
 
     self._data.loginData = loginData
-    self._data.barrackData = barrackData
-    self._data.activeData = activeData
+    -- self._data.barrackData = barrackData
+    -- self._data.activeData = activeData
     self._data.saleData = saleData
     self._data.returnPrivilege = returnPrivilege
     self._data.rechargeData = rechargeData
     self._data.blessData = blessData
+    self._data.taskData = taskData
+    self._data.taskDataScore = returnTask.score or 0
+    self._data.taskRewardData = taskRewardData
 
     -- returnWalfare.rechargeWalfare = nil
     backData.returnWalfare = nil
-    dump(backData, "backData==========", 10)
+    -- dump(backData, "backData==========", 10)
     self._baseData = backData
 end
 
-    -- 更新登录福利
+-- 更新登录福利
 function BackflowModel:updateLoginWalfareData(data)
     dump(data)
     local returnWalfare = data.returnWalfare
+    if not returnWalfare then return end 
     local loginWalfare = returnWalfare.loginWalfare
     -- 回归福利
     local barrack = self:getBarrackData()
@@ -178,24 +194,51 @@ function BackflowModel:updateLoginWalfareData(data)
     end
 end
 
-    -- 更新活跃福利
-function BackflowModel:updateActiveRewardsData(data)
-    dump(data, "d===========", 5)
+-- 更新回归任务
+function BackflowModel:updateTaskData(data)
     local returnWalfare = data.returnWalfare
-    -- 活跃度奖励
-    local activeRewards = returnWalfare.activeRewards
-    local activeData = self:getActiveData()
-    for k,v in pairs(activeRewards) do
-        local indexId = tonumber(k)
-        if v.st then
-            activeData[indexId].st = tonumber(v.st)
+    if not returnWalfare then return end 
+    local returnTask = returnWalfare.returnTask
+    -- 回归福利
+    local taskData = self:getTaskData()
+    local taskRewardData = self:getTaskRewardData()
+    if returnTask.score then
+        self._data.taskDataScore = returnTask.score
+    end
+    local taskIds = returnTask.taskIds or {}
+    local rewardIds = returnTask.rewardIds or {}
+
+    for k,v in pairs(taskData) do
+        if taskIds[tostring(v.id)] and taskIds[tostring(v.id)] == 1 then
+            v.status = 1
+        end
+    end
+
+    for k,v in pairs(taskRewardData) do
+        if rewardIds[tostring(v.id)] and rewardIds[tostring(v.id)] == 1 then
+            v.status = 1
         end
     end
 end
+-- -- 更新活跃福利
+-- function BackflowModel:updateActiveRewardsData(data)
+--     dump(data, "d===========", 5)
+--     local returnWalfare = data.returnWalfare
+--     -- 活跃度奖励
+--     local activeRewards = returnWalfare.activeRewards
+--     local activeData = self:getActiveData()
+--     for k,v in pairs(activeRewards) do
+--         local indexId = tonumber(k)
+--         if v.st then
+--             activeData[indexId].st = tonumber(v.st)
+--         end
+--     end
+-- end
 
-    -- 更新回归特卖
+-- 更新回归特卖
 function BackflowModel:updateReturnWalfare(data)
     local returnWalfare = data.returnWalfare
+    if not returnWalfare then return end 
 
     local returnSale = returnWalfare.returnSale
     local countNum = table.nums(returnSale)
@@ -213,10 +256,11 @@ function BackflowModel:updateReturnWalfare(data)
     end
 end
 
-    -- 充值特惠
+-- 充值特惠
 function BackflowModel:updateRechargeWalfareData(data)
     -- 充值特惠
     local returnWalfare = data.returnWalfare
+    if not returnWalfare then return end 
     local rechargeWalfare = returnWalfare.rechargeWalfare
     local rechargeData = self._data.rechargeData
     if rechargeWalfare.hasReceived then
@@ -228,9 +272,11 @@ function BackflowModel:updateRechargeWalfareData(data)
 end
 
     -- 回归许愿
+    --[[
 function BackflowModel:updateReturnBlessData(data)
     -- 回归许愿
     local returnWalfare = data.returnWalfare
+    if not returnWalfare then return end 
     -- 回归许愿
     local returnBless = returnWalfare.returnBless
     dump(returnBless)
@@ -253,6 +299,32 @@ function BackflowModel:updateReturnBlessData(data)
         end
         if returnBless.surplusTimes then
             blessData.surplusTimes = returnBless.surplusTimes
+        end
+    end
+end
+]]
+
+-- 更新回归特权
+function BackflowModel:updateReturnPrivileges(data)
+    -- 特权
+    local returnWalfare = data.returnWalfare
+    if not returnWalfare then return end 
+    -- 特权
+    local returnPrivilege = returnWalfare.returnPrivilege
+    -- dump(returnPrivilege)
+    if returnPrivilege and self._data and self._data.returnPrivilege then
+        local privilegeData = self._data.returnPrivilege or {}
+        if returnPrivilege.donateRate then
+            privilegeData.donateRate = returnPrivilege.donateRate
+        end
+        if returnPrivilege.exploreSupply then
+            privilegeData.exploreSupply = returnPrivilege.exploreSupply
+        end
+        if returnPrivilege.heroAttr then
+            privilegeData.heroAttr = returnPrivilege.heroAttr
+        end
+        if returnPrivilege.surplusTimes then
+            privilegeData.surplusTimes = returnPrivilege.surplusTimes
         end
     end
 end
@@ -294,6 +366,21 @@ end
 function BackflowModel:getBlessData()
     return self._data.blessData or {}
 end
+
+-- 回归任务
+function BackflowModel:getTaskData()
+    return self._data.taskData or {}
+end
+-- 回归任务积分宝箱
+function BackflowModel:getTaskRewardData()
+    return self._data.taskRewardData or {}
+end
+-- 回归任务总积分
+function BackflowModel:getTaskDataScore()
+    return self._data.taskDataScore or 0
+end
+
+
 
 function BackflowModel:isActivesOpen()
     local flag = false
@@ -347,6 +434,14 @@ function BackflowModel:isRechargeOpen()
     return flag
 end
 
+function BackflowModel:isTaskOpen()
+    local flag = false
+    if self._data.returnTask and table.nums(self:getTaskData()) > 0 then
+        flag = true
+    end
+    return flag
+end
+
 function BackflowModel:isBlessOpen()
     local flag = false
     if table.nums(self:getBlessData()) > 0 then
@@ -359,11 +454,12 @@ end
 function BackflowModel:getBackflowOpen()
     local flag = false
     local baseData = self:getBaseData()
+    -- dump(baseData,"baseData",6)
     local userModel = self._modelMgr:getModel("UserModel")
     local currTime = userModel:getCurServerTime() 
     local endTime = baseData.endTime or 0
     local begTime = baseData.startTime or 0
-    if currTime > begTime and currTime < endTime then
+    if currTime > begTime and currTime < endTime and self._data.loginData then
         flag = true
     end
     return flag
@@ -372,10 +468,12 @@ end
 function BackflowModel:getBackflowTip()
     local rechargeTip = self:getBackflowRechargeTip()
     local loginTip = self:getBackflowLoginTip()
-    local barrackTip = self:getBackflowBarrackTip()
-    local activeTip = self:getBackflowActiveTip()
+    -- local barrackTip = self:getBackflowBarrackTip()
+    -- local activeTip = self:getBackflowActiveTip()
+    local taskTip = self:getBackflowTaskTip()
     local flag = false
-    if loginTip == true or barrackTip == true or rechargeTip == true or activeTip == true then
+    -- print("========rechargeTip=loginTip=taskTip==========",rechargeTip,loginTip,taskTip)
+    if loginTip == true or taskTip == true or rechargeTip == true then
         flag = true
     end
     return flag
@@ -396,6 +494,8 @@ function BackflowModel:getBackflowRechargeTip()
     end
     return flag
 end
+
+
 
 function BackflowModel:getBackflowLoginTip()
     local loginData = self:getLoginData()
@@ -469,6 +569,86 @@ function BackflowModel:getBackflowBlessTip()
     return flag
 end
 
+function BackflowModel:getBackflowTaskTip()
+    local taskData,isHaveTip = self:processTaskData()
+    local taskRewardData = self:getTaskRewardData()
+    local flag = isHaveTip
+    local score = self:getTaskDataScore()
+    
+    for k,v in pairs(taskRewardData) do
+        -- score >= accumulatepoints
+        if score >= v.accumulatepoints and v.status and v.status == 0 then
+            flag = true
+            break
+        end
+    end
+
+    return flag
+end
+
+function BackflowModel:processTaskData() 
+    if not self._userModel then
+        self._userModel = self._modelMgr:getModel("UserModel")
+    end  
+    local startTime = self._baseData.startTime or 0
+    local endTime = self._baseData.endTime or 0   
+    
+    local taskData = self:getTaskData()
+    -- dump(taskData,"taskData==>",5)
+    local userLv = self._userModel:getPlayerLevel() or 0
+    local acStatis = self._userModel:getActivityStatis() or {}
+    local conditionTb = self._conditionTb
+    if not conditionTb then 
+        self._conditionTb = clone(tab.dailyActivityCondition)
+        conditionTb = self._conditionTb
+    end
+    local isHaveTip = false
+    local getConditionNum = function(data)
+        local num = 0
+        for k,v in pairs(acStatis) do
+            -- print("===================data.stsId=======",data.stsId)
+            local timeStr = string.sub(tostring(k), 1, 4) .. "-" .. string.sub(tostring(k), 5, 6) .. "-" .. string.sub(tostring(k), -2)  .. " 05:00:00"
+            local condition = tonumber(data.condition)
+            local stsId = conditionTb[condition] and conditionTb[condition].stsId or 0
+            local time = TimeUtils.getIntervalByTimeString(timeStr)
+            if time >= startTime and time < endTime then
+                if v["sts" .. stsId] then
+                    num = num + tonumber(v["sts" .. stsId])
+                end
+            end
+        end
+        return num
+    end
+
+    local tempTaskData = {}
+    for k,v in ipairs(taskData) do
+        -- print("========level_limit====",v.level_limit)
+        if v.level_limit <= userLv then
+            v.haveNum = getConditionNum(v)
+            if v.status == 0 then
+                v.sortNum = 1
+                if v.haveNum >= v.condition_num[1] then
+                    isHaveTip = true
+                    v.sortNum = 2
+                end
+            else
+                v.sortNum = 0
+            end
+            table.insert(tempTaskData, v)
+        end
+    end
+
+    table.sort(tempTaskData,function( a,b )
+        if a.sortNum == b.sortNum then
+            return a.id < b.id
+        else
+           return  a.sortNum > b.sortNum
+        end
+    end)
+    -- dump(tempTaskData,"tempTaskData==>",5)
+
+    return tempTaskData,isHaveTip
+end
 
 -- 联盟科技使用
 -- typeId, times, discount
@@ -477,20 +657,26 @@ end
 -- discount 折扣
 function BackflowModel:getGuildScience()
     local times = 0
-    local discount = 0
-    local blessData = self:getBlessData()
+    local discount = 0    
     local typeId = 0
-    if blessData and blessData.blessed == 1 then
-        local taskType = blessData.donateRate.taskType
+    if self:isPrivilegeOpen() then
+        local privilegesD = self:getReturnPrivilege()
+        local donateRate = {}
+        if privilegesD.donateRate ~= nil then
+            donateRate = json.decode(privilegesD.donateRate)
+        end
+        local taskType = donateRate.taskType or 1
         if taskType == 1 then
             typeId = 2
         else
             typeId = 3
         end
-        if blessData.surplusTimes then
-            times = blessData.surplusTimes
+        -- dump(privilegesD,"privilegesD==>",5)
+        -- print("=============privilegesD.surplusTimes====",privilegesD.surplusTimes)
+        if privilegesD.surplusTimes then
+            times = privilegesD.surplusTimes or 0
         end
-        discount = blessData.donateRate.discount
+        discount = donateRate.discount or 0
     end
     return typeId, times, discount
 end

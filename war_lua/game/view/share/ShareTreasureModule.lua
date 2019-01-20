@@ -58,6 +58,9 @@ function ShareBaseView:updateModuleView(data)
         [41] = {1, centerX + 0, centerY + 15},
         [42] = {15, centerX, centerY + 45},
         [43] = {15, centerX - 10, centerY + 5},
+        [44] = {15, centerX - 0, centerY + 30},
+        [45] = {0, centerX - 10, centerY + 5},
+        [46] = {15, centerX - 10, centerY + 5},
     }
 
     data.effect = TreasureConst.comMcs[data.treasureid]

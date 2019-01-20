@@ -100,7 +100,7 @@ function MFDoleDialog:reflashUI(data)
                 lvl:setString(self._helper[i].lvl)
 
                 if itemBg then
-                    local param1 = {avatar = self._helper[i].avatar, tp = 4,avatarFrame = self._helper[i]["avatarFrame"]}
+                    local param1 = {avatar = self._helper[i].avatar, tp = 4,avatarFrame = self._helper[i]["avatarFrame"], plvl = self._helper[i]["plvl"]}
                     local icon = itemBg:getChildByName("icon")
                     if not icon then
                         icon = IconUtils:createHeadIconById(param1)

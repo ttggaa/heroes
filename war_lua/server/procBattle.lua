@@ -50,6 +50,7 @@ local ERROR_CODE_NO_ELE_KIND_ID = 108  -- 没有元素位面种类ID
 local ERROR_CODE_NO_ELE_LEVEL_ID = 109  -- 没有元素位面关卡ID
 local ERROR_CODE_NO_LEVEL_ID = 110  -- 没有关卡ID
 local ERROR_CODE_NO_WALL_LEVEL = 111  -- 没有城墙等级
+local ERROR_CODE_NO_STAKEID = 112  -- 木桩配置ID
 
 __G__TRACKBACK__ = function(msg)
     local msg = debug.traceback(msg, 3)
@@ -113,6 +114,8 @@ local BATTLE_TYPE_GuildFAM = 35
 local BATTLE_TYPE_ServerArena = 36
 local BATTLE_TYPE_ServerArenaFuben = 37
 local BATTLE_TYPE_ClimbTower = 38
+local BATTLE_TYPE_CrossGodWar = 39
+local BATTLE_TYPE_WoodPile_2 = 41
 
 local proc_functions = {}
 function proc_battle(_type, jsondata)
@@ -1013,3 +1016,174 @@ end
 proc_functions[38] = proc_climbTower_38
 
 -- climbTower_json = {}
+
+
+--[[
+        39
+        跨服诸神复盘
+        参数: 
+            atk: 左方数据
+            def: 右方数据
+            r1r2: 随机种子
+ ]]--
+
+function proc_crossgodwar_39(jsondata)
+    local data = cjson.decode(jsondata)
+    local playerInfo = BattleUtils.jsonData2lua_battleData(data.atk)
+    local enemyInfo = BattleUtils.jsonData2lua_battleData(data.def)
+    local r1 = data.r1
+    local r2 = data.r2
+    BattleUtils.dontCheck = true
+    local data, str = BattleUtils.enterBattleView_CrossGodWar(playerInfo, enemyInfo, r1, r2, 0, false, false, false, nil, nil, true)
+    data.dieList = nil
+    data.ret = ERROR_CODE_SUCCESS
+    if DEBUG_PLAYER_INFO then
+        data.playerInfo = playerInfo
+        data.enemyInfo = enemyInfo
+    end
+    return cjson.encode(data)
+end
+proc_functions[39] = proc_crossgodwar_39
+
+--[[
+        40
+        木桩挑战战斗复盘
+        参数: 
+            atk: 左方数据
+            def: 右方数据
+            r1r2: 随机种子
+ ]]--
+
+function proc_crossgodwar_40(jsondata)
+    local data = cjson.decode(jsondata)
+    local playerInfo = BattleUtils.jsonData2lua_battleData(data.atk)
+    local enemyInfo = BattleUtils.jsonData2lua_battleData(data.def)
+
+    if data.skill then
+        playerInfo.skillList = cjson.decode(data.skill)
+    end
+
+    BattleUtils.dontCheck = true
+    local data, str = BattleUtils.enterBattleView_WoodPile_1(playerInfo, enemyInfo, nil, nil, true)
+    data.dieList = nil
+    data.ret = ERROR_CODE_SUCCESS
+    if DEBUG_PLAYER_INFO then
+        data.playerInfo = playerInfo
+        data.enemyInfo = enemyInfo
+    end
+    return cjson.encode(data)
+end
+proc_functions[40] = proc_crossgodwar_40
+
+--[[        
+        41
+        木桩挑战战斗复盘
+        支持: 副本 精英副本 
+ ]]--
+local woodpile_2_json
+function proc_woodpile_2_41(jsondata)
+    local data = cjson.decode(jsondata)
+    local playerInfo = BattleUtils.jsonData2lua_battleData(data.atk)
+
+    if data.skill then
+        playerInfo.skillList = cjson.decode(data.skill)
+    end
+    if data.id == nil then
+        return cjson.encode({ret = ERROR_CODE_NO_STAKEID, msg = "ERROR_CODE_NO_STAKEID"})
+    end
+    local trainingId = data.id
+    local stakeD = tab.stakeBattle[trainingId]
+
+    -- 检查数据是否正常
+    local heros = stakeD["enemyhero"]
+    if not heros then
+        return cjson.encode({ret = ERROR_CODE_SUCCESS, win = false})
+    end
+
+    BattleUtils.dontCheck = true
+    local data, str = BattleUtils.enterBattleView_WoodPile_2(playerInfo, trainingId, nil, nil, true)
+    data.dieList = nil
+    local hp = data.hpex
+    local num = trainingD["num"]
+    local score = tonumber(hp[1]) / tonumber(hp[2]) * tonumber(num) * 100 --100--
+    score = math.ceil(score)
+    data.score = score
+    data.ret = ERROR_CODE_SUCCESS
+    if DEBUG_PLAYER_INFO then
+        data.playerInfo = playerInfo
+    end
+    return cjson.encode(data)
+end
+proc_functions[41] = proc_woodpile_2_41
+
+
+--[[
+        42
+        荣耀竞技场战斗复盘
+        参数: 
+            atk: 左方数据
+            def: 右方数据
+            r1r2: 随机种子
+ ]]--
+local arena_json
+function proc_arena_42(jsondata)
+    if jsondata == "test" then
+        jsondata = arena_json_42
+    end
+    local data = cjson.decode(jsondata)
+    local playerInfo = BattleUtils.jsonData2lua_battleData(data.atk)
+    local enemyInfo = BattleUtils.jsonData2lua_battleData(data.def)
+    local r1 = data.r1
+    local r2 = data.r2
+    BattleUtils.dontCheck = true
+    local data, str = BattleUtils.enterBattleView_GloryArena(playerInfo, enemyInfo, r1, r2, nil, nil, nil, true)
+    data.dieList = nil
+    data.ret = ERROR_CODE_SUCCESS
+    if DEBUG_PLAYER_INFO then
+        data.playerInfo = playerInfo
+        data.enemyInfo = enemyInfo
+    end
+    return cjson.encode(data)
+end
+proc_functions[42] = proc_arena_42
+
+--arena_json_42 = "{\"atk\":{\"rid\":\"8001_2359\",\"usid\":\"800150752337\",\"pid\":\"8829f746e4be22ce511d801227e82871\",\"avatar\":1101,\"name\":\"cyk\",\"msg\":\"\",\"lv\":100,\"vipLvl\":15,\"score\":9522302,\"hScore\":9522302,\"hero\":[],\"globalSpecial\":\"[500013,501013,501022,501032,501043,503013,503023,503032,504012,505023,506013,506023,506033,506043,507013,507022,508022,509012,512013,512023,513013,514013]\",\"formation\":{\"g1\":0,\"team1\":0,\"g2\":0,\"team2\":0,\"g3\":0,\"team3\":0,\"g4\":0,\"team4\":0,\"g5\":0,\"team5\":0,\"g6\":0,\"team6\":0,\"g7\":0,\"team7\":0,\"g8\":0,\"team8\":0,\"weapon1\":0,\"weapon2\":0,\"weapon3\":0,\"weapon4\":0,\"heroId\":0,\"score\":0,\"filter\":\"\",\"lt\":1534819124,\"tid\":1},\"tformations\":{\"1\":{\"1\":42,\"2\":30,\"3\":32,\"4\":32,\"5\":32,\"lt\":1508985898,\"name\":\"\"},\"2\":{\"1\":0,\"2\":0,\"3\":0,\"4\":0,\"5\":0,\"lt\":1526041763,\"name\":\"\"},\"3\":{\"1\":0,\"2\":0,\"3\":0,\"4\":0,\"5\":0,\"lt\":1526041765,\"name\":\"\"}},\"teams\":[],\"pokedex\":[23418,0,0,0,0,0,0,0,0,0,0,0,0,0,0],\"treasures\":{\"11\":{\"stage\":20,\"comScore\":52910,\"disScore\":74208,\"treasureDev\":{\"40111\":{\"s\":20,\"i\":14,\"bs\":4,\"ss\":7,\"b\":101},\"40112\":{\"s\":20,\"i\":16,\"bs\":4,\"ss\":7,\"b\":103},\"40113\":{\"s\":20,\"i\":997,\"bs\":4,\"ss\":7,\"b\":102}}},\"12\":{\"stage\":20,\"comScore\":52910,\"disScore\":74208,\"treasureDev\":{\"40121\":{\"s\":20,\"i\":982,\"bs\":4,\"ss\":7,\"b\":103},\"40122\":{\"s\":20,\"i\":26,\"bs\":4,\"ss\":7,\"b\":103},\"40123\":{\"s\":20,\"i\":967,\"bs\":4,\"ss\":7,\"b\":103}}},\"21\":{\"stage\":20,\"comScore\":105820,\"disScore\":142176,\"treasureDev\":{\"40211\":{\"s\":20,\"i\":825,\"bs\":4,\"ss\":7,\"b\":103},\"40212\":{\"s\":20,\"i\":719,\"bs\":4,\"ss\":7,\"b\":107},\"40213\":{\"s\":20,\"i\":806,\"bs\":4,\"ss\":7,\"b\":103}}},\"22\":{\"stage\":20,\"comScore\":105820,\"disScore\":177720,\"treasureDev\":{\"40221\":{\"s\":20,\"i\":755,\"bs\":4,\"ss\":7,\"b\":102},\"40222\":{\"s\":20,\"i\":752,\"bs\":4,\"ss\":7,\"b\":100},\"40223\":{\"s\":20,\"i\":762,\"bs\":4,\"ss\":7,\"b\":101}}},\"23\":{\"stage\":20,\"comScore\":105820,\"disScore\":189568,\"treasureDev\":{\"40231\":{\"s\":20,\"i\":807,\"bs\":4,\"ss\":7,\"b\":103},\"40232\":{\"s\":20,\"i\":812,\"bs\":4,\"ss\":7,\"b\":103},\"40233\":{\"s\":20,\"i\":709,\"bs\":4,\"ss\":7,\"b\":100}}},\"30\":{\"stage\":20,\"comScore\":158729,\"disScore\":470904,\"treasureDev\":{\"40301\":{\"s\":20,\"i\":936,\"bs\":4,\"ss\":7,\"b\":76},\"40302\":{\"s\":20,\"i\":806,\"bs\":4,\"ss\":7,\"b\":103},\"40303\":{\"s\":20,\"i\":910,\"bs\":4,\"ss\":7,\"b\":106},\"40304\":{\"s\":20,\"i\":772,\"bs\":4,\"ss\":7,\"b\":101}}},\"31\":{\"stage\":20,\"comScore\":158729,\"disScore\":612176,\"treasureDev\":{\"40311\":{\"s\":20,\"i\":876,\"bs\":4,\"ss\":7,\"b\":103},\"40312\":{\"s\":20,\"i\":962,\"bs\":4,\"ss\":7,\"b\":91},\"40313\":{\"s\":20,\"i\":865,\"bs\":4,\"ss\":7,\"b\":101},\"40314\":{\"s\":20,\"i\":790,\"bs\":4,\"ss\":7,\"b\":103}}},\"10\":{\"stage\":20,\"comScore\":127361,\"disScore\":284352,\"treasureDev\":{\"40101\":{\"s\":20,\"i\":778,\"bs\":4,\"ss\":7,\"b\":100},\"40102\":{\"s\":20,\"i\":844,\"bs\":4,\"ss\":7,\"b\":103},\"40103\":{\"s\":20,\"i\":800,\"bs\":4,\"ss\":7,\"b\":100}}},\"32\":{\"stage\":20,\"comScore\":127361,\"disScore\":331744,\"treasureDev\":{\"40321\":{\"s\":20,\"i\":760,\"bs\":4,\"ss\":7,\"b\":100},\"40322\":{\"s\":20,\"i\":807,\"bs\":4,\"ss\":7,\"b\":103},\"40323\":{\"s\":20,\"i\":682,\"bs\":4,\"ss\":7,\"b\":102}}},\"42\":{\"stage\":20,\"comScore\":211639,\"disScore\":864904,\"treasureDev\":{\"40421\":{\"s\":20,\"i\":869,\"bs\":4,\"ss\":7,\"b\":103},\"40422\":{\"s\":20,\"i\":711,\"bs\":4,\"ss\":7,\"b\":103},\"40423\":{\"s\":20,\"i\":764,\"bs\":4,\"ss\":7,\"b\":103},\"40424\":{\"s\":20,\"i\":723,\"bs\":4,\"ss\":7,\"b\":107}}},\"40\":{\"stage\":20,\"comScore\":264549,\"disScore\":1509909,\"treasureDev\":{\"40401\":{\"s\":20,\"i\":828,\"bs\":4,\"ss\":7,\"b\":102},\"40402\":{\"s\":20,\"i\":965,\"bs\":4,\"ss\":7,\"b\":33},\"40403\":{\"s\":20,\"i\":765,\"bs\":4,\"ss\":7,\"b\":101},\"40404\":{\"s\":20,\"i\":798,\"bs\":4,\"ss\":7,\"b\":103},\"40405\":{\"s\":20,\"i\":812,\"bs\":4,\"ss\":7,\"b\":103},\"40406\":{\"s\":20,\"i\":793,\"bs\":4,\"ss\":7,\"b\":103}}},\"33\":{\"stage\":20,\"comScore\":211639,\"disScore\":853056,\"treasureDev\":{\"40331\":{\"s\":20,\"i\":789,\"bs\":4,\"ss\":7,\"b\":100},\"40332\":{\"s\":20,\"i\":811,\"bs\":4,\"ss\":7,\"b\":107},\"40333\":{\"s\":20,\"i\":853,\"bs\":4,\"ss\":7,\"b\":103},\"40334\":{\"s\":20,\"i\":755,\"bs\":4,\"ss\":7,\"b\":105}}}},\"talent\":{\"62\":{\"cl\":{\"62011\":{\"l\":5},\"62021\":{\"l\":5},\"62031\":{\"l\":5},\"62012\":{\"l\":1},\"62013\":{\"l\":5},\"62022\":{\"l\":1},\"62023\":{\"l\":5},\"62032\":{\"l\":1},\"62033\":{\"l\":5},\"62040\":{\"l\":1}},\"l\":10},\"61\":{\"cl\":{\"61011\":{\"l\":5},\"61021\":{\"l\":5},\"61031\":{\"l\":5},\"61012\":{\"l\":1},\"61013\":{\"l\":5},\"61022\":{\"l\":1},\"61023\":{\"l\":5},\"61032\":{\"l\":1},\"61033\":{\"l\":5},\"61040\":{\"l\":1}},\"l\":10},\"63\":{\"cl\":{\"63011\":{\"l\":5},\"63021\":{\"l\":5},\"63031\":{\"l\":5},\"63012\":{\"l\":1},\"63013\":{\"l\":5},\"63022\":{\"l\":1},\"63023\":{\"l\":5},\"63032\":{\"l\":1},\"63033\":{\"l\":5},\"63040\":{\"l\":1}},\"l\":10},\"64\":{\"cl\":{\"64011\":{\"l\":5},\"64021\":{\"l\":5},\"64031\":{\"l\":5},\"64012\":{\"l\":1},\"64013\":{\"l\":5},\"64022\":{\"l\":1},\"64023\":{\"l\":5},\"64032\":{\"l\":1},\"64033\":{\"l\":5},\"64040\":{\"l\":1}},\"l\":10},\"65\":{\"cl\":{\"65011\":{\"l\":5},\"65021\":{\"l\":5},\"65031\":{\"l\":5},\"65012\":{\"l\":1},\"65013\":{\"l\":5},\"65022\":{\"l\":1},\"65023\":{\"l\":5},\"65032\":{\"l\":1},\"65033\":{\"l\":5},\"65040\":{\"l\":1}},\"l\":10},\"66\":{\"cl\":{\"66011\":{\"l\":10},\"66021\":{\"l\":10},\"66031\":{\"l\":10},\"66012\":{\"l\":1},\"66013\":{\"l\":10},\"66022\":{\"l\":1},\"66023\":{\"l\":10},\"66032\":{\"l\":1},\"66033\":{\"l\":10},\"66040\":{\"l\":2}},\"l\":10},\"67\":{\"cl\":{\"67011\":{\"l\":4},\"67012\":{\"l\":1}},\"l\":1}},\"hAb\":{\"1\":455,\"2\":590,\"3\":420,\"4\":265},\"uMastery\":{\"62011\":4,\"62062\":2,\"62031\":1,\"62122\":3,\"62121\":2,\"62061\":3,\"62032\":2,\"62013\":1,\"62033\":1,\"62123\":1,\"62063\":1},\"mercenaryId\":0,\"weapons\":[],\"spTalent\":[],\"hStar\":[],\"helpTeams\":[],\"battleArray\":[],\"tSkin\":{\"101\":{\"210101\":1,\"210102\":1},\"203\":{\"220301\":1,\"220302\":1},\"106\":{\"210601\":1,\"210602\":1},\"306\":{\"230601\":1,\"230602\":1},\"508\":{\"250801\":1},\"907\":{\"290701\":1,\"290702\":1},\"608\":{\"260801\":1},\"204\":{\"220401\":1}},\"avatarFrame\":1068,\"shadow\":\"\",\"hideVip\":[],\"lt\":1534107610,\"guildName\":\"1111\",\"branchHAb\":[],\"backups\":{\"1\":{\"lv\":1,\"slv1\":1,\"slv2\":1,\"exp\":0,\"as\":1730,\"score\":3580},\"2\":{\"lv\":11,\"slv1\":1,\"slv2\":1,\"exp\":0,\"as\":1730,\"score\":15620}},\"runes\":{\"1\":{\"id\":10103,\"lv\":1,\"e\":0,\"p\":\"[[67,3],[65,0.3],[5,1.2]]\",\"b\":306},\"2\":{\"id\":10103,\"lv\":1,\"e\":0,\"p\":\"[[66,3],[65,0.3],[2,1.2]]\",\"b\":306},\"3\":{\"id\":20103,\"lv\":1,\"e\":0,\"p\":\"[[64,0.3],[66,3],[2,1.2]]\"},\"4\":{\"id\":20103,\"lv\":1,\"e\":0,\"p\":\"[[64,0.3],[67,3],[2,1.2]]\",\"b\":0},\"5\":{\"id\":30103,\"lv\":1,\"e\":0,\"p\":\"[[67,3],[64,0.3],[35,0.15],[35,0.15]]\"},\"6\":{\"id\":30103,\"lv\":1,\"e\":0,\"p\":\"[[67,3],[65,0.3],[19,0.15]]\"},\"7\":{\"id\":40103,\"lv\":1,\"e\":0,\"p\":\"[[66,3],[65,0.3],[35,0.15]]\"},\"8\":{\"id\":40103,\"lv\":1,\"e\":0,\"p\":\"[[67,3],[64,0.3],[20,0.15],[5,1.2]]\"},\"9\":{\"id\":50103,\"lv\":1,\"e\":0,\"p\":\"[[67,3],[64,0.3],[35,0.15],[5,1.2]]\"},\"10\":{\"id\":50103,\"lv\":1,\"e\":0,\"p\":\"[[65,0.3],[67,3],[55,0.225]]\"},\"11\":{\"id\":10103,\"lv\":1,\"e\":0,\"p\":\"[[66,3],[67,3],[10,0.375],[35,0.15]]\",\"b\":0},\"12\":{\"id\":10103,\"lv\":1,\"e\":0,\"p\":\"[[66,3],[64,0.3],[55,0.225]]\"},\"13\":{\"id\":20103,\"lv\":1,\"e\":0,\"p\":\"[[65,0.3],[64,0.3],[35,0.15],[10,0.375]]\"},\"14\":{\"id\":20103,\"lv\":1,\"e\":0,\"p\":\"[[65,0.3],[64,0.3],[23,0.45],[35,0.15]]\"},\"15\":{\"id\":30103,\"lv\":1,\"e\":0,\"p\":\"[[64,0.3],[65,0.3],[55,0.225]]\"},\"16\":{\"id\":30103,\"lv\":1,\"e\":0,\"p\":\"[[66,3],[64,0.3],[35,0.15]]\"},\"17\":{\"id\":40103,\"lv\":1,\"e\":0,\"p\":\"[[65,0.3],[66,3],[2,1.2],[23,0.45]]\"},\"18\":{\"id\":40103,\"lv\":1,\"e\":0,\"p\":\"[[66,3],[64,0.3],[35,0.15],[19,0.15]]\"},\"19\":{\"id\":50103,\"lv\":1,\"e\":0,\"p\":\"[[66,3],[64,0.3],[19,0.15],[2,1.2]]\"},\"20\":{\"id\":50103,\"lv\":1,\"e\":0,\"p\":\"[[64,0.3],[66,3],[35,0.15]]\"},\"21\":{\"id\":10103,\"lv\":1,\"e\":0,\"p\":\"[[67,3],[65,0.3],[55,0.225],[10,0.375]]\"},\"22\":{\"id\":10103,\"lv\":1,\"e\":0,\"p\":\"[[66,3],[65,0.3],[35,0.15],[10,0.375]]\"},\"23\":{\"id\":20103,\"lv\":1,\"e\":0,\"p\":\"[[65,0.3],[64,0.3],[55,0.225],[10,0.375]]\"},\"24\":{\"id\":20103,\"lv\":1,\"e\":0,\"p\":\"[[67,3],[66,3],[19,0.15],[23,0.45]]\"},\"25\":{\"id\":30103,\"lv\":1,\"e\":0,\"p\":\"[[66,3],[65,0.3],[2,1.2],[35,0.15]]\"},\"26\":{\"id\":30103,\"lv\":1,\"e\":0,\"p\":\"[[64,0.3],[67,3],[35,0.15],[9,3]]\"},\"27\":{\"id\":40103,\"lv\":1,\"e\":0,\"p\":\"[[64,0.3],[67,3],[2,1.2]]\"},\"28\":{\"id\":40103,\"lv\":1,\"e\":0,\"p\":\"[[65,0.3],[67,3],[35,0.15],[20,0.15]]\"},\"29\":{\"id\":50103,\"lv\":1,\"e\":0,\"p\":\"[[67,3],[65,0.3],[2,1.2],[55,0.225]]\"},\"30\":{\"id\":50103,\"lv\":1,\"e\":0,\"p\":\"[[65,0.3],[64,0.3],[35,0.15]]\"},\"31\":{\"id\":10103,\"lv\":1,\"e\":0,\"p\":\"[[64,0.3],[67,3],[2,1.2],[5,1.2]]\"},\"32\":{\"id\":10103,\"lv\":1,\"e\":0,\"p\":\"[[67,3],[64,0.3],[5,1.2],[35,0.15]]\"},\"33\":{\"id\":20103,\"lv\":1,\"e\":0,\"p\":\"[[66,3],[65,0.3],[55,0.225]]\"},\"34\":{\"id\":20103,\"lv\":1,\"e\":0,\"p\":\"[[65,0.3],[64,0.3],[5,1.2],[55,0.225]]\"},\"35\":{\"id\":30103,\"lv\":1,\"e\":0,\"p\":\"[[67,3],[65,0.3],[35,0.15]]\"},\"36\":{\"id\":30103,\"lv\":1,\"e\":0,\"p\":\"[[65,0.3],[66,3],[2,1.2]]\"},\"37\":{\"id\":40103,\"lv\":1,\"e\":0,\"p\":\"[[64,0.3],[65,0.3],[55,0.225]]\"},\"38\":{\"id\":40103,\"lv\":1,\"e\":0,\"p\":\"[[65,0.3],[64,0.3],[55,0.225]]\"},\"39\":{\"id\":50103,\"lv\":1,\"e\":0,\"p\":\"[[64,0.3],[66,3],[35,0.15]]\"},\"40\":{\"id\":50103,\"lv\":1,\"e\":0,\"p\":\"[[66,3],[65,0.3],[20,0.15]]\"},\"41\":{\"id\":50104,\"lv\":1,\"e\":0,\"p\":\"[[65,0.5],[64,0.5],[5,2],[2,2]]\",\"b\":306}},\"spellBooks\":[],\"buff\":[]},\"def\":{\"rid\":\"npc_423\",\"_id\":\"npc_423\",\"name\":\"猎手圣·维恩\",\"avatar\":31302,\"avatarFrame\":1000,\"lvl\":50,\"lv\":50,\"hero\":{\"m1\":62153,\"m2\":62073,\"m3\":62113,\"m4\":62003,\"sl1\":10,\"sl2\":10,\"sl3\":10,\"sl4\":10,\"score\":31313,\"star\":2},\"teams\":{\"707\":{\"level\":50,\"stage\":5,\"star\":3,\"smallStar\":20,\"pScore\":0,\"score\":12805,\"es1\":5,\"el1\":50,\"es2\":5,\"el2\":50,\"es3\":5,\"el3\":50,\"es4\":5,\"el4\":50,\"sl1\":6,\"sl2\":6,\"sl3\":6,\"sl4\":6},\"705\":{\"level\":50,\"stage\":5,\"star\":3,\"smallStar\":20,\"pScore\":0,\"score\":11585,\"es1\":5,\"el1\":50,\"es2\":5,\"el2\":50,\"es3\":5,\"el3\":50,\"es4\":5,\"el4\":50,\"sl1\":6,\"sl2\":6,\"sl3\":6,\"sl4\":6},\"701\":{\"level\":50,\"stage\":5,\"star\":3,\"smallStar\":20,\"pScore\":0,\"score\":10422,\"es1\":5,\"el1\":50,\"es2\":5,\"el2\":50,\"es3\":5,\"el3\":50,\"es4\":5,\"el4\":50,\"sl1\":6,\"sl2\":6,\"sl3\":6,\"sl4\":6},\"702\":{\"level\":50,\"stage\":5,\"star\":3,\"smallStar\":20,\"pScore\":0,\"score\":10997,\"es1\":5,\"el1\":50,\"es2\":5,\"el2\":50,\"es3\":5,\"el3\":50,\"es4\":5,\"el4\":50,\"sl1\":6,\"sl2\":6,\"sl3\":6,\"sl4\":6},\"706\":{\"level\":50,\"stage\":5,\"star\":3,\"smallStar\":20,\"pScore\":0,\"score\":12805,\"es1\":5,\"el1\":50,\"es2\":5,\"el2\":50,\"es3\":5,\"el3\":50,\"es4\":5,\"el4\":50,\"sl1\":6,\"sl2\":6,\"sl3\":6,\"sl4\":6},\"703\":{\"level\":50,\"stage\":5,\"star\":3,\"smallStar\":20,\"pScore\":0,\"score\":10997,\"es1\":5,\"el1\":50,\"es2\":5,\"el2\":50,\"es3\":5,\"el3\":50,\"es4\":5,\"el4\":50,\"sl1\":6,\"sl2\":6,\"sl3\":6,\"sl4\":6},\"704\":{\"level\":50,\"stage\":5,\"star\":3,\"smallStar\":20,\"pScore\":0,\"score\":12187,\"es1\":5,\"el1\":50,\"es2\":5,\"el2\":50,\"es3\":5,\"el3\":50,\"es4\":5,\"el4\":50,\"sl1\":6,\"sl2\":6,\"sl3\":6,\"sl4\":6}},\"formation\":{\"team1\":707,\"g1\":12,\"team2\":705,\"g2\":8,\"team3\":701,\"g3\":3,\"team4\":702,\"g4\":11,\"team5\":706,\"g5\":6,\"team6\":703,\"g6\":14,\"team7\":704,\"g7\":13,\"team8\":0,\"g8\":0,\"score\":351077,\"heroId\":61302,\"filter\":\"\"},\"pokedex\":[0,0,0,0,0,0,0,0,0],\"score\":351077},\"skill\":null,\"r1\":19870515,\"r2\":19870515}"
+
+-- woodpile_2_json = {}
+
+
+local wordboss_json = {}
+function proc_wordboss_44(jsondata)
+    if jsondata == "test" then
+        jsondata = wordboss_json
+    end
+    local data = cjson.decode(jsondata)
+    local playerInfo = BattleUtils.jsonData2lua_battleData(data.atk)
+    -- local enemyInfo = BattleUtils.jsonData2lua_battleData(data.def)
+    local r1 = data.r1
+    local r2 = data.r2
+
+    if data.skill then
+        playerInfo.skillList = cjson.decode(data.skill)
+    end
+    local bossId = data.def.bossId
+    local bossLevel = data.def.bossLevel
+    local heros = data.def.heros
+
+    BattleUtils.dontCheck = true
+    local data, str, res = BattleUtils.enterBattleView_BOSS_WordBoss(playerInfo, nil, nil, r1, r2, bossId, 0, bossLevel, heros, true)
+    data.dieList = nil
+    data.ret = ERROR_CODE_SUCCESS
+    if DEBUG_PLAYER_INFO then
+        data.playerInfo = playerInfo
+    end
+    data.curTotalHurt = 0
+    if res and type(res) == "table" then
+        data.curTotalHurt = res.curTotalHurt or 0
+    end
+
+    -- print(data.curTotalHurt)
+
+    return cjson.encode(data)
+end
+proc_functions[44] = proc_wordboss_44

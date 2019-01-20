@@ -463,7 +463,7 @@ function GodWarWatchBattleDialog:updateLeftPanel(inView, data, fan, warData, ene
 
     -- 玩家头像
     if inView then
-        local param = {avatar = data.avatar, level = data.lvl, tp = 4, avatarFrame = data["avatarFrame"]}
+        local param = {avatar = data.avatar, level = data.lvl, tp = 4, avatarFrame = data["avatarFrame"], plvl = data.plvl}
         local icon = inView:getChildByName("icon")
         if not icon then
             icon = IconUtils:createHeadIconById(param)
@@ -655,7 +655,7 @@ function GodWarWatchBattleDialog:updateRightPanel(inView, data, fan, warData, en
     end
 
     if inView then
-        local param = {avatar = data.avatar, level = data.lvl, tp = 4, avatarFrame = data["avatarFrame"]}
+        local param = {avatar = data.avatar, level = data.lvl, tp = 4, avatarFrame = data["avatarFrame"], plvl = data.plvl}
         local icon = inView:getChildByName("icon")
         if not icon then
             icon = IconUtils:createHeadIconById(param)

@@ -70,6 +70,7 @@ function BattleUtils.clearBattleRequire()
         "game.view.battle.rule.BattleRule_Elemental_5",
         "game.view.battle.rule.BattleRule_Siege_Atk",
         "game.view.battle.rule.BattleRule_Siege_Def",
+        "game.view.battle.rule.BattleRule_BOSS_WordBoss",
     }
 
     if OS_IS_64 then
@@ -115,11 +116,27 @@ function BattleUtils.jsonData2lua_battleData(data)
     battleData.guildName = data.guildName
     battleData.score = data.score
     battleData.curScore = data.formation.score
-    -- dump(data, "a", 20)
+--    dump(data, "a", 20)
     battleData.lv = data.lv
+    battleData.plvl = data.plvl
+    battleData.inc = data.inc
+    battleData.newScore = data.newScore
+    battleData.gpsScore = data.gpsScore
+    battleData.pTalents = data.pTalents
     local dformation = data.formation
     local dhero = data.hero
     local dteams = data.teams
+    local backupTs = dformation.backupTs or {["1"] = {bpos = 1}}
+    local backups = data.backups or {}
+    local hformationId = dformation.bid or 1
+    local hteams = data.helpTeams or {}
+    local arenaSkillTeam = data.arenaSkillTeam or {}
+
+    --后援数据兼容
+    if hformationId and backupTs[tostring(hformationId)] == nil then
+        backupTs[tostring(hformationId)] = {bpos = 1}
+    end
+
     -- 把带#的ID转换成正常ID   205#1 => 205
     local list
     local _team = {}
@@ -135,6 +152,21 @@ function BattleUtils.jsonData2lua_battleData(data)
         end
     end
     dteams = _team
+
+    local list
+    local _hteam = {}
+    for ID, team in pairs(hteams) do
+        list = string.split(ID, "#")
+        if #list > 1 then
+            team.dhr = list[2]
+            team.ID = list[1]
+            _hteam[#_hteam + 1] = team
+        else
+            team.ID = ID
+            _hteam[#_hteam + 1] = team
+        end
+    end
+    hteams = _hteam
 
     if data.skillList and data.skillList ~= "" then
         battleData.skillList = cjson.decode(data.skillList)
@@ -245,9 +277,27 @@ function BattleUtils.jsonData2lua_battleData(data)
         dteams = _team
     end
 
+    if next(filter) ~= nil then
+        local _hteam = {}
+        for i = 1, #hteams do
+            if filter[hteams[i].ID] == nil or mercenaryId == tonumber(hteams[i].ID) then
+                _hteam[#_hteam + 1] = hteams[i]
+            end
+        end
+        hteams = _hteam
+        
+    end
+
+    --如果不排序会出现援助的出现复盘和战斗时机不一样，这样会导致战斗结果不一致
+    if hteams and #hteams >= 2 then
+        table.sort(hteams, function( r1, r2)
+            return r1.ID < r2.ID
+        end)
+    end
+
     local formationPD = {}
     local team, g, d
-    for i = 1, 8 do
+    for i = 1,8 do
         team = dformation["team" .. i]
         g = dformation["g" .. i]
         d = dformation["d" .. i]
@@ -273,6 +323,10 @@ function BattleUtils.jsonData2lua_battleData(data)
         local rune = v.rune
         if rune and type(rune) == "table" then
             rune.castinglv = BattleUtils.getHolyMasterLevel(rune, battleData.runes)
+        end
+        local tSkin = nil
+        if data.tSkin and (data.tSkin[tostring(tid)] or data.tSkin[tid]) then
+            tSkin = data.tSkin[tostring(tid)] or data.tSkin[tid]
         end
         team = {
             id = tid,
@@ -300,6 +354,10 @@ function BattleUtils.jsonData2lua_battleData(data)
             isMercenary = tid == mercenaryId,
             -- 原始数据
             data = clone(v),
+            -- 兵团皮肤id
+            sId = v.sId or 0,
+            tSkin = tSkin,
+
         }
         if team.jxSkill1 == 0 then team.jxSkill1 = nil end
         if team.jxSkill2 == 0 then team.jxSkill2 = nil end
@@ -318,13 +376,38 @@ function BattleUtils.jsonData2lua_battleData(data)
             {stage = v.es3, level = v.el3},
             {stage = v.es4, level = v.el4},
         }
-        team.skill = {v.sl1, v.sl2, v.sl3, v.sl4}
- 
+        local stuntSkill = {
+            ["sl5"] = 0,
+            ["sl6"] = 0,
+        }
+        if v.ss and v.ss >= 5 and v.ss <= 6 then
+            stuntSkill["sl"..v.ss] = v["sl"..v.ss] or 0
+        end
+        team.ss = v.ss or 0
+
+        --领域技能的开启有服务器控制
+        if not table.indexof(arenaSkillTeam, tostring(tid)) then
+            v.sl7 = 0
+        end
+
+        team.skill = {v.sl1, v.sl2, v.sl3, v.sl4, stuntSkill.sl5, stuntSkill.sl6, v.sl7 or 0}
+        
         team.leagueBuff = v.leagueBuff
+
+        --战阵数据
+        team.battleArray = data.battleArray
 
         -- 宝石库加到兵团自己身上
         team.runes = battleData.runes
         team.purBuff    = v.purBuff
+
+        -- 兵器专属技能星级
+        team.zStar = v.zStar or 0
+        team.zLv = v.zLv or 0
+
+        -- 巅峰数据
+        team.pTalents = data.pTalents
+
         teams[#teams + 1] = team
     end
     battleData.team = teams
@@ -342,8 +425,123 @@ function BattleUtils.jsonData2lua_battleData(data)
         end
     end
     battleData.weapons = weapons
+    --法相
+    if data.shadow and string.len(tostring(data.shadow)) > 0 then
+        battleData.shadow = data.shadow
+    end
 
+
+    --助战兵团
+    local hPosTableData = tab.backupMain[hformationId]["class"]
+    local hformationPD = BattleUtils.getHelpPosData(hPosTableData, backupTs[tostring(hformationId)])
+    local helpteams = {}
+    local tid, v, fid
+    for i = 1, #hteams do
+        v = hteams[i]
+        tid = tonumber(hteams[i].ID)
+        if v.dhr then
+            fid = tid .. "#" .. v.dhr
+        else
+            fid = tid
+        end
+        local jxTree = v.tree or {}
+        local rune = v.rune
+        if rune and type(rune) == "table" then
+            rune.castinglv = BattleUtils.getHolyMasterLevel(rune, battleData.runes)
+        end
+        local tSkin = nil
+        if data.tSkin and (data.tSkin[tostring(tid)] or data.tSkin[tid]) then
+            tSkin = data.tSkin[tostring(tid)] or data.tSkin[tid]
+        end
+        team = {
+            id = tid,
+            pos = hformationPD[tid] or i,
+            level = v.level,
+            star = v.star,
+            smallStar = v.smallStar,
+            stage = v.stage,
+            dhr = v.dhr,
+            -- 里属性
+            avn = v.avn,
+            pl = clone(v.pl),
+            -- 天赋
+            tmScore = v.tmScore,
+            -- 觉醒
+            jx = tonumber(v.ast) == 3,
+            jxLv = tonumber(v.aLvl),
+            jxSkill1 = jxTree.b1,
+            jxSkill2 = jxTree.b2,
+            jxSkill3 = jxTree.b3,
+
+            -- 符文宝石
+            rune = v.rune,
+            -- 是否为雇佣兵
+            isMercenary = tid == mercenaryId,
+            -- 原始数据
+            data = clone(v),
+            ishelpteam = true,
+            -- 兵团皮肤id
+            sId = v.sId or 0,
+            tSkin = tSkin,
+        }
+        if team.jxSkill1 == 0 then team.jxSkill1 = nil end
+        if team.jxSkill2 == 0 then team.jxSkill2 = nil end
+        if team.jxSkill3 == 0 then team.jxSkill3 = nil end
+        team.data.teamId = tid
+        if v.tt then
+            team.tt = {}
+            for k, v in pairs(v.tt) do
+                team.tt[tostring(k)] = tonumber(v)
+            end
+        end
+        team.equip = 
+        {
+            {stage = v.es1, level = v.el1},
+            {stage = v.es2, level = v.el2},
+            {stage = v.es3, level = v.el3},
+            {stage = v.es4, level = v.el4},
+        }
+        local teamD = tab.team[team.id]
+        local stuntSkill = {
+            ["sl5"] = 0,
+            ["sl6"] = 0,
+        }
+        if v.ss and v.ss >= 5 and v.ss <= 6 then
+            stuntSkill["sl"..v.ss] = v["sl"..v.ss] or 0
+        end
+        team.ss = v.ss or 0
+
+        --领域技能的开启有服务器控制
+        if not table.indexof(arenaSkillTeam, tostring(tid)) then
+            v.sl7 = 0
+        end
+
+        team.skill = {v.sl1, v.sl2, v.sl3, v.sl4, stuntSkill.sl5, stuntSkill.sl6, v.sl7 or 0}
+        team.leagueBuff = v.leagueBuff
+
+        --战阵数据
+        team.battleArray = data.battleArray
+
+        -- 宝石库加到兵团自己身上
+        team.runes = battleData.runes
+        team.purBuff    = v.purBuff
+
+        -- 兵器专属技能星级
+        team.zStar = v.zStar or 0
+        team.zLv = v.zLv or 0
+
+        -- 巅峰数据
+        team.pTalents = data.pTalents
+
+        helpteams[#helpteams + 1] = team
+    end
+    battleData.backupTs = backupTs
+    battleData.backups = backups
+    battleData.hformationId = hformationId
+    battleData.helpteams = helpteams
+    battleData.rid = data.rid or "0"
     -- dump(battleData, "a", 20)
+
     return battleData
 end
 

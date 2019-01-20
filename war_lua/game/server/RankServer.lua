@@ -27,6 +27,15 @@ function RankServer:onGetRankList( result, error)
 	self:callback(result)
 end
 
+function RankServer:onGetGuessRankList(result, error)
+	if error ~= 0 then
+		return
+	end
+
+	self._rankModel:setData(result)
+	self:callback(result)
+end
+
 function RankServer:onGetDetailRank( result, error )
 	if error ~= 0 then 
 		return

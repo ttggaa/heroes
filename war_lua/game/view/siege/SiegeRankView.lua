@@ -287,7 +287,8 @@ function SiegeRankView:reflashNo1( data )
 	name:setString(data.name)
 
 	local level = self._leftBoard:getChildByFullName("level")
-	level:setString("等级:" .. (data.lvl or ""))
+	local inParam = {lvlStr = "Lv." .. (data.lvl or 0), lvl = (data.lvl or 0), plvl = data.plvl}
+    UIUtils:adjustLevelShow(level, inParam, 1)
 	local guild = self._leftBoard:getChildByFullName("guild")
 	local guildName = data.guildName
 
@@ -601,7 +602,7 @@ function SiegeRankView:createRoleHead(data,headNode,scaleNum)
 	local lvl = data.lvl
 
     local tencetTp = data["qqVip"]
-	local icon = IconUtils:createHeadIconById({avatar = avatarName,tp = 3 ,level = lvl,avatarFrame = data["avatarFrame"], tencetTp = tencetTp})
+	local icon = IconUtils:createHeadIconById({avatar = avatarName,tp = 3 ,level = lvl,avatarFrame = data["avatarFrame"], tencetTp = tencetTp, plvl = data.plvl})
 	icon:setName("avatarIcon")
 	icon:setAnchorPoint(cc.p(0.5,0.5))
 	icon:setScale(scale)

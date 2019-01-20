@@ -10,6 +10,7 @@ local TaskItemView = class("TaskItemView", BaseLayer)
 TaskItemView.kViewTypeItemPrimary = 1
 TaskItemView.kViewTypeItemEveryday = 2
 TaskItemView.kViewTypeFinished = 3
+TaskItemView.kViewTypeItemWeekly = 4
 
 TaskItemView.kItemContentSize = {
     width = 770,
@@ -150,6 +151,22 @@ function TaskItemView:updateUI()
 
         self._layerGoBg:setBackGroundImage("item_bg_80_rand_n_task.png", 1)
         self._layerGoBg:setBackGroundImageCapInsets(cc.rect(41,41,1,1))
+    elseif self._taskData.floor and 3 == self._taskData.floor then
+        self._taskIconBg:loadTexture("item_bg_weekly_flag_3.png", 1)
+
+        self._layerItem:setBackGroundImage(self._taskData.status > 1 and "globalPanelUI7_cellBg2.png" or "globalPanelUI7_cellBg0.png", 1)
+        self._layerItem:setBackGroundImageCapInsets(cc.rect(41,41,1,1))
+
+        self._layerGoBg:setBackGroundImage("globalPanelUI7_cellBg1.png", 1)
+        self._layerGoBg:setBackGroundImageCapInsets(cc.rect(41,41,1,1))
+    elseif self._taskData.floor and 4 == self._taskData.floor then
+        self._taskIconBg:loadTexture("item_bg_weekly_flag_4.png", 1)
+
+        self._layerItem:setBackGroundImage(self._taskData.status > 1 and "item_bg_80_d_task.png" or "item_bg_80_n_task.png", 1)
+        self._layerItem:setBackGroundImageCapInsets(cc.rect(41,41,1,1))
+
+        self._layerGoBg:setBackGroundImage("item_bg_80_rand_n_task.png", 1)
+        self._layerGoBg:setBackGroundImageCapInsets(cc.rect(41,41,1,1))
     else
         self._taskIconBg:loadTexture("globalImageUI_flagBg_blue.png", 1)
 
@@ -246,9 +263,11 @@ function TaskItemView:updateUI()
     richText:setName("descRichText")
     labelDiscription:addChild(richText)
     local activeName = self._viewType == self.kViewTypeItemPrimary and "成长值" or "活跃度"
+    -- print(self._viewType,"============activeName=========",activeName)
     local activeValue = "+" .. (self._viewType == self.kViewTypeItemPrimary and self._taskData.grow or self._taskData.active)
     local isActiveShow = self._viewType == self.kViewTypeItemPrimary and 0 ~= self._taskData.grow or
-                         self._viewType == self.kViewTypeItemEveryday and 0 ~= self._taskData.active
+                         self._viewType == self.kViewTypeItemEveryday and 0 ~= self._taskData.active or
+                         self._viewType == self.kViewTypeItemWeekly and 0 ~= self._taskData.active
     self._taskActive:setVisible(isActiveShow)
     self._taskActiveValue:setVisible(isActiveShow)
     self._taskActive:setString(activeName)
@@ -357,7 +376,10 @@ function TaskItemView:updateUI()
                     additionValue = addition
                 end
             elseif self._taskData.award[i][1] == "exp" then
-                if 201 ~= self._taskData.conditiontype then
+                if 201 ~= self._taskData.conditiontype 
+                    and self._taskData.type 
+                    and  not (self._taskData.type == 4 or self._taskData.type == 5) 
+                then
                     addition = self._privilegesModel:getAbilityEffect(PrivilegeUtils.privileg_ID.PRIVILEGENAME_16)
                     if addition > 0 then
                         color = cc.c3b(118, 238, 0)

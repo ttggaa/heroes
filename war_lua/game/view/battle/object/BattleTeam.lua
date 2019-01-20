@@ -71,6 +71,9 @@ function BattleTeam:ctor(camp, shadowScale)
     self.canMoveDirty = true
     self.canMove = true
 
+    self.canFuhuo = true 
+    self.canFuhuoDirty = true
+
     self.maxHP = 0
     self.curHP = 0
 
@@ -78,6 +81,7 @@ function BattleTeam:ctor(camp, shadowScale)
     self.damage = 0   --  减伤前攻击伤害
     self.damage1 = 0  --  减伤后攻击伤害:真实伤害
     self.damageSkill = {}
+    self.damageSkillCount = {} -- 统计触发几次技能
     self.hurt = 0   --  减伤前承受伤害
     self.hurt1 = 0  --  减伤后承受伤害:真实伤害
     self.heal = 0
@@ -94,6 +98,8 @@ function BattleTeam:ctor(camp, shadowScale)
     self.speedDirty = true
     self.speed = 0
 
+    --记录死亡的时候，如果复活子物体不消失
+    self._hasInvokeRevive = false
     self._soldierAliveCount = 0
 
     -- 自身召唤方阵, 以方阵ID作为key
@@ -117,6 +123,7 @@ function BattleTeam:ctor(camp, shadowScale)
         self.stateLabel:setRotation3D(cc.Vertex3F(BC.BATTLE_3D_ANGLE, 0, 0))
         self.stateLabel:setAnchorPoint(0.5, 0)
         objLayer:getView():addChild(self.stateLabel)
+
     end
 
     -- hot属性
@@ -126,7 +133,7 @@ function BattleTeam:ctor(camp, shadowScale)
     -- 行动值
     self._actionValue = 0
 
-    -- 免疫buff种类编号
+    -- 免疫buff种类编号 战斗中一直存在的buff
     self.immuneBuff = {}
 
     -- 概率免疫buff种类编号
@@ -311,7 +318,7 @@ function BattleTeam:createSoldiers(info, initAttrFunc)
         self.aliveSoldier[i] = soldier
         soldier.aliveID = i
     end
-    if not self.walk then
+    if not self.walk or self.playBornAnim then
         -- 出生动画
         for i = 1, count do
             self.soldier[i]:changeMotion(EMotion.INIT)
@@ -567,8 +574,13 @@ end
 
 -- 开场技能，复活起来和镜像出来再放一次
 function BattleTeam:invokeSkill7()
-    for i = 1, #self.aliveSoldier do
-        self.aliveSoldier[i]:invokeSkill(7)
+    --------现在不知道为什么出现了无尽炼狱战斗报错，这里加个容错看看可不可以解决
+    if self.aliveSoldier then
+        for i = 1, #self.aliveSoldier do
+            if self.aliveSoldier[i] then
+                self.aliveSoldier[i]:invokeSkill(7)
+            end
+        end
     end
 end
 
@@ -660,6 +672,8 @@ function BattleTeam:soldierDie(id)
     -- 己方任意单位死亡（不包括召唤物）
     if  not self.summon then
         logic:invokeSkill45(camp, self)
+        -- 己方任意单位死亡触发敌方效果,因为世界boss的技能效果可能会导致当前的兵团死亡，这样上面的逻辑会有问题，因此单独在这里处理了一下，下一帧在触发技能
+        logic:invokeSkill49(3 - camp, self)
     end 
 
     local count = self._soldierAliveCount + 1
@@ -676,22 +690,32 @@ function BattleTeam:soldierDie(id)
     logic:onSoldierDieEx(soldier)
 
     local hasInvokeRevive = false
-    if teamDie and self.original and not self.reviveing then
-        hasInvokeRevive = logic:invokeSkill21(camp)
+    if teamDie and (self.original or self.assistance) and not self.reviveing then
+        if not soldier.banfuhuo or soldier.banfuhuo == 0 then
+            hasInvokeRevive = logic:invokeSkill21(camp)
+        end
         logic:invokeSkill46(camp)
         logic:invokeSkill27(3 - camp)
+        --因为复活和死亡生效的逻辑冲突，所以这里新加了一个逻辑
+        logic:invokeSkill48(camp)
     end
+
     if SRData then 
         self.dieCount = self.dieCount + 1
         if camp == 2 then
             logic.playerKillCount = logic.playerKillCount + 1
         end
     end
-
+    self._hasInvokeRevive = hasInvokeRevive
     local revive = logic.firstDie[camp]
-    if teamDie and self.original and revive and not hasInvokeRevive and not self.reviveing then
+    -- local canFuhuo = self:getCanFuhuo() -- 增加buff["banfuhuo"] 禁止复活
+    if teamDie and (self.original or self.assistance) and revive and not hasInvokeRevive and not self.reviveing  then --and canFuhuo then
         logic.firstDie[camp] = nil
-        -- 天使联盟复活
+        --由于这个时候的死亡需要计入援助的计算方式
+        if logic.updateHelpTeam then
+            logic:updateHelpTeam()
+        end
+        -- 天使联盟复活(宝物天使赞歌)
         for i = 1, #self.soldier do
             self.soldier[i]:setRevive(false, 100)
 
@@ -736,6 +760,13 @@ function BattleTeam:soldierRevive(id)
         self.__needShowHUD = true
         self.dieTick = -1
         self:invokeSkill7()
+        local iteamId = 0
+        if self.D and self.D.id then
+            iteamId = self.D.id
+        end
+        if logic.onTeamReviveFunc[self.camp] then
+            logic.onTeamReviveFunc[self.camp](logic, iteamId)
+        end
     else
         -- 如果在移动中
         if self.isMove then
@@ -834,6 +865,30 @@ function BattleTeam:getCanMove()
     end
 end
 
+-- function BattleTeam:getCanFuhuo()
+--     if self.canFuhuoDirty then
+--         -- 全队都可以移动, 才可以移动
+--         local canFuhuo = true
+--         local list = self.aliveSoldier
+--         if #list > 0 then
+--             for i = 1, #list do
+--                 if list[i].banfuhuo and list[i].banfuhuo > 0 and 
+--                 (not logic:getHero(self.camp).lastDieId or logic:getHero(self.camp).lastDieId ~= self.ID)  then 
+--                     canFuhuo = false
+--                     break
+--                 end
+--             end
+--         else
+--             canFuhuo = self.soldier[1] and self.soldier[1].banfuhuo <= 0
+--         end
+--         self.canFuhuo = canFuhuo
+--         self.canFuhuoDirty = false
+--         return canFuhuo
+--     else
+--         return self.canFuhuo 
+--     end
+-- end
+
 local getCellByScenePos = BC.getCellByScenePos
 local ActionValue = BC.ActionValue
 local BattleSoldier_updateMove = BattleSoldier.updateMove
@@ -881,6 +936,24 @@ function BattleTeam:update(tick, delta, updateSoldier)
         if self.stateLabel then
             local x, y = self.x, self.y
             self.stateLabel:setPosition(x, y)
+            local pos = cc.p(self.x, self.y)
+            
+            local drawNode = objLayer:lGetDrawNode(self.ID, objLayer._rootLayer)
+            if drawNode then
+                local aPositions = {}
+                drawNode:clear()
+                local _c4f = cc.c4f(1,0,0,1)
+                if self.camp == 1 then
+                    _c4f = cc.c4f(0,0,1,1)
+                end
+                --圆形，参数：原点，半径，弧度，分段(越大越接近圆)，原点到弧度的线是否显示，线条宽度，颜色
+                --const Vec2 &center, float radius, float angle, unsigned int segments, bool drawLineToCenter, const Color4F &color
+                if BattleUtils.XBW_SKILL_TEAM_ATTACK_ARER_TYPE and BattleUtils.XBW_SKILL_TEAM_ATTACK_ARER_TYPE == 1 then
+                    drawNode:drawCircle(pos, self.attackArea, 0, 50, false, _c4f)
+                else
+                    drawNode:drawDot(pos, 4, _c4f)
+                end
+            end
         end
         self.posDirty = 0
         if self.__needShowHUD then
@@ -897,7 +970,27 @@ function BattleTeam:update(tick, delta, updateSoldier)
             end
         end
     end
-
+    if BattleUtils.XBW_SKILL_DEBUG and not BATTLE_PROC then
+        if self.stateLabel then
+            if self.state == ETeamStateDIE then
+                self.stateLabel:setString("")
+                local drawNode = objLayer:lGetDrawNode(self.ID, objLayer._rootLayer)
+                if drawNode then
+                    drawNode:clear()
+                end
+            else
+                local _soldier = self.aliveSoldier[1]
+                if _soldier and _soldier._nAttackCount then
+                    local targetId = 0
+                    if _soldier.targetS ~= nil then
+                        targetId = _soldier.targetS.team.ID
+                    end  
+                    self.stateLabel:setString(_soldier._nAttackCount .. "_" .. self.ID .. "_" .. (targetId or 0))
+                end
+            end
+        end
+        
+    end
     if updateSoldier then
         local actionValue = self._actionValue
         actionValue = actionValue + delta
@@ -983,6 +1076,17 @@ function BattleTeam:updateTeamBuff(tick)
     end
 end
 
+--测试的时候强制死亡
+function BattleTeam:lSetForceDie()
+    local soldiers = self.soldier
+    for i = 1, #soldiers do
+        if not soldiers[i].die then
+            -- soldiers[i]:clearBuff()
+            soldiers[i]:rap(nil, -9999999999, false, false, 0, 199, true)
+        end
+    end
+end
+
 local statelabelColor = {cc.c3b(255, 255, 255), cc.c3b(50, 255, 255), cc.c3b(255, 100, 100), cc.c3b(255, 255, 255), cc.c3b(50, 255, 50), cc.c3b(128, 128, 128)}
 function BattleTeam:setState(state)
     if self.state ~= state then
@@ -1005,7 +1109,7 @@ function BattleTeam:setState(state)
         if self.state == ETeamStateDIE then
             self.stateLabel:setString("")
         end
-        self.stateLabel:setColor(statelabelColor[self.state])
+--        self.stateLabel:setColor(statelabelColor[self.state])
     end
 end
 

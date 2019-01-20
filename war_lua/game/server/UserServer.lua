@@ -38,6 +38,7 @@ function UserServer:_init()
     self._lotteryModel = self._modelMgr:getModel("AcLotteryModel")
     self._dailySiegeModel = self._modelMgr:getModel("DailySiegeModel")
     self._skillTalentModel = self._modelMgr:getModel("SkillTalentModel")
+    self._backupModel = self._modelMgr:getModel("BackupModel")
 end
 
 -- 登录获取用户数据
@@ -375,6 +376,12 @@ function UserServer:onGetPlayerAction(result, error)
         result["runeLottery"] = nil
     end
 
+    if result["comingGuildAc"] ~= nil then
+        local AcUltimateModel = self._modelMgr:getModel("AcUltimateModel")
+        AcUltimateModel:setData(result["comingGuildAc"])
+        result["comingGuildAc"] = nil
+    end
+    
     if result["gadgets"] ~= nil then
         self._modelMgr:getModel("MainViewModel"):setGadgetData(result["gadgets"])
     end
@@ -389,6 +396,21 @@ function UserServer:onGetPlayerAction(result, error)
         if OS_IS_WINDOWS then 
             self._viewMgr:showTip("等级"..result["lvl"].."，新手引导自动修正引导到"..newIndex.."步")
         end
+    end
+
+    -- 后援
+    if result["backups"] ~= nil then
+        self._backupModel:setBackupData(result["backups"])
+    end
+
+    -- 成长之路奖励状态
+    if result["roadOfGrowthStatus"] ~= nil then
+       self._modelMgr:getModel("GrowthWayModel"):setAwardData(result["roadOfGrowthStatus"]) 
+    end
+
+    --兵团战阵
+    if result["battleArray"] ~= nil then
+        self._modelMgr:getModel("BattleArrayModel"):setBattleArrayData(result["battleArray"])
     end
 
     -- 上传错误信息
@@ -749,6 +771,5 @@ function UserServer:onReplacePackage(result, error)
     end
     self:callback(result)
 end
-
 
 return UserServer

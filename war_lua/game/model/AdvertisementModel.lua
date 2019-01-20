@@ -13,6 +13,7 @@ local AdTimeType = {
 	enterServer = 3,
 	siege = 4,
 	cross = 5,
+	cGodWar = 6,
 }
 local AdType = {
 	commonAD = 0,
@@ -223,6 +224,24 @@ function AdvertisementModel:divideSpecialAdByType(inAd)
 		end
 
 		return true
+
+	--跨服诸神
+	elseif inAd["start_type"] == AdTimeType.cGodWar then
+		local isOpen = self._modelMgr:getModel("CrossGodWarModel"):matchIsOpen()
+		local currentTime = self._modelMgr:getModel("UserModel"):getCurServerTime()
+	    local operateDate = TimeUtils.date("*t", currentTime)
+	    local curWakeDay = operateDate.wday
+	    if curWakeDay == 1 then 
+	        curWakeDay = 7
+	    else
+	        curWakeDay = curWakeDay - 1
+	    end
+
+	    if isOpen and curWakeDay >= 1 and curWakeDay <= 4 then
+	    	table.insert(self._adTb, inAd)
+	    end
+
+	    return true
 	end
 
 	return false
@@ -230,8 +249,12 @@ end
 
 --自然时间1/进服时间3 开服X天后可见
 function AdvertisementModel:checkAdByDayLimit(currAd)
-	if currAd == nil or currAd["daylimit"] == nil then
+	if currAd == nil then
 		return false
+	end
+
+	if currAd["daylimit"] == nil then
+		return true
 	end
 
 	local secTime = self._userModel:getData().sec_open_time

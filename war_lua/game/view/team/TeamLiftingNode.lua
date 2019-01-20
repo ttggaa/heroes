@@ -474,9 +474,17 @@ function TeamLiftingNode:upgradeStageTeamFinish(inResult)
 
     -- 如果老数据和新数据技能不符合说明激活新技能
     -- self._fightCallback({newFight = tempTeam.score, oldFight = self._oldTeamData.score})
-    for i=1,4 do
-        if tonumber(self._oldTeamData["sl" .. i]) ~= tonumber(tempTeam["sl" .. i]) then
-            flag = i
+    for i=1, 5 do
+        if i == 5 then
+            local quality1 = self._teamModel:getTeamQualityByStage(self._oldTeamData["stage"]) 
+            local quality2 = self._teamModel:getTeamQualityByStage(tempTeam["stage"])
+            if quality1[1] ~= quality2[1] and quality2[1] == 6 then
+                flag = 5   --by wangyan 红色解锁新特技的时候，用通用技能id 6900050
+            end
+        else
+            if tonumber(self._oldTeamData["sl" .. i]) ~= tonumber(tempTeam["sl" .. i]) then
+                flag = i
+            end
         end
     end
     local tempData = {}

@@ -355,4 +355,10 @@ function BossModel:getRewardIdList( pveId )
     return canGetIdData
 end  
 
+--军团试炼参与次数
+function BossModel:isNeedLegionTimesTip()
+	local idIndex = "6"
+	return self._data[idIndex] and self._data[idIndex].times and self._data[idIndex].times==0
+end
+
 return BossModel

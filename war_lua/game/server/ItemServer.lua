@@ -29,12 +29,20 @@ function ItemServer:onUseItem(result, error)
     self:callback(result)
 end
 
+function ItemServer:onUseItems(result, error)
+    if error ~= 0 then 
+        return
+    end
+    self:handAboutTeamServerData(result)
+    self:callback(result)
+end
+
 
 function ItemServer:handAboutTeamServerData(result)
     if result == nil or result["d"] == nil then 
         return 
     end
-    dump(result,"result....",10)
+    -- dump(result,"result....",10)
     -- 物品数据处理要优先于怪兽
     local itemModel = self._modelMgr:getModel("ItemModel")
     itemModel:updateItems(result["d"]["items"], true)
@@ -61,6 +69,11 @@ function ItemServer:handAboutTeamServerData(result)
     if result["d"] and result["d"]["hSkin"] then
         userModel:updateSkinData(result["d"]["hSkin"])
         result["d"]["hSkin"] = nil
+    end
+    
+    if result["d"] and result["d"]["tSkin"] then
+        userModel:updateTeamSkinData(result["d"]["tSkin"])
+        result["d"]["tSkin"] = nil
     end
 
     local activityModel = self._modelMgr:getModel("ActivityModel")

@@ -49,6 +49,8 @@ function RankHeroDetailView:ctor(params)
     self._uMastery = params.data.uMastery or userModel:getuMastery()
 
     self._spTalent = params.data.spTalent
+    self._backupData = params.data.backups
+    self._pTalents = params.data.pTalents
     -- self._hSkin = params.data.hSkin or userModel:getUserSkinData()
 end
 
@@ -250,7 +252,9 @@ function RankHeroDetailView:updateRightPanel()
                                                         self._treasures,
                                                         self._talentData,
                                                         self._hAb,
-                                                        self._uMastery)
+                                                        self._uMastery,
+                                                        self._backupData,
+                                                        self._pTalents)
     -- dump(attrData,"attrData==>>")
 	--详细信息
     local information = self._teamInfo1:getChildByFullName("information")
@@ -278,7 +282,8 @@ function RankHeroDetailView:updateRightPanel()
 
     -- local skinAtt = self._heroModel:getHeroSkinAttr(self._hSkin)
     local changeMap = {[1] = "atk",[2] = "def", [3]="int",[4] = "ack"}
-    
+    -- local starAttr = self._modelMgr:getModel("UserModel"):getStarHeroAttr() or {}
+    -- local starAttrKey = {[1] = "110",[2] = "113", [3]="116",[4] = "119"}
     -- for i=1,4 do
     --     if attrData[changeMap[i]] then
     --         attrData[changeMap[i]] = attrData[changeMap[i]] + skinAtt[changeMap[i]]

@@ -70,7 +70,7 @@ function GlobalTipView:ctor(data)
     	self.reflashTreasureTipPanel--[[10]],
     	self.reflashGuildEquipTipPanel--[[11]],
     	self.reflashHeroApTipPanel	--[[12]],
-
+    	self.reflashHeroSkillMoralePanel	--[[13]],
     }
     self._raceIcons = {}
     -- 宽和高根据旋转相互转化 ..废弃
@@ -158,6 +158,9 @@ function GlobalTipView:onInit()
 	self._heroApTipPanel = 0 -- 延迟到刷新时创建
 	table.insert(self._panels,self._heroApTipPanel)	    -- 12
 
+	self._heroSkillMoralePanel = 0 -- 延迟到刷新时创建
+	table.insert(self._panels,self._heroSkillMoralePanel)	    -- 13
+
 	for _,panel in pairs(self._panels) do
 		if not tonumber(panel) then
 			panel:setSwallowTouches(false)
@@ -171,7 +174,7 @@ function GlobalTipView:onInit()
 		1,5,7,1,1, --[[ <  5 < --]]
 		4,1,1,1,8, --[[ < 10 < --]]
 		1,1,9,9,10,--[[ < 15 < --]]
-		3,9,9,11,10, --[[ < 20 < --]]
+		3,9,13,11,10, --[[ < 20 < --]]
 		12,1,1,1,1,--[[ < 25 < --]]
 		1,--[[ < 30 < --]]
 	}
@@ -355,8 +358,17 @@ function GlobalTipView:reflashIconPanel( data )
 	if OS_IS_WINDOWS and data["id"] then
 		print("data..id [",data.id,"]")
 		exNameId = " [" .. data.id .. "]"
+		local dName = self._iconPanel:getChildByName("debugName")
+		if not dName then
+			dName = cc.Label:createWithTTF(exNameId, UIUtils.ttfName, 24)
+			self._iconPanel:addChild(dName)
+			dName:setName("debugName")
+			dName:setAnchorPoint(cc.p(0,0.5))
+			dName:setPosition(nameLab:getPositionX(),nameLab:getPositionY() + 24)
+		end
+		dName:setString(exNameId)
 	end
-	nameLab:setString(nameStr .. (data.nameTail or "") .. exNameId or "重新看表" )
+	nameLab:setString(nameStr .. (data.nameTail or ""))
 --	nameLab:setColor(self._itemName:setColor(UIUtils.colorTable["ccColorQuality".. toolD.quality or 1]))
 
 	local nameColor = data.color or data.quality_show or data.quality or 1
@@ -668,7 +680,7 @@ function GlobalTipView:reflashHeroAttrPanel( data )
 	local heroCollectAttr = self._modelMgr:getModel("HeroModel"):caculateHeroCollectAttr()
 	local heroMasteryAttr = self._modelMgr:getModel("HeroModel"):caculateHeroMasteryAttr()
 	-- dump(heroMasteryAttr,"heroMasteryAttr")
-	self._heroAttrPanel:setPosition(0, -65)
+	self._heroAttrPanel:setPosition(0, -100)
 	self._bg:setContentSize(0, 0)
 	self._bg:setOpacity(0)
 	self._bgHight = 0 --heroAttrBg:getContentSize().height
@@ -681,13 +693,15 @@ function GlobalTipView:reflashHeroAttrPanel( data )
 	if not spellAttrs then spellAttrs = {} end
 	--星体属性
 	local starAttr = self._modelMgr:getModel("UserModel"):getStarHeroAttr() or {}
+	-- 后援属性
+	local backUpAttr = self._modelMgr:getModel("BackupModel"):getBackUpAddAtr() or {}
 	-- 计算属性
 	local branchBuff = self._modelMgr:getModel("UserModel"):getData().branchHAb or {}
 	local heroId = data.heroData.id
     local star = data.heroData.star
     local heroD = tab:Hero(tonumber(heroId))
     local base 
-    local attr, attr1, attr2, attr3, attr4, attr5, kind, icon
+    local attr, attr1, attr2, attr3, attr4, attr5, kind, icon, attr7, attr8, attr9, attr10, attr11
     local attrs = {}  -- 二维数组 四个属性 攻防智知
     attrs[1] = {}
     attr  = tonumber(string.format("%.01f",data.attributes.atk))
@@ -699,6 +713,8 @@ function GlobalTipView:reflashHeroAttrPanel( data )
     attr7 = tonumber(string.format("%.01f",heroSkinAttrs.atk or 0))
     attr8 = tonumber(string.format("%.01f",spellAttrs.atk or 0))
     attr9 = starAttr["110"] or starAttr[110] or 0
+    attr10 = backUpAttr["110"] or backUpAttr[110] or 0
+    attr11 = tonumber(string.format("%.01f",data.attributes.heroAttr_paragonTalent[BattleUtils.HATTR_Atk]))
     print("attr2 atk",attr2)
     -- attr2 = attr - attr1 - attr2 - attr3 - attr4
     ---[[ -- 修正数值 因 拿到几个attr值不对
@@ -714,6 +730,8 @@ function GlobalTipView:reflashHeroAttrPanel( data )
     attrs[1].attr7 = attr7
     attrs[1].attr8 = attr8
     attrs[1].attr9 = attr9
+    attrs[1].attr10 = attr10
+    attrs[1].attr11 = attr11
     --]]
     attr  = tonumber(string.format("%.01f",data.attributes.def))
     attr1 = tonumber(string.format("%.01f",heroCollectAttr.def)) --tonumber(string.format("%.01f",data.attributes.heroAttr_special[BattleUtils.HATTR_DefAdd]))
@@ -724,6 +742,8 @@ function GlobalTipView:reflashHeroAttrPanel( data )
     attr7 = tonumber(string.format("%.01f",heroSkinAttrs.def or 0))
     attr8 = tonumber(string.format("%.01f",spellAttrs.def or 0))
     attr9 = starAttr["113"] or starAttr[113] or 0
+    attr10 = backUpAttr["113"] or backUpAttr[113] or 0
+    attr11 = tonumber(string.format("%.01f",data.attributes.heroAttr_paragonTalent[BattleUtils.HATTR_Def]))
     print("def attr ",attr,"att2",attr2)
     -- attr2 = attr - attr1 - attr2 - attr3 - attr4
     
@@ -737,6 +757,8 @@ function GlobalTipView:reflashHeroAttrPanel( data )
 	attrs[2].attr7 = attr7
     attrs[2].attr8 = attr8
     attrs[2].attr9 = attr9
+    attrs[2].attr10 = attr10
+    attrs[2].attr11 = attr11
     --]]
     attr  = tonumber(string.format("%.01f",data.attributes.int))
     attr1 = tonumber(string.format("%.01f",heroCollectAttr.int)) --tonumber(string.format("%.01f",data.attributes.heroAttr_special[BattleUtils.HATTR_IntAdd]))
@@ -747,6 +769,8 @@ function GlobalTipView:reflashHeroAttrPanel( data )
     attr7 = tonumber(string.format("%.01f",heroSkinAttrs.int or 0))
     attr8 = tonumber(string.format("%.01f",spellAttrs.int or 0))
     attr9 = starAttr["116"] or starAttr[116] or 0
+    attr10 = backUpAttr["116"] or backUpAttr[116] or 0
+    attr11 = tonumber(string.format("%.01f",data.attributes.heroAttr_paragonTalent[BattleUtils.HATTR_Int]))
     print("attr2 int",attr2)
     -- attr2 = attr - attr1 - attr2 - attr3 - attr4
     attrs[3] = {}
@@ -759,6 +783,8 @@ function GlobalTipView:reflashHeroAttrPanel( data )
     attrs[3].attr7 = attr7
     attrs[3].attr8 = attr8
     attrs[3].attr9 = attr9
+    attrs[3].attr10 = attr10
+    attrs[3].attr11 = attr11
     --]]
     attr  = tonumber(string.format("%.01f",data.attributes.ack))
     attr1 = tonumber(string.format("%.01f",heroCollectAttr.ack)) -- tonumber(string.format("%.01f",data.attributes.heroAttr_special[BattleUtils.HATTR_AckAdd]))
@@ -769,6 +795,8 @@ function GlobalTipView:reflashHeroAttrPanel( data )
     attr7 = tonumber(string.format("%.01f",heroSkinAttrs.ack or 0))
     attr8 = tonumber(string.format("%.01f",spellAttrs.ack or 0))
     attr9 = starAttr["119"] or starAttr[119] or 0
+    attr10 = backUpAttr["119"] or backUpAttr[119] or 0
+    attr11 = tonumber(string.format("%.01f",data.attributes.heroAttr_paragonTalent[BattleUtils.HATTR_Ack]))
     print("attr2 ack",attr2)
     -- attr2 = attr - attr1 - attr2 - attr3 - attr4
     attrs[4] = {}
@@ -781,6 +809,8 @@ function GlobalTipView:reflashHeroAttrPanel( data )
     attrs[4].attr7 = attr7
     attrs[4].attr8 = attr8
     attrs[4].attr9 = attr9
+    attrs[4].attr10 = attr10
+    attrs[4].attr11 = attr11
     --]]
 
 	self._heroAttrPanel:setAttrs(attrs)
@@ -794,6 +824,7 @@ end
 -- 兵团特殊tip
 function GlobalTipView:reflashTeamAttrPanel( data )
 	local attrs = data.attrs 
+	dump(attrs,"=======attrs===========")
 	self._teamAttrPanel:setPosition(0, 0)
 	self._bg:setContentSize(self._teamAttrPanel:getContentSize().width, self._teamAttrPanel:getContentSize().height)
 	self._bgHight = self._teamAttrPanel:getContentSize().height
@@ -803,10 +834,10 @@ function GlobalTipView:reflashTeamAttrPanel( data )
 	local atkAttr = atkPanel:getChildByName("attr")
 	atkAttr:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor,2)
 	atkAttr:setString(TeamUtils.getNatureNums(attrs.atk))
-	local attrMap = {"base","treasure","pokedex","teamboost","hero","holy"}
+	local attrMap = {"base","treasure","pokedex","teamboost","hero","holy","skin"}
 	local atkDes4 = atkPanel:getChildByName("label4")
 	if atkDes4 then atkDes4:setString("天赋:") end
-	for i=1,6 do
+	for i=1,7 do
 		local attr = atkPanel:getChildByName("attr" .. i)
 		attr:setString(TeamUtils.getNatureNums(attrs["atk" .. attrMap[i]]))
 	end
@@ -816,7 +847,7 @@ function GlobalTipView:reflashTeamAttrPanel( data )
 	hpAttr:setString(TeamUtils.getNatureNums(attrs.hp))
 	local atkDes4 = hpPanel:getChildByName("label4")
 	if atkDes4 then atkDes4:setString("天赋:") end
-	for i=1,6 do
+	for i=1,7 do
 		local attr = hpPanel:getChildByName("attr" .. i)
 		attr:setString(TeamUtils.getNatureNums(attrs["hp" .. attrMap[i]]))
 	end
@@ -844,6 +875,22 @@ function GlobalTipView:reflashGuildEquipTipPanel(data )
 	self._bgWidth = 0
 	self._guildEquipTipPanel:setAttrs(data.id)
 end
+
+function GlobalTipView:reflashHeroSkillMoralePanel( data )
+	if tonumber(self._heroSkillMoralePanel) then return end
+	self._bg:setOpacity(0)
+	self._bg:setContentSize(0, 0)
+	self._bgHight = 0 --heroAttrBg:getContentSize().height
+	self._bgWidth = 0 --heroAttrBg:getContentSize().width
+	self._heroSkillMoralePanel:setAttrs(data)
+	self._heroSkillMoralePanel:setPosition(280,-10)
+	-- 魔法行会改学院
+	local des = self._heroSkillMoralePanel:getChildByFullName("root.bg.attrCell2.des")
+	if des then 
+		des:setString(lang("SYSTEM_20"))
+	end	
+end
+
 -- 英雄技能cd tip 展示cd效果的来源
 -- 英雄耗魔tip  复用 
 -- 复用英雄属性的tip板子
@@ -1029,32 +1076,32 @@ self:registerClickEvent("bg.scrollView.infoNode.tanchushuxing",function( )
 function GlobalTipView:createSpecialCell( data,specials,star,isLocked )
 	-- [[创建展示板子
 	local specialBg = ccui.ImageView:create()
-	specialBg:setPosition(180,50)
+	specialBg:setPosition(175,50)
 	specialBg:setScale9Enabled(true)
 	specialBg:setCapInsets(cc.rect(15,15,1,1))
-	specialBg:setContentSize(cc.size(500,115))
+	specialBg:setContentSize(cc.size(510,120))
 	specialBg:loadTexture("globalImageUI_tipCellBg.png",1)
 	-- node:addChild(specialBg)
 
 	local imageFrame = ccui.ImageView:create()
 	imageFrame:loadTexture("globalImageUI7_hsquality1.png",1)
-	imageFrame:setPosition(60,53)
+	imageFrame:setPosition(60,57)
 	imageFrame:setScale(1.1)
 	specialBg:addChild(imageFrame,6)
 
 	local imageStar = ccui.ImageView:create()
 	imageStar:loadTexture("globalImageUI_heroStar".. star ..".png",1)
-	imageStar:setPosition(60,24)
+	imageStar:setPosition(60,28)
 	specialBg:addChild(imageStar,20)
 	
 	local imageLocked = ccui.ImageView:create()
 	imageLocked:loadTexture("pokeImage_suo.png",1)
-	imageLocked:setPosition(60,53)
+	imageLocked:setPosition(60,57)
 	specialBg:addChild(imageLocked,10)
 
 	local imageSpecialIcon = ccui.ImageView:create()
 	imageSpecialIcon:loadTexture("globalImageUI7_hsquality1.png",1)
-	imageSpecialIcon:setPosition(60,52)
+	imageSpecialIcon:setPosition(60,56)
 	imageSpecialIcon:setScale(1)
 	specialBg:addChild(imageSpecialIcon,4)
 
@@ -1073,7 +1120,7 @@ function GlobalTipView:createSpecialCell( data,specials,star,isLocked )
 	specialBg:addChild(imageGlobalSpecialtyBg,3)
 
 	local labelGlobalTitle = ccui.Text:create()
-	labelGlobalTitle:setFontSize(20)
+	labelGlobalTitle:setFontSize(18)
 	labelGlobalTitle:setFontName(UIUtils.ttfName)
 	labelGlobalTitle:setPosition(215,18)
 	labelGlobalTitle:setString("英雄不在场依然有效")
@@ -1127,18 +1174,19 @@ function GlobalTipView:createSpecialCell( data,specials,star,isLocked )
     desc = string.gsub(desc," ","")
     desc = string.gsub(desc,"　","")
     local specialDes = ccui.Text:create()
-	specialDes:setFontSize(20)
+	specialDes:setFontSize(18)
 	specialDes:setFontName(UIUtils.ttfName)
 	specialDes:setPosition(10,15)
 	specialDes:setString(desc)
 	specialDes:setAnchorPoint(0,0)
 	specialDes:setColor(descColor)
-	specialDes:getVirtualRenderer():setMaxLineWidth(370)
+	specialDes:getVirtualRenderer():setMaxLineWidth(380)
 	specialDes:getVirtualRenderer():setHorizontalAlignment(0)
 	label:addChild(specialDes,5) 
 
 	-- 调整 specicalDes 的位置
 	local specialDesH = specialDes:getVirtualRenderer():getContentSize().height
+	print("=====specialDesH======"..specialDesH)
 	if specialDesH == 52 then
 		if hadAddBuffDes then
 			specialDes:setPosition(10,27)
@@ -1149,13 +1197,13 @@ function GlobalTipView:createSpecialCell( data,specials,star,isLocked )
 		if hadAddBuffDes then
 			specialDes:setPosition(10,40)
 		else
-			specialDes:setPosition(10,30)
+			specialDes:setPosition(10,35)
 		end
 	elseif specialDesH > 52 then
 		if hadAddBuffDes then
 			specialDes:setPosition(10,20)
 		else
-			specialDes:setPosition(10,45-specialDesH/2)
+			specialDes:setPosition(10,50-specialDesH/2)
 		end
 	end
 
@@ -1173,6 +1221,8 @@ function GlobalTipView:createSpecialCell( data,specials,star,isLocked )
     return specialBg
 end
 function GlobalTipView:parseMastery( data )
+
+	dump(data.heroD)
 	self._iconPanel:setVisible(false)
 	-- [[专长title
 	local titleBg = ccui.ImageView:create()
@@ -1201,6 +1251,25 @@ function GlobalTipView:parseMastery( data )
 	specialTitle:setString(lang(data.name))
 	specialTitle:setPosition(135+100,24)
 	titleBg:addChild(specialTitle)
+
+	local heroTableData = tab:Hero(data.heroD.id or data.heroD.heroId)
+	if heroTableData and not data.heroD.showdes then
+		data.heroD.showdes = heroTableData.showdes
+		data.heroD.herodes1 = heroTableData.herodes1
+	end
+
+	local showdes = data.heroD.showdes
+	if tonumber(showdes) == 1 then
+	    local tipsBtn = ccui.Button:create()
+	    tipsBtn:loadTextures("globalImage_info.png","globalImage_info.png","globalImage_info.png",1)
+	    tipsBtn:setPosition(410+100,24)
+	    registerClickEvent(tipsBtn,function() 
+	        self._viewMgr:showDialog("global.GlobalRuleDescView",{desc = lang(data.heroD.herodes1),titleDes = "专长补充"},true)
+	    end)
+	    titleBg:addChild(tipsBtn)
+
+	end
+
 	--]]
 	local star = tonumber(data.star)
 	local data1 = clone(data.heroD)
@@ -1261,7 +1330,7 @@ function GlobalTipView:parseMastery( data )
 	    		isLocked = k>=nextStar
 	    	end
 	    	local specialCell = self:createSpecialCell(data,specials,k, isLocked)
-	    	specialCell:setPosition(237,555-125*k)
+	    	specialCell:setPosition(237,555-127*k)
 	        label:addChild(specialCell)
 	    end
 	else
@@ -1344,11 +1413,17 @@ function GlobalTipView:reflashUI(data)
 				self._bg:addChild(self._treasureTipPanel)
 				self._panels[10] = self._treasureTipPanel
 			end
-		elseif tipType == 13 or tipType == 14 or tipType == 17 or  tipType == 18 then
+		elseif tipType == 13 or tipType == 14 or tipType == 17 then
 			if self._skillCdPanel == 0 then 
 				self._skillCdPanel = self._viewMgr:createLayer("global.HeroSingleAttrTipView")
 				self._bg:addChild(self._skillCdPanel)
 				self._panels[9] = self._skillCdPanel
+			end
+		elseif tipType == 18 then
+			if self._heroSkillMoralePanel == 0 then
+				self._heroSkillMoralePanel = self._viewMgr:createLayer("global.HeroSkillMoraleTipView")
+				self._bg:addChild(self._heroSkillMoralePanel)
+				self._panels[13] = self._heroSkillMoralePanel
 			end
 		elseif tipType == 19 then
 			if self._guildEquipTipPanel == 0 then
@@ -1366,6 +1441,7 @@ function GlobalTipView:reflashUI(data)
 		self._currentPanel = self._panels[self._panelIdxMap[tipType]]
 		self._currentPanel:setVisible(true)
 		local dataD = {}
+		print("tipType " , data.tipType)
 		if data.id or data.tipType then
 			if self["getDataDForTipType" .. data.tipType] then
 				dataD = self["getDataDForTipType" .. data.tipType](self,data)
@@ -1427,6 +1503,10 @@ function GlobalTipView:getDataDForTipType1( data )
     	hadNum = userData["siegePropCoin"]
 	end
 
+	if data.battleSoulType and data.id == 40019 then
+		hadNum = self._modelMgr:getModel("BattleArrayModel"):getBattleSoulNum(data.battleSoulType)
+	end
+
 	hadNum = hadNum or 0
 	-- 英雄碎片 加 “/下级升星所需数目”
 	local numTail = ""
@@ -1480,7 +1560,7 @@ function GlobalTipView:getDataDForTipType1( data )
 	end
 	
 	dataD._subDes = rtxStr--toolType[dataD.typeId]
-	dataD._icon = IconUtils:createItemIconById({itemId = data.id,num=hadNum or 0,hideNumLab=true,forceColor=data.forceColor, eventStyle=0})
+	dataD._icon = IconUtils:createItemIconById({itemId = data.id,num=hadNum or 0,hideNumLab=true,forceColor=data.forceColor, eventStyle=0, battleSoulType = data.battleSoulType})
 	dataD._icon:setScale(0.85)
 	dataD._iconPos = cc.p(0,-10)
 	if dataD.tabId == 1 --[[or dataD.tabId == 4]] then
@@ -1492,7 +1572,7 @@ function GlobalTipView:getDataDForTipType1( data )
 		end
 		if teamD then
 			dataD._iconPos = cc.p(0,-3)
-			dataD._subTitle = "[color=fae6c8,fontsize=20]资质：[-][color=fae6c8,fontsize=20]" .. (teamD.zizhi+12) .."[-]"
+			dataD._subTitle = "[color=fae6c8,fontsize=20]资质：[-][color=fae6c8,fontsize=20]" .. (self._modelMgr:getModel("TeamModel"):getTeamZiZhiText(teamD.zizhi)) .."[-]"
 		end
 	end
 	-- 强转颜色
@@ -1585,6 +1665,7 @@ end
 
 
 function GlobalTipView:getDataDForTipType2( data )
+	print("skillType ",data.skillType)
 	local dataD = clone(tab:PlayerSkillEffect(tonumber(data.id)))--只有这个是英雄技能！！与其他（专精专长）进行区别
 	if not dataD then -- 英雄专精专长 
 		local tail = ""
@@ -1611,9 +1692,9 @@ function GlobalTipView:getDataDForTipType2( data )
 			dataD._subDes = string.gsub(lang("HEROMASTERY_LV_" .. dataD.masterylv),"fontsize=18","fontsize=20")
 			dataD.color = dataD.masterylv+1
 		end
-		if data.skillType then
-			dataD._iconshape = "circle"
-		end
+		-- if data.skillType then
+		dataD._iconshape = "circle"
+		-- end
 		dataD.des = des or dataD.des
 		self._des = lang(dataD.des)
 		if string.find(lang(dataD.des),"morale") or string.find(lang(dataD.des),"addattr") or string.find(lang(dataD.des),"$artifactlv") then
@@ -1691,7 +1772,8 @@ function GlobalTipView:getDataDForTipType2( data )
 				end
 				if string.len(inStr) > 0 then 
 					local a = "return " .. inStr
-		            inStr = BattleUtils.formatNumber(loadstring(a)())
+                    local _number = string.format("%.4f", loadstring(a)())
+		            inStr = BattleUtils.formatNumber(_number)
 		        end
 				return inStr
 			end)
@@ -1974,8 +2056,48 @@ function GlobalTipView:isUseHeroMaster(id)
 	end 
 	return true
 end
+
+--注意这里，兵团展示的时候获取兵团基础属性的时候数据没有，记住一定要重新初始化一下
+--注意这里，兵团展示的时候获取兵团基础属性的时候数据没有，记住一定要重新初始化一下
+--注意这里，兵团展示的时候获取兵团基础属性的时候数据没有，记住一定要重新初始化一下
+function GlobalTipView:getTaamData(data)
+    local _teamData = clone(data.teamData)
+    if _teamData then
+		_teamData.level = _teamData.level or data.level or 1
+		_teamData.teamId = _teamData.teamId or _teamData.id
+		_teamData.star = _teamData.star or _teamData.starlevel
+		if not _teamData.el1 then
+			if _teamData.equip then
+				local e = _teamData.equip
+				local s = _teamData.skill
+				for i=1,7 do
+					if type(e[i]) ~= "table" then
+						e[i] = {}
+						e[i].level = 1
+						e[i].stage = 1
+					end
+					if type(s[i]) == "table" then 
+						s[i] = 1
+					end
+			        _teamData["el" .. i] = e[i].level
+			        _teamData["es" .. i] = e[i].stage
+			        _teamData["sl".. i] = s[i]
+			    end
+			else
+				for i=1,7 do
+			        _teamData["el" .. i] = 1
+			        _teamData["es" .. i] = 1
+			        _teamData["sl".. i] = 1
+			    end
+			end
+		end
+    end
+    return _teamData
+end
+
 -- 兵团技能tip
 function GlobalTipView:getDataDForTipType4( data )
+	-- dump(data,"========getDataDForTipType4========")
 	local dataD = {}
 	local isUseHeroMastery = self:isUseHeroMaster(data.id)
 	for k,v in pairs(self._skillTabMap) do
@@ -2017,35 +2139,7 @@ function GlobalTipView:getDataDForTipType4( data )
 	-- end
 
 	if data.teamData then
-		local teamData = clone(data.teamData)
-		teamData.level = teamData.level or data.level or 1
-		teamData.teamId = teamData.teamId or teamData.id
-		teamData.star = teamData.star or teamData.starlevel
-		if not teamData.el1 then
-			if teamData.equip then
-				local e = teamData.equip
-				local s = teamData.skill
-				for i=1,4 do
-					if type(e[i]) ~= "table" then
-						e[i] = {}
-						e[i].level = 1
-						e[i].stage = 1
-					end
-					if type(s[i]) == "table" then 
-						s[i] = 1
-					end
-			        teamData["el" .. i] = e[i].level
-			        teamData["es" .. i] = e[i].stage
-			        teamData["sl".. i] = s[i]
-			    end
-			else
-				for i=1,4 do
-			        teamData["el" .. i] = 1
-			        teamData["es" .. i] = 1
-			        teamData["sl".. i] = 1
-			    end
-			end
-		end
+		local teamData = self:getTaamData(data)
 		local desStr = lang(dataD.des)
 		if not isUseHeroMastery and dataD.jxDes then
 			desStr = lang(dataD.jxDes)
@@ -2109,7 +2203,16 @@ function GlobalTipView:getDataDForTipType4( data )
 		local rtx
 		local rtx1 -- 名词解释
 		if dataD.suitdes then
-			local rtxStr = self:forceDefColor(lang(dataD.suitdes))
+			local skillText = lang(dataD.suitdes)
+			if data.teamData then
+                local teamData = self:getTaamData(data)
+	            local teamid = teamData.teamid or teamData.teamId
+	            if tab.team[teamid] then 
+					local level = data.addLevel and data.addLevel + data.level or data.level
+					skillText = SkillUtils:handleSkillDesc1(lang(dataD.suitdes), teamData,level)
+	            end
+			end
+			local rtxStr = self:forceDefColor(skillText)
 			rtx = RichTextFactory:create("[color=fae6c8,fontsize=20]" .. rtxStr .."[-]",addtionW-5,addtionInitH)
 			rtx:formatText()
 		    -- rtx:setVerticalSpace(5)
@@ -2139,7 +2242,7 @@ function GlobalTipView:getDataDForTipType4( data )
 		local addtionW = 4*(iconSize+5)
 		addtion:setContentSize(cc.size(self._addtionPanel:getContentSize().width,addtionH))
 		if rtx then
-			rtx:setPositionY(rtx:getPositionY()+addtionH-addtionInitH-5)
+			rtx:setPositionY(rtx:getPositionY()+ addtionH - rtx1H - rtxH)
 			-- UIUtils:alignRichText(rtx,{hAlign = "left",vAlign = "top"})
 		end
 		if rtx1 then
@@ -2181,12 +2284,13 @@ function GlobalTipView:getDataDForTipType4( data )
 		addtionBg:setScale9Enabled(true)
 		addtionBg:setCapInsets(cc.rect(25,25,1,1))
 		addtionBg:setAnchorPoint(cc.p(0,0))
-		addtionBg:setPosition(cc.p(0,5))
+		addtionBg:setPosition(cc.p(0,0))
 		addtionBg:setContentSize(cc.size(370,addtionH+15))
 		self._addtionPanel:addChild(addtionBg,-1)
 		-- self._addtionPanel:setBackGroundImageOpacity(255)
 		self._addtionPanel:addChild(addtion)
 		self._addtionPanel:setVisible(true)
+		
 	elseif dataD.suitdes1 then 
 		local iconSize = 80
 		local addtionW = self._addtionPanel:getContentSize().width
@@ -2197,8 +2301,18 @@ function GlobalTipView:getDataDForTipType4( data )
 		addtion:setPositionX(10)
 		local rtx1H = 0
 		local rtx1 -- 名词解释
-			
-		local suitdes1 = self:forceDefColor(lang(dataD.suitdes1))
+	
+		local skillText = lang(dataD.suitdes1)
+
+		if data.teamData then
+            local teamData = self:getTaamData(data)
+            local teamid = teamData.teamid or teamData.teamId
+            if tab.team[teamid] then 
+            	local level = data.addLevel and data.addLevel + data.level or data.level
+				skillText = SkillUtils:handleSkillDesc1(lang(dataD.suitdes1), teamData, level)
+            end
+		end
+		local suitdes1 = self:forceDefColor(skillText)
 		rtx1 = RichTextFactory:create("[color=fae6c8,fontsize=20]" .. suitdes1 .."[-]",addtionW-5,addtionInitH)
 		rtx1:formatText()
 	    -- rtx:setVerticalSpace(5)
@@ -2206,7 +2320,7 @@ function GlobalTipView:getDataDForTipType4( data )
 	    local w = rtx1:getInnerSize().width
 	    local h = rtx1:getInnerSize().height
 	    rtx1H = rtx1:getRealSize().height
-	    rtx1:setPosition(w/2,h/2+20)
+	    rtx1:setPosition(w/2,h/2+12.5)
 	    addtion:addChild(rtx1)
 			
 		local addtionH = 10+rtx1H
@@ -2218,13 +2332,15 @@ function GlobalTipView:getDataDForTipType4( data )
 			UIUtils:alignRichText(rtx1,{hAlign = "left",vAlign = "center"})
 		end		
 		self._addtion = addtion
-		self._addtionPanel:setContentSize(self._addtion:getContentSize())
+		-- self._addtionPanel:setContentSize(self._addtion:getContentSize())
+		self._addtionPanel:setContentSize(cc.size(self._addtion:getContentSize().width,addtionH+15))
+
 		local addtionBg = ccui.ImageView:create()
 		addtionBg:loadTexture("specialty_bg_1_hero.png",1)
 		addtionBg:setScale9Enabled(true)
 		addtionBg:setCapInsets(cc.rect(25,25,1,1))
 		addtionBg:setAnchorPoint(cc.p(0,0))
-		addtionBg:setPosition(cc.p(0,10))
+		addtionBg:setPosition(cc.p(0,0))
 		addtionBg:setContentSize(cc.size(360,addtionH+15))
 		self._addtionPanel:addChild(addtionBg,-1)
 		-- self._addtionPanel:setBackGroundImageOpacity(255)
@@ -2291,7 +2407,11 @@ function GlobalTipView:getDataDForTipType4( data )
 				  local talentT = talentTree[i]
 				  if data.id == talentT[2] or data.id == talentT[3] then
 				  	 -- 替换成基础技能的名字
-				  	 dataD.name = tab.skill[talentT[1]].name
+                     if tab.skill[talentT[1]] then
+				  	    dataD.name = tab.skill[talentT[1]].name
+                     elseif tab.skillPassive[talentT[1]] then
+                        dataD.name = tab.skillPassive[talentT[1]].name
+                     end 
 				  end 
 			end
 		end
@@ -2323,13 +2443,13 @@ function GlobalTipView:getDataDForTipType4( data )
 				local panelW,panelH = self._addtionPanel:getContentSize().width,self._addtionPanel:getContentSize().height
 				panelH = math.max(panelH,h+20)
 				self._addtionPanel:setContentSize(cc.size(panelW,panelH))
-			    rtx:setPosition(w/2,panelH/2-h/2-10)
+			    rtx:setPosition(w/2,-h/2 + 40)
 			else
 				local panelW,panelH = self._addtionPanel:getContentSize().width,self._addtionPanel:getContentSize().height
 				panelH = panelH + h
 
 				self._addtionPanel:setContentSize(cc.size(panelW,panelH))
-				rtx:setPosition(w/2,panelH-h-10)
+				rtx:setPosition(w/2,panelH-h-h/2 + 20)
 				-- local children = self._addtionPanel:getChildren()
 				-- for k,child in pairs(children) do
 				-- 	child:setPositionY(child:getPositionY()-h)
@@ -2373,22 +2493,22 @@ end
 
 function GlobalTipView:getDataDForTipType8( data )
 	local dataD = {}
-	local teamD = tab:Team(data.id) or tab:Npc(data.id)
+	local teamD = tab:Team(data.id or data.teamData.id) or tab:Npc(data.id or data.teamData.id)
 	dataD.name = teamD.name
 	dataD.art = teamD.art1 or TeamUtils.getNpcTableValueByTeam(teamD,"art1")
 	if data.teamData then
 		local quality = self._modelMgr:getModel("TeamModel"):getTeamQualityByStage(data.teamData.stage or 1) 
 		dataD.quality = quality and quality[1] or 1
 		local isAwaked = TeamUtils:getTeamAwaking(data.teamData)
-		if isAwaked then
-			local teamName = TeamUtils:getTeamAwakingTab(data.teamData)
+		-- if isAwaked then
+			local teamName = TeamUtils:getTeamAwakingTab(data.teamData) or teamD.name
 			local teamData = data.teamData
-			local teamTableData = tab:Team(teamData.teamId)
-		    local quality = self._modelMgr:getModel("TeamModel"):getTeamQualityByStage(teamData.stage)  
+			local teamTableData = tab:Team(teamData.teamId or teamData.id)
+		    local quality = self._modelMgr:getModel("TeamModel"):getTeamQualityByStage(teamData.stage or 1)  
             dataD._icon = IconUtils:createTeamIconById({teamData = teamData, sysTeamData = teamTableData, quality = quality[1], quaAddition = quality[2],isShowOriginScore = true,eventStyle = 0})
 			dataD._icon:setScale(0.8)
 			dataD.name = teamName
-		end
+		-- end
 	end
 	if data.teamData and data.teamData.level then 
 		dataD._subDes = "[color=fae6c8,fontsize=20]Lv.[-][color=fae6c8,fontsize=20]".. data.teamData.level .."[-]"
@@ -2634,10 +2754,10 @@ function GlobalTipView:getDataDForTipType18( data )
 	dataD.unit = "/秒"
 	dataD.averageMCD = data.averageMCD
 	dataD.slotMCD = data.slotMCD
-	for i=1,6 do
+	for i=1,7 do
  		dataD["attr" .. i] = data["attr" .. i]
  	end
- 	dataD["attr"] = data["attr"] or data["attr6"]
+ 	dataD["attr"] = data["attr"] or data["attr7"]
  	dataD.des = lang("HERO_ATTRIBUTE_MANAREC")
 	return dataD
 end

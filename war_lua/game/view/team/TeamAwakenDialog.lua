@@ -25,6 +25,11 @@ function TeamAwakenDialog:onInit()
         end
         self:close()
     end)
+    self.scrollView = self:getUI("bg.rightLayer1.descScrollView")
+    self.scrollViewW = self.scrollView:getContentSize().width
+    self.scrollViewH = self.scrollView:getContentSize().height
+    self.scrollView:setClippingType(0)
+
     self._teamModel = self._modelMgr:getModel("TeamModel")
 
     self._selectSkill = 0
@@ -430,7 +435,7 @@ function TeamAwakenDialog:updateRightData()
 
     -- 描述
     local richtextBg = self:getUI("bg.rightLayer1.richtextBg")
-    local richText = richtextBg:getChildByName("richText")
+    local richText = self.scrollView:getChildByName("richText")
     if richText ~= nil then
         richText:removeFromParent()
     end
@@ -444,9 +449,18 @@ function TeamAwakenDialog:updateRightData()
     richText = RichTextFactory:create(desc, richtextBg:getContentSize().width, richtextBg:getContentSize().height)
     richText:formatText()
     richText:enablePrinter(true)
-    richText:setPosition(richtextBg:getContentSize().width*0.5, richtextBg:getContentSize().height - richText:getInnerSize().height*0.5)
+    
     richText:setName("richText")
-    richtextBg:addChild(richText)
+    self.scrollView:addChild(richText)
+    local realHeight = self.scrollViewH
+    if richText:getInnerSize().height > self.scrollViewH then
+        realHeight = richText:getInnerSize().height
+        richText:setPosition(richtextBg:getContentSize().width*0.5, richText:getInnerSize().height*0.5)
+    else
+        richText:setPosition(richtextBg:getContentSize().width*0.5, richtextBg:getContentSize().height - richText:getInnerSize().height*0.5)
+    end
+    self.scrollView:setInnerContainerSize(cc.size(self.scrollViewW,realHeight))
+    self.scrollView:getInnerContainer():setPositionY(self.scrollViewH - realHeight)
 
     local saveBtn = self:getUI("bg.rightLayer1.saveBtn")
     self:registerClickEvent(saveBtn, function()

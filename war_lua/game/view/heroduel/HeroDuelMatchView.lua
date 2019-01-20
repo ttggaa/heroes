@@ -254,7 +254,7 @@ function HeroDuelMatchView:showMactchComplete(rivalData)
     self._headIconList = nil
     
 --    local enemy = self:createHeadIcon(tab:RoleAvatar(rivalData.id).icon .. ".jpg")
-    local enemy = IconUtils:createHeadIconById({avatar = rivalData.avatar,level = 0,tp = 1,avatarFrame = rivalData["avatarFrame"]})
+    local enemy = IconUtils:createHeadIconById({avatar = rivalData.avatar,level = 0,tp = 1,avatarFrame = rivalData["avatarFrame"], plvl = rivalData.plvl})
     enemy:setPosition(randomPos.posX, randomPos.posY)
     enemy:setScale(0.25)
     enemy:setOpacity(0)

@@ -23,6 +23,9 @@ ShareTrainingModule 13
 ShareHeroSkinModule 14
 ShareSignModule 15
 ShareElementAcModule 16
+ShareTeamSkinModule 17
+ShareWorldCupModule 18
+ShareGrowthWayModule 19
 ]]
 
 function ShareBaseView:ctor()

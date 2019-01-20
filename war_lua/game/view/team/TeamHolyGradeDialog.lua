@@ -454,9 +454,12 @@ function TeamHolyGradeDialog:onGradeStone()
 	end
 	local function gradeStone()
 		local oldPower = self._curTeam and self._curTeam.score
+		local oldlv = self._teamModel:getHolyMasterLevel(self._teamId)
+		local oldAttr = self._teamModel:getHolyMasterAttr(self._teamId)
 		self._serverMgr:sendMsg("RunesServer", "upLvlRunes", {id=self._holyData.key, useIds=tbConsume}, true, {}, function(result)
 			self:updateView()
 			self:playGradeEffect(oldPower)
+			self:playMasterUp(oldlv, oldAttr)
 			self._hasGrade = true
 		end)
 	end
@@ -539,6 +542,54 @@ function TeamHolyGradeDialog:playGradeEffect(oldPower)
 		
 		local fightBg = self:getUI("bg")
 		TeamUtils:setFightAnim(self, {oldFight = oldPower, newFight = nowPower, x = MAX_SCREEN_WIDTH/2, y = MAX_SCREEN_HEIGHT - 150})
+	end
+end
+
+function TeamHolyGradeDialog:playMasterUp(oldLv, oldAttr)
+	local newLv = self._teamModel:getHolyMasterLevel(self._teamId)
+	local newAttr = self._teamModel:getHolyMasterAttr(self._teamId)
+	
+	local function getMasterIndex(lv)
+		local index = 0
+		for i,v in ipairs(tab.runeCastingMastery) do
+			if lv<v.level then
+				if i~=1 then
+					index = i-1
+					break
+				else
+					break
+				end
+			elseif lv==v.level then
+				index = i
+				break
+			elseif lv>v.level and i==table.nums(tab.runeCastingMastery) then
+				index = i
+				break
+			end
+		end
+		return index
+	end
+	local oldIndex = getMasterIndex(oldLv)
+	local newIndex = getMasterIndex(newLv)
+	if oldIndex~=newIndex then
+		local compareData = {}
+		--[[if oldIndex==0 then
+			for i,v in ipairs(newAttr) do
+				compareData = {v[1], {0, v[2]}}
+			end
+		else--]]
+		for i,v in ipairs(newAttr) do
+			compareData[i] = {v[1], {0, v[2]}}
+			if oldIndex~=0 then
+				for _,oldData in ipairs(oldAttr) do
+					local isHave = false
+					if oldData[1] == v[1] then
+						compareData[i] = {v[1], {oldData[2], v[2]}}
+					end
+				end
+			end
+		end
+		self._viewMgr:showHintView("team.TeamHolyMasterUpEffectDialog", {autoCloseTip = false, compareData = compareData, nowLv = newLv})
 	end
 end
 

@@ -7,7 +7,7 @@
 
 
 local TeamAwakenAnimDialog = class("TeamAwakenAnimDialog", BasePopView)
-
+local AnimAp = require "base.anim.AnimAP"
 function TeamAwakenAnimDialog:ctor(param)
     TeamAwakenAnimDialog.super.ctor(self)
     if not param then
@@ -222,9 +222,8 @@ function TeamAwakenAnimDialog:addTeam(inView, param, indexId, flag)
     -- local teamArt = teamD.art 
     local teamName, art1, art2, art3, teamArt = TeamUtils:getTeamAwakingTab(teamD, teamId, flag)
     -- dump(AnimAp, "AnimAp==========")
-    local teamSpine = {107, 205, 207, 307, 405, 406, 407, 507, 607, 707, 807, 906, 907}
     -- local teamScale = {906}
-    if table.indexof(teamSpine, teamId) ~= false then
+    if AnimAp["mcList"][teamArt] then
         MovieClipAnim.new(inView, teamArt, function (_sp) 
             _sp:setPosition(param[1], param[2])
             _sp:setScale(param[3])

@@ -45,6 +45,13 @@ TeamUtils.awakingRaceColor = { -- 觉醒界面罩子颜色
     [9] = {contrast = 0, brightness = 0, saturation = 0, hue = -26},
 }
 
+TeamUtils.exclusiveNameColorTab = {
+    [1] = {color = cc.c3b(120, 72, 158),color2 = cc.c4b(74,27,131,255)},
+    [2] = {color = cc.c3b(120, 72, 158), color2 = cc.c4b(74,27,131,255)},
+    [3] = {color = cc.c3b(179, 99, 39), color2 = cc.c4b(102,46,21,255)},
+    [4] = {color = cc.c3b(179, 99, 39), color2 = cc.c4b(102,46,21,255)},
+}
+
 ------------------------------------------------
 -------------兵团宝石-----------------------
 TeamUtils.qualityMC = {
@@ -685,8 +692,69 @@ function TeamUtils:getTeamAwaking(inTeamData)
     return isAwaking, aLvl
 end
 
+function TeamUtils:getClassIconNameByTeamId(teamId, classKey, sysD, isMatch)
+    if not teamId then return end
+    local teamD = ModelManager:getInstance():getModel("TeamModel"):getTeamAndIndexById(teamId)
+    if teamD then
+        return TeamUtils:getClassIconNameByTeamD(teamD, classKey, sysD, isMatch)
+    end
+    local sysD = clone(tab.team[teamId])
+    if not sysD then return end
+    classKey = classKey or "classlabel"
+    local className = sysD[classKey]
+    return className
+end
+
+--获取兵团职业图标
+function TeamUtils:getClassIconNameByTeamD(teamD, classKey, sysD, isMatch)
+    if sysD then
+        if type(sysD) == "number" then
+            sysD = clone(tab.team[sysD])
+        elseif isMatch then
+            if sysD["match"] then
+                sysD = tab.team[sysD["match"]]
+            end
+        end
+    else
+        local teamId = teamD.teamId or teamD.id
+        if teamId then
+            sysD = clone(tab.team[teamId])
+        else
+            return
+        end
+    end
+    if not sysD then return end
+    if not teamD and tab:Npc(sysD.id) then
+        return TeamUtils:getNpcClassName(sysD)
+    end
+    classKey = classKey or "classlabel"
+    local className = sysD[classKey]
+    local isAwaking = TeamUtils:getTeamAwaking(teamD)
+    if isAwaking then
+        className = className .. "_awake"
+    end
+    return className
+end
+
+function TeamUtils:getNpcClassName( v, classKey )
+    if not v then
+        return
+    end
+    if type(v) == "number" then
+        v = clone(tab:Npc(v))
+    end
+    if not v then return end
+    classKey = classKey or "classlabel"
+    local className = TeamUtils.getNpcTableValueByTeam(v, classKey)
+    local isAwaking, awakingLvl = 1 == v.jx, v.jxLv
+    if isAwaking then
+        className = className .. "_awake"
+    end
+    return className
+end
+
 -- 返回兵团 名字、头像、立汇、小人、动画小人
--- 对应 teamName, art1, art2, art3
+-- 对应 teamName, art1, art2, art3 ,cteam
 function TeamUtils:getTeamAwakingTab(inTeamData, teamId, flag)
     if not inTeamData then
         return "", "alpha", "alpha", "alpha"
@@ -694,7 +762,7 @@ function TeamUtils:getTeamAwakingTab(inTeamData, teamId, flag)
     local ast = inTeamData.ast
     local teamId = teamId or inTeamData.teamId 
     local isAwaking = false
-    local sysTeam = tab.team[teamId]
+    local sysTeam = tab.team[tonumber(teamId)] or tab.npc[tonumber(teamId)]
     if not sysTeam then
         return
     end
@@ -703,16 +771,43 @@ function TeamUtils:getTeamAwakingTab(inTeamData, teamId, flag)
     local art2 = "t_" .. lihui
     local art3 = sysTeam.steam
     local art4 = sysTeam.art
+    local cteam = "asset/uiother/cteam/ct_" .. teamId .. ".jpg"
     local teamName = sysTeam.name
-    if (ast and ast == 3) or (flag == true) then
-        art1 = sysTeam.jxart1
-        art2 = "ta_" .. lihui
-        art3 = sysTeam.jxsteam
-        art4 = sysTeam.jxart
-        teamName = sysTeam.awakingName
+    local isChanged = self:checkTeamChanged(teamId)
+    if inTeamData.sId then
+        local skinType = tab.teamSkin[inTeamData.sId]["skinget"] or 1
+        --装备的皮肤是购买的皮肤  优先级最高
+        --skinType  运营类型
+        if tonumber(skinType) == 3 or not isChanged then
+            local sysSkinData = tab.teamSkin[inTeamData.sId]
+            art1 = sysSkinData.skinart1
+            art2 = sysSkinData.skinart2
+            art3 = sysSkinData.skinsteam
+            art4 = sysSkinData.skinart
+            cteam = "asset/uiother/cteam/" .. sysSkinData.teamskinSelection .. ".jpg"
+        else
+            if tonumber(skinType) == 2 then
+                art1 = sysTeam.jxart1
+                art2 = sysTeam.jxart2
+                art3 = sysTeam.jxsteam
+                art4 = sysTeam.jxart
+                cteam = "asset/uiother/cteam/cta_" .. teamId .. ".jpg"
+            end
+        end
+        if (ast and ast == 3) or (flag == true) then
+            teamName = sysTeam.awakingName
+        end
+    else
+        if (ast and ast == 3) or (flag == true) then
+            art1 = sysTeam.jxart1
+            art2 = sysTeam.jxart2
+            art3 = sysTeam.jxsteam
+            art4 = sysTeam.jxart
+            cteam = "asset/uiother/cteam/cta_" .. teamId .. ".jpg"
+            teamName = sysTeam.awakingName
+        end
     end
-
-    return teamName, art1, art2, art3, art4
+    return teamName, art1, art2, art3, art4 ,cteam
 end
 
 -- 获取兵团技能觉醒情况
@@ -755,7 +850,6 @@ end
 function TeamUtils:getRuneIdAndLv( str )
     local type = tonumber(string.sub(str,1,3))
     local lv = tonumber(string.sub(str,5))
-    print("fdewfwefw ",type,lv)
     local level = 0
     if type == 104 then
         if lv == 4 then
@@ -772,6 +866,29 @@ function TeamUtils:getRuneIdAndLv( str )
         end 
     end
     return type,level
+end
+
+--检查兵团是否是变身兵团
+function TeamUtils:checkTeamChanged(teamId)
+    if teamId == nil or tab.setting["TEAMSKIN_WHITELIST"] == nil then 
+        return false 
+    end
+    local changedIdList = tab.setting["TEAMSKIN_WHITELIST"].value
+    for i,v in pairs(changedIdList) do
+       if v == teamId then
+            return true      
+       end
+    end
+    return false
+end
+
+function TeamUtils:getTeamIdByItemId(inId)
+    local teamId = 101
+    if inId then
+        teamId = tonumber(string.sub(inId, 2, string.len(inId)))
+    end
+
+    return teamId
 end
 
 function TeamUtils.dtor()

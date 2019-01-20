@@ -491,11 +491,11 @@ function DirectShopDialog:onBuyItem(param)
                 end})
                 return
             end
-
+            batchData.costType = "luckyCoin"
             --批量购买判断
             if leftBuyTimes > needCount then
                 --满足批量购买
-                self._viewMgr:showDialog("shop.DirectBatchBuyDialog",{data = self._curentBuyData,callBack = function (result)
+                self._viewMgr:showDialog("shop.DirectBatchBuyDialog",{data = batchData,callBack = function (result)
                     self:close()
                     self:buySuccess(result)
                 end},true)

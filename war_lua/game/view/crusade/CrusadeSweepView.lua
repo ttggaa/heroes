@@ -69,8 +69,6 @@ function CrusadeSweepView:reflashUI()
 	--重组数据
 	local cModelData = self._crusadeModel:getData()
 	local userCrusade = self._crusadeModel:getData().crusadeData
-	local sweepId = cModelData["sweepId"] * 2
-	local oneKeyId = cModelData["oneKeyId"]
 	local sysCrusadeMains = tab.crusadeMain
 
 	self._spRwd, self._buff, self._treasure = self._crusadeModel:checkSencondSweepState()

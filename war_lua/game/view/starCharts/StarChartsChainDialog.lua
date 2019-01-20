@@ -137,7 +137,7 @@ function StarChartsChainDialog:starChainActived()
     name:loadTexture(catenaImg .. ".png",1)
 
     local catenaName = lang(tab.starChartsCatena[self._catenaId]["name"])
-    activeDesc:setString("恭喜你激活【" .. catenaName .."】的全部星团")
+    activeDesc:setString("恭喜你激活【" .. catenaName .."】的全部星体")
     UIUtils:center2Widget(name,numLayer,222,5)
 
     local quality_type = tab.starChartsCatena[self._catenaId]["quality_type"]

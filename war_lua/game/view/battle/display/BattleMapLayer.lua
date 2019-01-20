@@ -40,18 +40,13 @@ function BattleMapLayer:getNear()
     return self._near
 end
 
-function BattleMapLayer:initLayer(id, siegeId, mode)
-    self._mapId = id
+function BattleMapLayer:generateMap(id, spArray)
     local mapRes = "asset/map/" .. id .. "/" .. id
-
-    local spArray = {}
-
     local offsetx1 = 0---178
     local offsetx2 = 1022
     local sp1, sp2
-    self._bg = cc.Node:create()
-    self._bg:setPosition(0, 0)
-    self._bg:setLocalZOrder(0)
+--    local spArray = {}
+
     sp1 = cc.Sprite:create(mapRes.."_land.jpg")
     sp1:setBrightness(0)
     sp1:setEnableCulling(false)
@@ -59,8 +54,68 @@ function BattleMapLayer:initLayer(id, siegeId, mode)
     sp1:setPosition(0, 0)
     sp1:setScale(1.25)
     sp1:setVisible(sp1:getContentSize().width > 200)
-    spArray[#spArray + 1] = sp1
     self._bg:addChild(sp1)
+    spArray[#spArray + 1] = sp1
+
+    sp1 = cc.Sprite:create(mapRes.."_mg.png")
+    sp1:setBrightness(0)
+    sp1:setScale(1.25)
+    sp1:setEnableCulling(false)
+    sp1:setAnchorPoint(0.5, 0)
+    sp1:setPosition(offsetx1 + 1200, 0)
+    sp1:setVisible(sp1:getContentSize().width > 200)
+    self._fg:addChild(sp1)
+    spArray[#spArray + 1] = sp1
+
+    sp1 = cc.Sprite:create(mapRes.."_far.png")
+    sp1:setBrightness(0)
+    sp1:setScale(1.25)
+    sp1:setVisible(sp1:getContentSize().width > 200)
+    sp1:setEnableCulling(false)
+    sp1:setPosition(-58 + 1080, 128)
+    self._mg:addChild(sp1)
+    spArray[#spArray + 1] = sp1
+
+    sp1 = cc.Sprite:create(mapRes.."_bg.jpg")
+    sp1:setScale(2)
+    sp1:setPosition(960, 128)
+    sp1:setVisible(sp1:getContentSize().width > 200)
+    self._far:addChild(sp1)
+    spArray[#spArray + 1] = sp1
+
+    sp1 = cc.Sprite:create(mapRes.."_fg.png")
+    sp1:setBrightness(0)
+    sp1:setScale(1.25)
+    sp1:setEnableCulling(false)
+    sp1:setVisible(sp1:getContentSize().width > 200)
+    sp1:setAnchorPoint(0.5, 0)
+    sp1:setPosition(offsetx1 + 1200, 0)
+    self._near:addChild(sp1)
+    spArray[#spArray + 1] = sp1
+--    return spArray
+end
+
+function BattleMapLayer:initLayer(id, siegeId, mode)
+    self._mapId = id
+    local mapRes = "asset/map/" .. id .. "/" .. id
+
+--    local spArray = {}
+
+    local offsetx1 = 0---178
+    local offsetx2 = 1022
+    local sp1, sp2
+    self._bg = cc.Node:create()
+    self._bg:setPosition(0, 0)
+    self._bg:setLocalZOrder(0)
+--    sp1 = cc.Sprite:create(mapRes.."_land.jpg")
+--    sp1:setBrightness(0)
+--    sp1:setEnableCulling(false)
+--    sp1:setAnchorPoint(0, 0)
+--    sp1:setPosition(0, 0)
+--    sp1:setScale(1.25)
+--    sp1:setVisible(sp1:getContentSize().width > 200)
+--    spArray[#spArray + 1] = sp1
+--    self._bg:addChild(sp1)
     -- local hasLand2 = fu:isFileExist(mapRes.."_land_2.jpg")
     -- if hasLand2 then
     --     sp2 = cc.Sprite:create(mapRes.."_land_2.jpg")
@@ -71,78 +126,78 @@ function BattleMapLayer:initLayer(id, siegeId, mode)
     -- end
 
     self._fg = cc.Node:create()
-    sp1 = cc.Sprite:create(mapRes.."_mg.png")
-    -- sp2 = cc.Sprite:create(mapRes.."_mg_2.png")
-    sp1:setBrightness(0)
-    sp1:setScale(1.25)
-    -- sp2:setBrightness(0)
-    sp1:setEnableCulling(false)
-    -- sp2:setEnableCulling(false)
-    sp1:setAnchorPoint(0.5, 0)
-    -- sp2:setAnchorPoint(0.5, 0)
-    sp1:setPosition(offsetx1 + 1200, 0)
-    sp1:setVisible(sp1:getContentSize().width > 200)
-    -- sp2:setPosition(offsetx2 + 1200, 0)
-    self._fg:addChild(sp1)
+--    sp1 = cc.Sprite:create(mapRes.."_mg.png")
+--    -- sp2 = cc.Sprite:create(mapRes.."_mg_2.png")
+--    sp1:setBrightness(0)
+--    sp1:setScale(1.25)
+--    -- sp2:setBrightness(0)
+--    sp1:setEnableCulling(false)
+--    -- sp2:setEnableCulling(false)
+--    sp1:setAnchorPoint(0.5, 0)
+--    -- sp2:setAnchorPoint(0.5, 0)
+--    sp1:setPosition(offsetx1 + 1200, 0)
+--    sp1:setVisible(sp1:getContentSize().width > 200)
+--    -- sp2:setPosition(offsetx2 + 1200, 0)
+--    self._fg:addChild(sp1)
     -- self._fg:addChild(sp2)
     self._fg:setAnchorPoint(0, 0)
     self._fg:setRotation3D(_3dVertex1)
     self._fg:setPosition(0, BC.MAX_SCENE_HEIGHT_PIXEL)
     self._fg:setLocalZOrder(-2)
-    spArray[#spArray + 1] = sp1
+--    spArray[#spArray + 1] = sp1
 
     self._mg = cc.Node:create()
-    sp1 = cc.Sprite:create(mapRes.."_far.png")
-    -- sp2 = cc.Sprite:create(mapRes.."_far_2.png")
-    sp1:setBrightness(0)
-    sp1:setScale(1.25)
-    sp1:setVisible(sp1:getContentSize().width > 200)
-    -- sp2:setBrightness(0)
-    sp1:setEnableCulling(false)
-    -- sp2:setEnableCulling(false)
-    sp1:setPosition(-58 + 1080, 128)
-    -- sp2:setPosition(1024 + 1080, 128)
-    self._mg:addChild(sp1)
+--    sp1 = cc.Sprite:create(mapRes.."_far.png")
+--    -- sp2 = cc.Sprite:create(mapRes.."_far_2.png")
+--    sp1:setBrightness(0)
+--    sp1:setScale(1.25)
+--    sp1:setVisible(sp1:getContentSize().width > 200)
+--    -- sp2:setBrightness(0)
+--    sp1:setEnableCulling(false)
+--    -- sp2:setEnableCulling(false)
+--    sp1:setPosition(-58 + 1080, 128)
+--    -- sp2:setPosition(1024 + 1080, 128)
+--    self._mg:addChild(sp1)
     -- self._mg:addChild(sp2)
     self._mg:setLocalZOrder(-1)
     self._mg:setAnchorPoint(0, 0)
     self._mg:setPosition(0, 0)
     self._mg.dw = (1 - 0.8) * 1800
-    spArray[#spArray + 1] = sp1
+--    spArray[#spArray + 1] = sp1
 
     self._far = cc.Node:create()
-    sp1 = cc.Sprite:create(mapRes.."_bg.jpg")
-    sp1:setScale(2)
-    sp1:setPosition(960, 128)
-    sp1:setVisible(sp1:getContentSize().width > 200)
+--    sp1 = cc.Sprite:create(mapRes.."_bg.jpg")
+--    sp1:setScale(2)
+--    sp1:setPosition(960, 128)
+--    sp1:setVisible(sp1:getContentSize().width > 200)
     self._far:setBrightness(0)
     -- self._far:setEnableCulling(false)
     self._far:setLocalZOrder(-2)
     self._far:setAnchorPoint(0, 0)
     self._far:setPosition(0, 0)
     self._far.dw = (1 - 0.5) * 960
-    self._far:addChild(sp1)
+--    self._far:addChild(sp1)
 
     self._near = cc.Node:create()
     self._near:setAnchorPoint(0, 0)
     self._near:setRotation3D(_3dVertex1)
     self._near:setPosition(0, 0)
     self._near:setLocalZOrder(10)
-    spArray[#spArray + 1] = sp1
-    sp1 = cc.Sprite:create(mapRes.."_fg.png")
-    -- sp2 = cc.Sprite:create(mapRes.."_fg_2.png")
-    sp1:setBrightness(0)
-    sp1:setScale(1.25)
-    -- sp2:setBrightness(0)
-    sp1:setEnableCulling(false)
-    sp1:setVisible(sp1:getContentSize().width > 200)
-    -- sp2:setEnableCulling(false)
-    sp1:setAnchorPoint(0.5, 0)
-    -- sp2:setAnchorPoint(0.5, 0)
-    sp1:setPosition(offsetx1 + 1200, 0)
-    -- sp2:setPosition(offsetx2 + 1200, 0)
-    self._near:addChild(sp1)
-    spArray[#spArray + 1] = sp1
+--    spArray[#spArray + 1] = sp1
+--    sp1 = cc.Sprite:create(mapRes.."_fg.png")
+--    -- sp2 = cc.Sprite:create(mapRes.."_fg_2.png")
+--    sp1:setBrightness(0)
+--    sp1:setScale(1.25)
+--    -- sp2:setBrightness(0)
+--    sp1:setEnableCulling(false)
+--    sp1:setVisible(sp1:getContentSize().width > 200)
+--    -- sp2:setEnableCulling(false)
+--    sp1:setAnchorPoint(0.5, 0)
+--    -- sp2:setAnchorPoint(0.5, 0)
+--    sp1:setPosition(offsetx1 + 1200, 0)
+--    -- sp2:setPosition(offsetx2 + 1200, 0)
+--    self._near:addChild(sp1)
+--    spArray[#spArray + 1] = sp1
     -- self._near:addChild(sp2)
 
     self._black = ccui.Layout:create()
@@ -172,15 +227,35 @@ function BattleMapLayer:initLayer(id, siegeId, mode)
     -- self._fg:setCM(pro2, pro2, pro2, 1, r * pro1, g * pro1, b * pro1, 0)
     -- self._near:setCM(pro2, pro2, pro2, 1, r * pro1, g * pro1, b * pro1, 0)
 
+    self.spArray = {}
+    self:generateMap(id, self.spArray)
+
+    --技能切换的地图缓存默认隐藏
+    self:generateMap(id, self.spArray)
+
     -- 场景shader
     if mode == BattleUtils.BATTLE_TYPE_Elemental_5 then
         local shader = require ("utils.shader.shader_3")
-        for i = 1, #spArray do
-            spArray[i]:setGLProgramState(shader)
-            spArray[i]:setUseCustomShader(true)
+        for i = 1, #self.spArray do
+            if self.spArray[i] then
+                self.spArray[i]:setGLProgramState(shader)
+                self.spArray[i]:setUseCustomShader(true)
+                if i > 5 then
+                    self.spArray[i]:setVisible(false)
+                end
+            end
+        end
+    else
+        for i = 1, #self.spArray do
+            if self.spArray[i] then
+                if i > 5 then
+                    self.spArray[i]:setVisible(false)
+                end
+            end
         end
     end
 
+    
     self._tiledmap = nil
 
     if BC.BATTLE_DEBUG_CELL then
@@ -233,6 +308,113 @@ function BattleMapLayer:initLayer(id, siegeId, mode)
         self._rootLayer:addChild(siegeBroken)
         self._siegeBroken = siegeBroken
         self._siegeBgs[#self._siegeBgs + 1] = siegeBroken
+    end
+end
+
+--替换场景资源(upMapId 需要替换的地图 bisCreate 是否常见)
+local resTable = {"_land.jpg", "_mg.png", "_far.png", "_bg.jpg", "_fg.png"}
+function BattleMapLayer:setMapSceneRes(upMapId, lowMapId, bisCreate, objLayer, bIsAnim)
+    --self._mapId
+    
+    local lowSwitch = true
+    if upMapId == nil then
+        upMapId = self._mapId
+    end
+    
+    if lowMapId == nil then
+        lowMapId = self._mapId
+    end
+
+--    print("++++++++++++++++++++1111111111111", upMapId, self._berMapId , self._lowMapId , lowMapId, bisCreate, BC.logic.battleFrameCount)
+
+    if self._berMapId == upMapId then
+        return
+    end
+    self._berMapId = upMapId
+
+    if self._lowMapId == lowMapId then
+        lowSwitch = false
+    end
+    self._lowMapId = lowMapId
+    if bisCreate then
+        local function callbackEnd()
+            
+        end
+        local curRes = "asset/map/" .. upMapId .. "/" .. upMapId
+        local lowRes = "asset/map/" .. lowMapId .. "/" .. lowMapId
+        if lowSwitch then
+            for i = 1, 5 do
+                if self.spArray[i] then
+                    self.spArray[i]:setTexture(lowRes .. resTable[i])
+                end
+            end
+        end
+        
+        for i = 1, #self.spArray do
+            if self.spArray[i] then
+                if i >= 6 then
+                    self.spArray[i]:setTexture(curRes .. resTable[i - 5])
+                    self.spArray[i]:setVisible(true)
+                    self.spArray[i]:setOpacity(0)
+                else
+                    self.spArray[i]:setOpacity(255)
+                    self.spArray[i]:setVisible(true)
+                end
+            end
+        end
+        ScheduleMgr:delayCall(BC.frameInv * 5 * 1000 / 2--[[BC.BATTLE_SPEED]] , self, function()
+                for i = 1, #self.spArray do
+                    if self.spArray[i] then
+                        if i >= 6 then
+                            self.spArray[i]:stopAllActions()
+                            self.spArray[i]:runAction(cc.FadeIn:create(0.8))
+                        else
+                            self.spArray[i]:stopAllActions()
+                            self.spArray[i]:runAction(cc.Sequence:create(
+                                    cc.FadeOut:create(0.8),
+                                    cc.Hide:create()    
+                                ))
+                        end
+                    end
+                end
+            end
+        )
+    else
+--        print(debug.traceback())
+        local lowRes = "asset/map/" .. lowMapId .. "/" .. lowMapId
+        local upRes = "asset/map/" .. self._berMapId .. "/" .. self._berMapId
+        if lowSwitch then
+            for i = 1, 5 do
+                if self.spArray[i] then
+                    self.spArray[i]:setTexture(lowRes .. resTable[i])
+                end
+            end
+        end
+
+        if bIsAnim then
+            ScheduleMgr:delayCall(0 , self, function()
+                    for i = 1, #self.spArray do
+                        if self.spArray[i] then
+                            if i >= 6 then
+                                self.spArray[i]:setTexture(upRes .. resTable[i - 5])
+                                self.spArray[i]:setOpacity(255)
+                                self.spArray[i]:setVisible(true)
+                                self.spArray[i]:stopAllActions()
+                                self.spArray[i]:runAction(cc.Sequence:create(
+                                    cc.FadeOut:create(0.8),
+                                    cc.Hide:create()    
+                                ))
+                            else
+                                self.spArray[i]:stopAllActions()
+                                self.spArray[i]:setOpacity(255)
+                                self.spArray[i]:setVisible(true)
+--                                self.spArray[i]:runAction(cc.FadeIn:create(0.8))
+                            end
+                        end
+                    end
+                end
+            )
+        end
     end
 end
 
@@ -331,11 +513,56 @@ function BattleMapLayer:initDebugLayer()
     end
 end
 
+---显示定义的格子(调试使用)
+function BattleMapLayer:showSquare(cellSize)
+    local createDebugLayer1 = function(_cellSize)
+        local _debugLayer1 = cc.Node:create()
+        self._rootLayer:addChild(_debugLayer1)
+        _debugLayer1:setCascadeOpacityEnabled(true) 
+        local _BATTLE_CELL_SIZE = _cellSize or BC.BATTLE_CELL_SIZE
+        _debugLayer1.cellSize = BC.BATTLE_CELL_SIZE
+        _debugLayer1:setName("test_debugLayer1")
+        -- 格子总数量
+        local _MAX_CELL_WIDTH = BC.MAX_SCENE_WIDTH_PIXEL / _BATTLE_CELL_SIZE
+        local _MAX_CELL_HEIGHT = BC.MAX_SCENE_HEIGHT_PIXEL / _BATTLE_CELL_SIZE
+        for x = 1, _MAX_CELL_HEIGHT do
+            local _drawNode = cc.DrawNode:create()
+            _drawNode:drawSegment(cc.p(0, x * _BATTLE_CELL_SIZE), cc.p(BC.MAX_SCENE_WIDTH_PIXEL, x * _BATTLE_CELL_SIZE), 1, cc.c4f(0, 0, 1, 1))
+            _debugLayer1:addChild(_drawNode)
+        end
+        for y = 1, _MAX_CELL_WIDTH do
+            local _drawNode = cc.DrawNode:create()
+            _drawNode:drawSegment(cc.p(y * _BATTLE_CELL_SIZE, 0), cc.p(y * _BATTLE_CELL_SIZE, BC.MAX_SCENE_HEIGHT_PIXEL), 1, cc.c4f(0, 0, 1, 1))
+            _debugLayer1:addChild(_drawNode)
+        end
+    end
+    local _debugLayer1 = nil
+    if self._rootLayer then
+        _debugLayer1 = self._rootLayer:getChildByName("test_debugLayer1")
+    end
+    if not _debugLayer1 then
+        createDebugLayer1(cellSize)
+    else
+        local bVisible = _debugLayer1:isVisible()
+        if not bVisible then
+            if cellSize and cellSize ~= _debugLayer1.cellSize then
+                self._rootLayer:removeChild(_debugLayer1, true)
+                _debugLayer1 = nil
+                createDebugLayer1(cellSize)
+            end
+        else
+            _debugLayer1:setVisible(false)
+        end
+        
+    end
+end
+
 function BattleMapLayer.dtor()
     BC = nil
     _3dVertex1 = nil
     BattleMapLayer = nil
     fu = nil
+    resTable = nil
 end
 
 return BattleMapLayer

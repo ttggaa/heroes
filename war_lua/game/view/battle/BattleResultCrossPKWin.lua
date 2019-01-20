@@ -350,13 +350,13 @@ function BattleResultCrossPKWin:animBegin()
         local teamModel = self._modelMgr:getModel("TeamModel")
         local tdata,_idx = teamModel:getTeamAndIndexById(lihuiId)
         local isAwaking,_ = TeamUtils:getTeamAwaking(tdata)
-        local teamName, art1, art2, art3 = TeamUtils:getTeamAwakingTab(tdata, tdata.id)
-        if isAwaking then 
-            -- 结算例会单独处理 读配置
-            imgName = teamData.jxart2
-            artUrl = "asset/uiother/team/"..imgName..".png"
-        end
-
+        local teamName, art1, art2, art3 = TeamUtils:getTeamAwakingTab(tdata, self._lihuiId)
+        -- if isAwaking then 
+        --     -- 结算例会单独处理 读配置
+        --     imgName = teamData.jxart2
+        --     artUrl = "asset/uiother/team/"..imgName..".png"
+        -- end
+        artUrl = "asset/uiother/team/".. art2 ..".png"
         if  teamData["jisuan"] then
             local teamX ,teamY = teamData["jisuan"][1], teamData["jisuan"][2]
             local scale = teamData["jisuan"][3] 

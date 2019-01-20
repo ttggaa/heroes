@@ -86,7 +86,7 @@ function BattleScene:initBattleUIEx()
         self._pauseBtn.lock:setVisible(true)
         self._pauseBtn:setTouchEnabled(false)
         self._surrenderBtn:setVisible(true)
-	elseif self._battleInfo.mode == BattleUtils.BATTLE_TYPE_GuildPVE then
+	elseif self._battleInfo.mode == BattleUtils.BATTLE_TYPE_GuildPVE or self._battleInfo.mode == BattleUtils.BATTLE_TYPE_WoodPile_2 then
 		self._skipBtn:setVisible(true)
     end 
 end
@@ -367,7 +367,9 @@ function BattleLogic:initLogicEx()
         local team, soldier
         for i = 1, #self._teams[1] do
             team = self._teams[1][i]
-            team:setState(ETeamStateNONE)
+            --防止在播放战斗的时候，初始队列会让对方打死，这个时候方阵的状态设置成死亡状态
+            team:setState(ETeamStateDIE)
+--            team:setState(ETeamStateNONE)
             team.canDestroy = false
             team.__attackArea = team.attackArea
             team.attackArea = -1
@@ -597,19 +599,21 @@ function BattleLogic:goInto(callback)
         if team.original then
             for k = 1, #team.soldier do
                 local soldier = team.soldier[k]
-                allCount = allCount + 1
-                if not team.walk then
-                   soldier:setPos(soldier.x + INTO_DIS, soldier.y)
-                   soldier:changeMotion(EMotion.BORN)
-                   soldier:setVisible(true)
-                   count = count + 1
-                else
-                    soldier:moveTo(soldier.x + INTO_DIS, soldier.y, INTO_SPEED, function ()
-                        count = count + 1
-                        if count == allCount then
-                            callback()
-                        end
-                    end, true)
+                if not soldier.die then
+                    allCount = allCount + 1
+                    if not team.walk then
+                       soldier:setPos(soldier.x + INTO_DIS, soldier.y)
+                       soldier:changeMotion(EMotion.BORN)
+                       soldier:setVisible(true)
+                       count = count + 1
+                    else
+                        soldier:moveTo(soldier.x + INTO_DIS, soldier.y, INTO_SPEED, function ()
+                            count = count + 1
+                            if count == allCount then
+                                callback()
+                            end
+                        end, true)
+                    end
                 end
             end
         end

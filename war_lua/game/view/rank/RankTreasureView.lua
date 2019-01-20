@@ -212,7 +212,9 @@ function RankTreasureView:updateUserHead(heroHead)
 	end 
     if not self._avatar then
         local tencetTp = self._userData["qqVip"]
-        self._avatar = IconUtils:createHeadIconById({avatar = avtar,level = tonumber(self._userData.level) or tonumber(self._userData.lvl) or "0" ,tp = 4 ,avatarFrame = self._userData["avatarFrame"], tencetTp = tencetTp})
+        local headP = {avatar = avtar,level = tonumber(self._userData.level or self._userData.lvl or 0),tp = 4 ,
+        				avatarFrame = self._userData["avatarFrame"], tencetTp = tencetTp, plvl = self._userData["plvl"]}
+        self._avatar = IconUtils:createHeadIconById(headP)
         self._avatar:setPosition(cc.p(-1,-1))
         self._heroHead:addChild(self._avatar)
     end

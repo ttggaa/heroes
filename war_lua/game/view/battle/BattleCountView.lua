@@ -18,7 +18,20 @@ function BattleCountView:ctor(data)
     local leftData, rightData
 	leftData = clone(data.leftData)
 	rightData = clone(data.rightData)
-	local d, skills, skill, DEx, damageSkill, skillPassiveD
+    --将援助添加进统计界面
+    if leftData.helpData then
+        for key, var in ipairs(leftData.helpData) do
+            leftData[#leftData + 1] = var
+        end
+    end
+
+    if rightData.helpData then
+        for key, var in ipairs(rightData.helpData) do
+            rightData[#rightData + 1] = var
+        end
+    end
+
+	local d, skills, skill, DEx, damageSkill, damageSkillCount, skillPassiveD
 	local _type, skillid, skillid2, skillPassive, compose
 	local datas = {leftData, rightData}
 	local alltime = data.time
@@ -74,196 +87,115 @@ function BattleCountView:ctor(data)
 			end
 			skill = {}
 			if skills then
+                local berDamageSkill = clone(d.damageSkill)
 				damageSkill = d.damageSkill
+				damageSkillCount = d.damageSkillCount or {}
 				-- 把伤害中的图腾伤害加到技能伤害中
 				-- dump(damageSkill)
+                ---统计问题修改 dongcheng 2018.5.15
 				pcall(function ()
+                    local function skillReplace(tableSkill, tableCount, curSkillId, berSkillId, isObjectBuff)
+                        damageSkill[curSkillId] = (damageSkill[curSkillId] or 0 ) + (damageSkill[berSkillId] or 0)
+                        damageSkill[berSkillId] = nil
+                        if isObjectBuff then
+                            --子物体造成的伤害强制是值为1（这种应该不会出现）
+                            tableCount[curSkillId] = tableCount[curSkillId] or 1
+                        else
+                            tableCount[curSkillId] = (tableCount[curSkillId] or 0) + (tableCount[berSkillId] or 0)
+                            tableCount[berSkillId] = 0
+                        end
+                    end
+--					local skillFunc = function ( ... )
+--						for m = 1, #skills do
+--							_type = skills[m][1]
+--							skillid = skills[m][2]
+--                            if berDamageSkill[skillid] then
+--                                local oid
+--							    if _type == 1 then
+--								    if tab.skill[skillid] then
+--									    oid = tab.skill[skillid]["objectid"]
+--									    if oid and damageSkill[oid] then
+--                                            skillReplace(damageSkill, damageSkillCount, skillid, oid, true)
+--									    end
+--									    oid = tab.skill[skillid]["objectid1"]
+--                                        if oid and damageSkill[oid] then
+--                                            skillReplace(damageSkill, damageSkillCount, skillid, oid, true)
+--                                        end
 
-					local skillFunc = function ( ... )
-						for m = 1, #skills do
-							_type = skills[m][1]
-							skillid = skills[m][2]
-							local oid
-							if _type == 1 then
-								if tab.skill[skillid] then
-									oid = tab.skill[skillid]["objectid"]
-									if oid and damageSkill[oid] then
-										if damageSkill[skillid] then
-											damageSkill[skillid] = damageSkill[skillid] + damageSkill[oid]
-											damageSkill[oid] = nil
-										else
-											damageSkill[skillid] = damageSkill[oid]
-											damageSkill[oid] = nil
-										end
-									end
-									oid = tab.skill[skillid]["objectid1"]
-                                    if oid and damageSkill[oid] then
-                                        if damageSkill[skillid] then
-                                            damageSkill[skillid] = damageSkill[skillid] + damageSkill[oid]
-                                            damageSkill[oid] = nil
-                                        else
-                                            damageSkill[skillid] = damageSkill[oid]
-                                            damageSkill[oid] = nil
-                                        end
-                                    end
+--									    -- -- add by hxp
+--									    local obj = tab.skill[skillid]["objectid"]
+--									    local buffId = tab.skill[skillid]["buffid1"]
+--									    -- 子物体用了buff，统计的时候用了buffId
+--									    if obj  then
+--										    local oid = tab.object[obj]["buffid1"]
+--										    if oid and damageSkill[oid] then
+--                                                skillReplace(damageSkill, damageSkillCount, skillid, oid, true)
+--										    end
+--									    end 
 
-                                    -- 前提必须是有子物体存在  delete by hxp
-                                    -- local obj = tab.skill[skillid]["objectid"]
-									-- oid = tab.skill[skillid]["buffid1"]
-									-- if oid and damageSkill[oid]  then
-									-- 	if damageSkill[skillid] then
-									-- 		damageSkill[skillid] = damageSkill[skillid] + damageSkill[oid]
-									-- 		damageSkill[oid] = nil
-									-- 	else
-									-- 		damageSkill[skillid] = damageSkill[oid]
-									-- 		damageSkill[oid] = nil
-									-- 	end
-									-- end
-									-- obj = tab.skill[skillid]["objectid2"]
-									-- oid = tab.skill[skillid]["buffid2"]
-									-- if oid and damageSkill[oid]  then
-									-- 	if damageSkill[skillid] then
-									-- 		damageSkill[skillid] = damageSkill[skillid] + damageSkill[oid]
-									-- 		damageSkill[oid] = nil
-									-- 	else
-									-- 		damageSkill[skillid] = damageSkill[oid]
-									-- 		damageSkill[oid] = nil
-									-- 	end
-									-- end
+--									    obj = tab.skill[skillid]["objectid1"]
+--									    buffId = tab.skill[skillid]["buffid2"]
+--									    -- 子物体用了buff，统计的时候用了buffId
+--									    if obj  then
+--										    for k,v in pairs(obj) do
+--											    local objId = v[3]
+--											    local oid = tab.object[objId]["buffid2"]
+--											    if oid and damageSkill[oid] then
+--                                                    skillReplace(damageSkill, damageSkillCount, skillid, oid, true)
+--											    end
+--										    end
 
-									-- -- add by hxp
-									local obj = tab.skill[skillid]["objectid"]
-									local buffId = tab.skill[skillid]["buffid1"]
-									-- 子物体用了buff，统计的时候用了buffId
-									if obj  then
-										local oid = tab.object[obj]["buffid1"]
-										if oid and damageSkill[oid] then
-											if damageSkill[skillid] then
-												damageSkill[skillid] = damageSkill[skillid] + damageSkill[oid]
-												damageSkill[oid] = nil
-											else
-												damageSkill[skillid] = damageSkill[oid]
-												damageSkill[oid] = nil
-											end
-										end
-									end 
+--									    end 
 
-									obj = tab.skill[skillid]["objectid1"]
-									buffId = tab.skill[skillid]["buffid2"]
-									-- 子物体用了buff，统计的时候用了buffId
-									if obj  then
-										for k,v in pairs(obj) do
-											local objId = v[3]
-											local oid = tab.object[objId]["buffid2"]
-											if oid and damageSkill[oid] then
-												if damageSkill[skillid] then
-													damageSkill[skillid] = damageSkill[skillid] + damageSkill[oid]
-													damageSkill[oid] = nil
-												else
-													damageSkill[skillid] = damageSkill[oid]
-													damageSkill[oid] = nil
-												end
-											end
-										end
-										
-									end 
+--								    end
+--							    elseif _type == 2 then
+--								    skillPassiveD = tab.skillPassive[skillid]
+--								    compose = skillPassiveD["compose"]
+--								    if compose then
+--									    for n = 1, #compose do
+--										    if compose[n][1] == 1 then
+--											    skillid2 = compose[n][2]
+--											    if tab.skill[skillid2] then
+--												    oid = tab.skill[skillid2]["objectid"]
+--												    if oid and damageSkill[oid] then
+--                                                        skillReplace(damageSkill, damageSkillCount, skillid2, oid, true)
+--												    end
+--												    oid = tab.skill[skillid2]["objectid1"]
+--												    if oid and damageSkill[oid] then
+--                                                        skillReplace(damageSkill, damageSkillCount, skillid2, oid, true)
+--												    end
 
-								end
-							elseif _type == 2 then
-								skillPassiveD = tab.skillPassive[skillid]
-								compose = skillPassiveD["compose"]
-								if compose then
-									for n = 1, #compose do
-										if compose[n][1] == 1 then
-											skillid2 = compose[n][2]
-											if tab.skill[skillid2] then
-												oid = tab.skill[skillid2]["objectid"]
-												if oid and damageSkill[oid] then
-													if damageSkill[skillid2] then
-														damageSkill[skillid2] = damageSkill[skillid2] + damageSkill[oid]
-														damageSkill[oid] = nil
-													else
-														damageSkill[skillid2] = damageSkill[oid]
-														damageSkill[oid] = nil
-													end
-												end
-												oid = tab.skill[skillid2]["objectid1"]
-												if oid and damageSkill[oid] then
-													if damageSkill[skillid2] then
-														damageSkill[skillid2] = damageSkill[skillid2] + damageSkill[oid]
-														damageSkill[oid] = nil
-													else
-														damageSkill[skillid2] = damageSkill[oid]
-														damageSkill[oid] = nil
-													end
-												end
+--												    -- -- add by hxp
+--												    local obj = tab.skill[skillid2]["objectid"]
+--												    -- 子物体用了buff，统计的时候用了buffId
+--												    if obj then
+--													    local oid = tab.object[obj]["buffid1"]
+--													    if oid and damageSkill[oid] then
+--                                                            skillReplace(damageSkill, damageSkillCount, skillid2, oid, true)
+--													    end
+--												    end 
 
-											    -- 前提必须是有子物体存在  delete by hxp
-                                     			-- local obj = tab.skill[skillid2]["objectid"]
-												-- oid = tab.skill[skillid2]["buffid1"]
-												-- if oid and damageSkill[oid]  then
-												-- 	if damageSkill[skillid2] then
-												-- 		damageSkill[skillid2] = damageSkill[skillid2] + damageSkill[oid]
-												-- 		damageSkill[oid] = nil
-												-- 	else
-												-- 		damageSkill[skillid2] = damageSkill[oid]
-												-- 		damageSkill[oid] = nil
-												-- 	end
-												-- end
-												-- obj = tab.skill[skillid2]["objectid1"]
-												-- oid = tab.skill[skillid2]["buffid2"]
-												-- if oid and damageSkill[oid] then
-												-- 	if damageSkill[skillid2] then
-												-- 		damageSkill[skillid2] = damageSkill[skillid2] + damageSkill[oid]
-												-- 		damageSkill[oid] = nil
-												-- 	else
-												-- 		damageSkill[skillid2] = damageSkill[oid]
-												-- 		damageSkill[oid] = nil
-												-- 	end
-												-- end
+--												    obj = tab.skill[skillid2]["objectid1"]
+--												    -- 子物体用了buff，统计的时候用了buffId
+--												    if obj then
+--													    for k,v in pairs(obj) do
+--														    local objId = v[3]
+--														    local oid = tab.object[objId]["buffid2"]
+--														    if oid and damageSkill[oid] then
+--                                                                skillReplace(damageSkill, damageSkillCount, skillid2, oid, true)
+--														    end
+--													    end
+--												    end 
 
-												-- -- add by hxp
-												local obj = tab.skill[skillid2]["objectid"]
-												-- 子物体用了buff，统计的时候用了buffId
-												if obj then
-													local oid = tab.object[obj]["buffid1"]
-													if oid and damageSkill[oid] then
-														if damageSkill[skillid2] then
-															damageSkill[skillid2] = damageSkill[skillid2] + damageSkill[oid]
-															damageSkill[oid] = nil
-														else
-															damageSkill[skillid2] = damageSkill[oid]
-															damageSkill[oid] = nil
-														end
-													end
-												end 
-
-												obj = tab.skill[skillid2]["objectid1"]
-												-- 子物体用了buff，统计的时候用了buffId
-												if obj then
-													for k,v in pairs(obj) do
-														local objId = v[3]
-														local oid = tab.object[objId]["buffid2"]
-														if oid and damageSkill[oid] then
-															if damageSkill[skillid2] then
-																damageSkill[skillid2] = damageSkill[skillid2] + damageSkill[oid]
-																damageSkill[oid] = nil
-															else
-																damageSkill[skillid2] = damageSkill[oid]
-																damageSkill[oid] = nil
-															end
-														end
-													end
-												end 
-
-											end
-										end
-									end
-								end
-							end
-						end
-					end
-					skillFunc()
+--											    end
+--										    end
+--									    end
+--								    end
+--							    end
+--                            end
+--						end
+--					end
+--					skillFunc()
 					if d.jx then
 						-- 觉醒技能替换，把改变的技能伤害算到原始技能里面
 						local changeMap = {}
@@ -282,6 +214,7 @@ function BattleCountView:ctor(data)
 						changeMap[jxskill[2][2]] = DEx["skill"][jxskill[1]][2]
 						skills[#skills + 1] = jxskill[3]
 						changeMap[jxskill[3][2]] = DEx["skill"][jxskill[1]][2]
+--                        skillFunc()
 						-- dump(changeMap)
 						-- 这里面还有组合技能，再拆
 						local skillPassiveD, compose, skillid2
@@ -303,14 +236,13 @@ function BattleCountView:ctor(data)
 
 						for newid, oldid in pairs(changeMap) do
 							if damageSkill[newid] then
-								damageSkill[oldid] = damageSkill[newid]
-								damageSkill[newid] = nil
+                                skillReplace(damageSkill, damageSkillCount, oldid, newid)
 								if _data.skills[newid] then
 									_data.skills[oldid] = _data.skills[newid]
 								end
 							end
 						end
-						skillFunc()
+--						skillFunc()
 					end
 					-- dump(damageSkill)
 
@@ -324,7 +256,7 @@ function BattleCountView:ctor(data)
 						-- 主动技能
 						if damageSkill[skillid] then
 							if tab.skill[skillid]["kind"] ~= 8 then
-								skill[#skill + 1] = {skillid, damageSkill[skillid]}
+								skill[#skill + 1] = {skillid, damageSkill[skillid],damageSkillCount[skillid]}
 							end
 						end
 					elseif _type == 2 then
@@ -345,13 +277,15 @@ function BattleCountView:ctor(data)
 											end
 										else
 											damage = damage + damageSkill[skillid2]
+                                            damageSkillCount[skillid] = (damageSkillCount[skillid] or 0) + (damageSkillCount[skillid2] or 0)
+                                            damageSkillCount[skillid2] = 0
 										end
 									end
 								end
 							end
 						end
 						if has then
-							skill[#skill + 1] = {skillid, damage}
+							skill[#skill + 1] = {skillid, damage, damageSkillCount[skillid]}
 						end
 					end
 				end
@@ -701,7 +635,7 @@ function BattleCountView:onInit()
 	    local nameStr = lang(data.name)
 	    --如果是NPC and jx=1则取NPC表的名字	edit by yuxiaojing
         if data.jx and not tab.npc[data.ID] then
-            dump(data)
+            -- dump(data)
             nameStr = lang(TeamUtils:getTeamAwakingTab(data.teamData, data.teamData.match or data.ID))
         end
 	    if data.copy then
@@ -813,8 +747,21 @@ function BattleCountView:onInit()
 		    label.value = value
 		    label:setAnchorPoint(0, 0.5)
 		    label:setColor(gray)
-		    label:setPosition(110, 55)
+		    label:setPosition(110, 40)
 		    icon:addChild(label)
+
+		    local value = data.skill[i][3] or 0
+			if value < 1 then
+				value = 1
+			end
+		    local label1 = cc.Label:createWithTTF((value or 1) .. "次" , UIUtils.ttfName, 28)
+		    label1.value = value
+		    label1:setAnchorPoint(0, 0.5)
+		    label1:setColor(gray)
+		    label1:setPosition(110, 70)
+		    icon:addChild(label1)
+
+
 		    if i == 1 then
 		    	cell.skill1 = icon
 		    	cell.skilllabel1 = label
@@ -850,6 +797,7 @@ function BattleCountView:onInit()
         -- 判断是否为器械技能
         local skillTabData = tab:PlayerSkillEffect(tonumber(data.id))
         if skillTabData.type == 8 then
+        	dump(data)
             local siegeSkillData = tab:SiegeSkillDes(tonumber(string.sub(data.id,1,4))) -- 器械技能图标显示第一个技能的图标，截取id前4位
             local icon = IconUtils:createWeaponsSkillIcon({sysSkill = siegeSkillData})
             icon:setScale(0.9)
@@ -942,6 +890,11 @@ function BattleCountView:onInit()
 	    label2:setColor(gray)
 	    label2:setPosition(272, 38)
 	    cell:addChild(label2)
+		local label0 = cc.Label:createWithTTF((data.skillCastCount or 1) .. "次", UIUtils.ttfName, 18)
+	    label0:setAnchorPoint(0, 0.5)
+	    label0:setColor(gray)
+	    label0:setPosition(210, 17)
+	    cell:addChild(label0)
 
 	    local prolabel1 = cc.Label:createWithTTF(self._isShowReal and data.realDamagePro or data.damagePro.."%", UIUtils.ttfName, 14)
 	    prolabel1:setAnchorPoint(1, 0.5)
@@ -963,10 +916,12 @@ function BattleCountView:onInit()
 		cell.proBg2 = proBg2
 		cell.label1 = label1
 		cell.label2 = label2
+		cell.label0 = label0
 		cell.prolabel1 = prolabel1
 		cell.prolabel2 = prolabel2
 		label1.value = self._isShowReal and data.realDamage or data.damage
 		label2.value = data.heal
+		label0.value = data.skillCastCount or 1
 		prolabel1.value = self._isShowReal and data.realDamagePro or data.damagePro
 		prolabel2.value = data.healPro
 		pro1.value = self._isShowReal and data.realDamagePro or data.damagePro --/ maxDamagePro * 100
@@ -1232,6 +1187,7 @@ function BattleCountView:onTab(index)
     self:setTabBtnEnabled(self._tabBtns[index], false)
     self._curTab = index
     self._isShowSpell = self._curTab == 1
+    self:onPage(1)    
     if self._isShowSpell then
         self._filterBtn1:setVisible(true)
         self._filterBtn2:setVisible(true)
@@ -1239,8 +1195,8 @@ function BattleCountView:onTab(index)
         self._filterBtn3:setPositionX(891)
         self._realBox:setPositionX(226)
         self._boxLabel:setPositionX(253)
-        self._page1:setVisible(false)
-	    self._page2:setVisible(true)
+        self._page1:setVisible(self._pageIndex == 2)
+	    self._page2:setVisible(self._pageIndex == 1)
         self._title1:setVisible(true)
 	    self._title2:setVisible(false)
 	    self._title3:setVisible(false)

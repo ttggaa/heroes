@@ -39,7 +39,7 @@ function SystemUtils.init()
 				print("levelTab[name] == nil", name)
 				return false
 			end
-			return level >= levelTab[name], level >= systemData[2], levelTab[name] -- level >= levelTab[name] - 5
+			return level >= levelTab[name], level >= systemData[2], levelTab[name],systemData.systemOpenTip -- level >= levelTab[name] - 5
 		end
 	end
 
@@ -79,7 +79,7 @@ function SystemUtils.init()
 				print("openHour == nil", name)
 				return false
 			end
-			return (level >= openLevel) and (nowTime >= openTime), nowTime >= openTime, openLevel
+			return (level >= openLevel) and (nowTime >= openTime), nowTime >= openTime, openLevel,sTimeData.systemOpenTip
 		end
 	end
 	-- dump(tab.systemOpen)

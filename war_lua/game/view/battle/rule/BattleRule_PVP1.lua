@@ -82,11 +82,14 @@ function BattleScene:initBattleUIEx()
         end
     end
     
-    if battleInfo.mode == BattleUtils.BATTLE_TYPE_Arena or battleInfo.mode == BattleUtils.BATTLE_TYPE_ServerArena then
+    if battleInfo.mode == BattleUtils.BATTLE_TYPE_Arena or battleInfo.mode == BattleUtils.BATTLE_TYPE_ServerArena or battleInfo.mode == BattleUtils.BATTLE_TYPE_GloryArena then
         self._skipBtn:setVisible(true)
     elseif battleInfo.mode == BattleUtils.BATTLE_TYPE_GuildPVP then
         -- self._skipBtn:setVisible(true)
-    elseif battleInfo.mode == BattleUtils.BATTLE_TYPE_GodWar then
+    elseif battleInfo.mode == BattleUtils.BATTLE_TYPE_GodWar or battleInfo.mode == BattleUtils.BATTLE_TYPE_CrossGodWar then
+        if battleInfo.mode == BattleUtils.BATTLE_TYPE_CrossGodWar then
+            self._skipBtn:setVisible(true)
+        end
         self._speedBtn.lock:setVisible(true)
         self._speedBtn:setTouchEnabled(false)
         local battleView = self._BattleView
@@ -389,7 +392,8 @@ function BattleLogic:checkWinEx()
         return true
     end
     if self.battleTime > COUNT_TIME then
-        if self._battleInfo.mode == BattleUtils.BATTLE_TYPE_HeroDuel or self._battleInfo.mode == BattleUtils.BATTLE_TYPE_GodWar then
+        if self._battleInfo.mode == BattleUtils.BATTLE_TYPE_HeroDuel 
+            or self._battleInfo.mode == BattleUtils.BATTLE_TYPE_GodWar then
             local hp1, maxhp1, hp2, maxhp2 = self:getCurHP()
             local shp1, maxshp1, shp2, maxshp2 = self:getSummonHP()
             local pro1 = math.floor(((hp1 + shp1) / (maxhp1 + maxshp1)) * 100)
@@ -411,6 +415,19 @@ function BattleLogic:checkWinEx()
                     self:timeUp(2)
                 end
             end
+        elseif self._battleInfo.mode == BattleUtils.BATTLE_TYPE_CrossGodWar then
+            local value1, value2, value3, value4 = logic:getCurHP()
+            local v1, v2, v3, v4 = logic:getSummonHP()
+            local hp = {value1 + v1, value2 + v2, value3 + v3, value4 + v4}
+            local remainHpProp1 = hp[1] / hp[2] * 30
+            local remainHpProp2 = hp[3] / hp[4] * 30
+            local remainTeamCount1, maxTeamCount1 = logic:getTeamCountInfo(1)
+            local remainTeamCount2, maxTeamCount2 = logic:getTeamCountInfo(2)
+            local remainTeamProp1 = remainTeamCount1 / maxTeamCount1 * 70
+            local remainTeamProp2 = remainTeamCount2 / maxTeamCount2 * 70
+            local score1 = remainHpProp1 + remainTeamProp1
+            local score2 = remainHpProp2 + remainTeamProp2
+            self:timeUp(score1 > score2 and 1 or 2)
         else
             self:timeUp(2)
         end

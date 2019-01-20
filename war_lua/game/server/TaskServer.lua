@@ -91,4 +91,33 @@ function TaskServer:onReceiveActiveReward(result, error)
     self:callback(result, 0 == tonumber(error))
 end
 
+
+function TaskServer:onWeekTaskReward(result, error)
+    dump(result, "TaskServer:onWeeklyTaskReward", 5)
+    if 0 ~= tonumber(error) then
+        print("TaskServer:onDetailTaskReward error", error)
+        --ViewManager:getInstance():onLuaError("TaskServer:onDetailTaskReward error:" .. error)
+    end
+    if result and result["d"] and result["d"]["sign"] then
+        self._modelMgr:getModel("SignModel"):updateData(result["d"]["sign"])
+    end
+    if result and result["d"] then 
+        self._taskModel:updateWeeklyTaskData(result["d"], 0 == tonumber(error))
+        self:callback(0 == tonumber(error), result)
+    else
+        self:callback(0 == tonumber(error))
+    end
+end
+
+function TaskServer:onReceiveWeekActiveReward(result, error)
+    --dump(result, "TaskServer:onReceiveWeeklyActiveReward")
+    if 0 ~= tonumber(error) then
+        print("TaskServer:onReceiveActiveReward error", error)
+        ViewManager:getInstance():onLuaError("TaskServer:onReceiveActiveReward error:" .. error)
+    end
+    if result and result["d"] then 
+        self._taskModel:updateWeeklyTaskActiveData(result["d"], 0 == tonumber(error))
+    end
+    self:callback(result, 0 == tonumber(error))
+end
 return TaskServer

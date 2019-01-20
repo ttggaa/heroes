@@ -72,7 +72,7 @@ function StarChartsView:onInit()
     if self._mapLayer == nil then
         self._mapLayer = require("game.view.starCharts.StarChartsViewMap").new(function()
             
-        end,self,1)
+        end,self,self.starId)
         self:addChild(self._mapLayer,-1)
         -- UIUtils:reloadLuaFile("game.view.starCharts.StarChartsViewMap")
     else
@@ -822,21 +822,30 @@ function StarChartsView:initstarNormalType(typeValue)
     --初始化特殊星体属性
     if typeValue ==  StarChartConst.UnKnownType then
         local isActive,activeNum = self._starChartsModel:checkActiveState(self._starBodyId)
+        panel1:setVisible(isActive)
+        panel2:setVisible(not isActive)
         if isActive == false then
-            panel1:setVisible(false)
-            panel2:setVisible(true)
             local specialDesc = self:getUI("Panel4.Panel1.Panel2.specialDesc")
             local unlockNum = tab.starChartsStars[self._starBodyId]["unlock_num"]
             local descText = "激活相邻" .. activeNum .. "/" .. unlockNum .. "星体才能查看该星体"
             specialDesc:setString(descText)
             self._unlockshowLab4:setVisible(false)
-            self._unlockImg4:setPositionY(80)
+            self._unlockImg4:setPositionY(80)  
         end
     else
         panel1:setVisible(true)
         panel2:setVisible(false)
         self._unlockshowLab4:setVisible(true)
         self._unlockImg4:setPositionY(97)
+    end
+
+    --非特殊星体也会有多个激活数量
+    local _,activeStarNum = self._starChartsModel:checkActiveState(self._starBodyId)
+    local unlockStarNum = tab.starChartsStars[self._starBodyId]["unlock_num"]
+    if unlockStarNum > 1 then
+        self._unlockshowLab4:setString("激活" .. activeStarNum .. "/" .. unlockStarNum .. "个相邻星体后解锁")
+    else
+        self._unlockshowLab4:setString("激活相邻星体后解锁")    
     end
 
     --初始化星体独有属性
@@ -1553,7 +1562,7 @@ function StarChartsView:initLabelNodeTable()
     -- if self.starInfo == nil then return end
 
     local starInfo = self._starChartsModel:getBodyIdTable(self.starId)
-    if starInfo == {} then print("不包含任何星体") return end
+    if not next(starInfo) then print("不包含任何星体") return end
     table.sort(starInfo,function(a,b)return (tonumber(a) >  tonumber(b)) end)  
     -- dump(starInfo)
     for _, bodyId in pairs(starInfo) do
@@ -1735,10 +1744,15 @@ function StarChartsView:abilityNodeHeight(typeValue,beginDistance)
     local resetTableFun = function(tableData)
         local starTab = tab.starChartsStars
         local newTable = {}
+        local i = 1
         for k , info in pairs(tableData) do
             local bodyId = info.id
-            local orderValue = starTab[bodyId]["desc_order"]
+            local orderValue = tonumber(starTab[bodyId]["desc_order"])*10000
+            if newTable[orderValue] then
+                orderValue = orderValue + i
+            end
             newTable[orderValue] = info
+            i = i + 1
         end
         return newTable
     end
@@ -1902,7 +1916,7 @@ function StarChartsView:getTypeAndKey(bodyId)
 
     local tempKey,realKey = nil,nil
     local keyTable = {}
-    if desKeys[ability_showtype] == nil or desKeys[ability_showtype] == {} then return nil end
+    if desKeys[ability_showtype] == nil or not next(desKeys[ability_showtype]) then return nil end
     for k , v in pairs(desKeys[ability_showtype]) do
         local keyValue = starChartsTable[bodyId][v] or -1
         table.insert(keyTable,keyValue)
@@ -1928,7 +1942,7 @@ end
 
 --获取属性描述
 function StarChartsView:getAddAttributeDes(typeValue,ids) 
-    if typeValue == nil or desKeys[typeValue] == {} or nil then return "" end
+    if typeValue == nil or not next(desKeys[typeValue]) or nil then return "" end
     local abilityValue = nil
     local desString = ""
     local idList = string.split(ids, "#")

@@ -620,6 +620,7 @@ function GlobalScrollLayer:registerTouchEventWithLight(btn, clickCallback)
     registerTouchEvent(btn,
         function ()
             if self._lockTouch == true then return end
+            self._oldBrightness = btn:getBrightness() or 0
             touchX, touchY = self._sceneLayer:getPosition()
             btn.flashes = 50
             local tempFlashes = 0
@@ -640,7 +641,7 @@ function GlobalScrollLayer:registerTouchEventWithLight(btn, clickCallback)
         function ()
             if self._lockTouch == true then return end
             if btn.downSp ~= btn:getVirtualRenderer() then
-                btn:setBrightness(0)
+                btn:setBrightness(self._oldBrightness)
             end
         end,
         function ()
@@ -649,7 +650,7 @@ function GlobalScrollLayer:registerTouchEventWithLight(btn, clickCallback)
                 ScheduleMgr:unregSchedule(self._btnSchedule)
                 self._btnSchedule = nil
             end
-            btn:setBrightness(0)
+            btn:setBrightness(self._oldBrightness)
             local x, y = self._sceneLayer:getPosition()
             if math.abs(touchX - x) > 10
                 or math.abs(touchY- y) > 10 then 
@@ -665,19 +666,19 @@ function GlobalScrollLayer:registerTouchEventWithLight(btn, clickCallback)
                 ScheduleMgr:unregSchedule(self._btnSchedule)
                 self._btnSchedule = nil
             end
-            btn:setBrightness(0)
+            btn:setBrightness(self._oldBrightness)
         end)
     btn:setSwallowTouches(false)
 end
 
 
 function GlobalScrollLayer:checkTouchBegan()
-    print("GlobalScrollLayer checkTouchBegan=====")
+    -- print("GlobalScrollLayer checkTouchBegan=====")
     return false
 end
 
 function GlobalScrollLayer:checkTouchEnd()
-    print("GlobalScrollLayer checkTouchEnd=====")
+    -- print("GlobalScrollLayer checkTouchEnd=====")
     return false
 end
 
@@ -686,7 +687,7 @@ function GlobalScrollLayer:checkTouch()
 end
 
 function GlobalScrollLayer:onMouseScrollEx()
-    print("GlobalScrollLayer onMouseScrollEx===============================")
+    -- print("GlobalScrollLayer onMouseScrollEx===============================")
     return true
 end
 

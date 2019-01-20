@@ -221,7 +221,7 @@ function CrossReportDialog:updateCell(inView, indexId)
     dump(data)
     local iconBg = inView:getChildByFullName("itemNode")
     if iconBg then
-        local param1 = {avatar = data.avatar, tp = 4,avatarFrame = data["avatarFrame"], level = data.level}
+        local param1 = {avatar = data.avatar, tp = 4,avatarFrame = data["avatarFrame"], level = data.level, plvl = data.plvl}
         local icon = iconBg:getChildByName("icon")
         if not icon then
             icon = IconUtils:createHeadIconById(param1)

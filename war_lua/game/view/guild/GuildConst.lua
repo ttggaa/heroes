@@ -39,6 +39,8 @@ GuildConst.ELEMENT_EVENT_TYPE =
 	YEAR = 26,				--26：新年使者
 	OFFICER = 27,			--27：指挥官
 	MATERIAL = 28,			--28：军需官
+	PERSONAL_PRISON = 29,	--29: 个人监狱
+	MAP_TREASURE = 30,		--30：藏宝图
 }
 
 GuildConst.ELEMENT_TYPE = 

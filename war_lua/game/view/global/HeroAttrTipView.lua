@@ -25,7 +25,7 @@ function HeroAttrTipView:setAttrs( totalAttrs )
 	-- totalAttrs[1],totalAttrs[3] = totalAttrs[3],totalAttrs[1]
 	for i,attrs in ipairs(totalAttrs) do
 		local cell = self:getUI("bg.attrCell" .. i)
-		for k=1,9 do
+		for k=1,11 do
 			local attrLab = self:getUI("bg.attrCell" .. k .. ".attr" .. i)
 			local attrNum = attrs["attr" .. k]
 			if attrNum < 0.01 then attrNum = 0 end

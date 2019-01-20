@@ -10,6 +10,7 @@ local ChatServer = class("ChatServer", BaseServer)
 function ChatServer:ctor()
 	ChatServer.super.ctor(self,data)
 	self._chatModel = self._modelMgr:getModel("ChatModel")
+	self._userModel = self._modelMgr:getModel("UserModel")
 end
 
 
@@ -18,6 +19,8 @@ function ChatServer:onSendMessage(result, error)
 	if error ~= 0 then
 		return
 	end
+
+	self:handleAboutServerData(result)
 	self:callback(result)
 end
 
@@ -93,6 +96,26 @@ function ChatServer:onPushIdipClear(result, error)
 	for i=1,#result do
 		self._chatModel:removeBlackChatUser(result[i], false, true, true)
 	end
+end
+
+function ChatServer:handleAboutServerData(result)
+    if result == nil or result["d"] == nil then 
+        return
+    end
+
+    if result._carry_ and result._carry_.task then
+    	self._modelMgr:getModel("TaskModel"):onChangeTask(result)
+    	result._carry_.task = nil
+    end    
+
+    if result["d"]["items"] ~= nil then 
+        local itemModel = self._modelMgr:getModel("ItemModel")
+        itemModel:updateItems(result["d"]["items"])
+        result["d"]["items"] = nil
+    end
+
+    -- 更新用户数据
+    self._userModel:updateUserData(result["d"])
 end
 
 

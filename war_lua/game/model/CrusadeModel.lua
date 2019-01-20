@@ -212,9 +212,12 @@ function CrusadeModel:checkSencondSweepState()
 	self._treasure = {} --宝藏碎片
 
 	local sweepId = self._data["sweepId"] * 2
-	local oneKeyId = self._data["oneKeyId"]
+	local oneKeyId = self._data["oneKeyId"]   
+	if oneKeyId == 0 then
+		oneKeyId = 1   --重置时后端给的数据是0，需要加1
+	end
 	local sysCrusadeMains = tab.crusadeMain
-	for i=oneKeyId + 1, sweepId, 1 do
+	for i=oneKeyId, sweepId, 1 do
 		local temp = sysCrusadeMains[i]
 		local sysCruBuild = tab:CrusadeBuild(cData[i].buildId)
 		if temp.type == CrusadeConst.CRUSADE_TYPE.EVENT then

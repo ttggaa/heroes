@@ -143,20 +143,18 @@ function GodwarUserInfoDialog:reflashUI(data)
     if data.hero then
         self._modelMgr:getModel("ArenaModel"):setEnemyHeroData(data.hero)
     end
-    -- local userInfo = self._modelMgr:getModel("UserModel"):getData()
     if not data.avatar or data.avatar==0 then--safecode toberemove
-        data.avatar = 1203--safecode toberemove
-    end--safecode toberemove
+        data.avatar = 1203
+    end
 
     local tencetTp = data["qqVip"]
+    local headP = {avatar = data.avatar,level = data.lv or "0" ,tp = 4,avatarFrame=data["avatarFrame"], tencetTp = tencetTp, plvl = data.plvl}
     if not self._avatar then
-        self._avatar = IconUtils:createHeadIconById({avatar = data.avatar,level = data.lv or "0" ,tp = 4,avatarFrame=data["avatarFrame"], tencetTp = tencetTp}) 
-        -- self._avatar:getChildByFullName("iconColor"):loadTexture("globalImageUI6_headBg.png",1)
+        self._avatar = IconUtils:createHeadIconById(headP) 
         self._avatar:setPosition(cc.p(-1,-1))
         self._heroHead:addChild(self._avatar)
     else
-        IconUtils:updateHeadIconByView(self._avatar,{avatar = data.avatar,level = data.lv or "0" ,tp = 4, tencetTp = tencetTp})
-        -- self._avatar:getChildByFullName("iconColor"):loadTexture("globalImageUI6_headBg.png",1)
+        IconUtils:updateHeadIconByView(self._avatar, headP)
     end
 
  -- data["tequan"] = "sq_gamecenter"
@@ -247,6 +245,8 @@ function GodwarUserInfoDialog:reflashUI(data)
         detailData.talentData = self._palyerData.talentData or self._palyerData.talent
         detailData.uMastery = self._palyerData.uMastery
         detailData.hSkin = self._palyerData.hSkin
+        detailData.backups = self._palyerData.backups
+        detailData.pTalents = self._palyerData.pTalents
         -- ViewManager:getInstance():showDialog("formation.NewFormationDescriptionView", { iconType = NewFormationIconView.kIconTypeArenaHero, iconId = data.formation.heroId}, true)
         ViewManager:getInstance():showDialog("rank.RankHeroDetailView", {data=detailData}, true)
     end)
@@ -333,6 +333,8 @@ function GodwarUserInfoDialog:createTeams( x,y,teamId,teamData )
         detailData.treasures = self._palyerData.treasures
         detailData.runes = self._palyerData.runes
         detailData.heros = self._palyerData.heros
+        detailData.battleArray = self._palyerData.battleArray
+        detailData.pTalents = self._palyerData.pTalents
         ViewManager:getInstance():showDialog("rank.RankTeamDetailView", {data=detailData}, true)
         -- ViewManager:getInstance():showDialog("formation.NewFormationDescriptionView", { iconType = NewFormationIconView.kIconTypeArenaTeam, iconId = teamId}, true)
     end})

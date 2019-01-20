@@ -81,6 +81,46 @@ local UI_INFO = {
 		bdListPos = {589, 205},
 		role = {scale = 0.7, pos = {265, 212}},
 	},
+	[1057] = {	--黑龙
+		teamId = 707,
+		priviewBtn = {73, 412},
+		titlePos = {724, 382},
+		frame = {fType = 2, fPos = {708, 287}},
+		bdListPos = {589, 205},
+		role = {scale = 0.7, pos = {335, 200}},
+	},
+	[1058] = {	--蛮牛
+		teamId = 805,
+		priviewBtn = {73, 412},
+		titlePos = {730, 382},
+		frame = {fType = 2, fPos = {723, 284}},
+		bdListPos = {589, 205},
+		role = {scale = 0.7, pos = {240, 213}},
+	},
+	[1059] = {	--圣坛
+		teamId = 108,
+		priviewBtn = {73, 412},
+		titlePos = {730, 382},
+		frame = {fType = 2, fPos = {723, 289}},
+		bdListPos = {589, 205},
+		role = {scale = 0.7, pos = {240, 233}},
+	},
+	[1060] = {	--狂战士
+		teamId = 408,
+		priviewBtn = {73, 412},
+		titlePos = {730, 382},
+		frame = {fType = 2, fPos = {723, 289}},
+		bdListPos = {589, 205},
+		role = {scale = 0.7, pos = {240, 233}},
+	},
+	[1061] = {	--泰坦
+		teamId = 607,
+		priviewBtn = {73, 412},
+		titlePos = {730, 382},
+		frame = {fType = 2, fPos = {723, 289}},
+		bdListPos = {589, 205},
+		role = {scale = 0.7, pos = {240, 233}},
+	},
 }
 
 function ACAwakenLimitTimeLayer:ctor(param)
@@ -90,7 +130,10 @@ function ACAwakenLimitTimeLayer:ctor(param)
 	self._teamModel = self._modelMgr:getModel("TeamModel")
 
 	self._callback = param.callback
-	self._acID = param.acId
+	self._callback2 = param.callback2
+	self._id = param.id       --活动id
+	self._acID = param.acId   --活动activity_id
+	self._isLoadRes = param.isLoadRes or false
 	self._uiInfo = UI_INFO[self._acID]
 	self._freeCell = {}
     self._useCell = {}
@@ -99,12 +142,17 @@ function ACAwakenLimitTimeLayer:ctor(param)
 end
 
 function ACAwakenLimitTimeLayer:getAsyncRes()
-    return 
-    {
-        {"asset/ui/acAwakenTL.plist", "asset/ui/acAwakenTL.png"},
-        {"asset/ui/acAwakenTL1.plist", "asset/ui/acAwakenTL1.png"},
-        {"asset/ui/activityTeamTL.plist", "asset/ui/activityTeamTL.png"},
-    }
+    if self._isLoadRes then
+		return {}
+	else
+		return 
+	    {
+	        {"asset/ui/acAwakenTL.plist", "asset/ui/acAwakenTL.png"},
+	        {"asset/ui/acAwakenTL1.plist", "asset/ui/acAwakenTL1.png"},
+	        {"asset/ui/acAwakenTL2.plist", "asset/ui/acAwakenTL2.png"},
+	        {"asset/ui/activityTeamTL.plist", "asset/ui/activityTeamTL.png"},
+	    }
+	end
 end
 
 function ACAwakenLimitTimeLayer:onInit()
@@ -206,10 +254,13 @@ function ACAwakenLimitTimeLayer:onInit()
 		if self._callback then
 			self._callback()
 		end
+		if self._callback2 then
+			self._callback2()
+		end
 		self:close()
-		UIUtils:reloadLuaFile("activity.ACAwakenLimitTimeLayer")
+		UIUtils:reloadLuaFile("activity.acLimit.ACAwakenLimitTimeLayer")
 		UIUtils:reloadLuaFile("LimitAwakenModel", "game.model.")
-		UIUtils:reloadLuaFile("flashcard.DialogFlashLTResult")
+		UIUtils:reloadLuaFile("activity.acLimit.DialogFlashLTAResult")
 		end)
 
 	--招募1次
@@ -225,10 +276,10 @@ function ACAwakenLimitTimeLayer:onInit()
 		--魂石上限提示
 	    local sysTeamD = tab.team[self._uiInfo["teamId"]]
 	    local _, hasNum = self._modelMgr:getModel("ItemModel"):getItemsById(sysTeamD["awakingUp"])
-	    local isFree = self._modelMgr:getModel("PlayerTodayModel"):getDayInfo(75) or 0   --今日已领取次数
-	    local isTiped = self._ltAwkModel:getIsTiped()
-	    if not isTiped and isFree ~= 0 and hasNum >= 520 then  --不是免费 / 魂石上限
-	    	self._ltAwkModel:setIsTiped(true)
+	    local isFree = self._ltAwkModel:isTodayHasFreeNumById(self._id)
+	    local isTiped = self._ltAwkModel:getIsTipedById(self._id)
+	    if not isTiped and not isFree and hasNum >= 520 then  --不是免费 / 魂石上限
+	    	self._ltAwkModel:setIsTipedById(true, self._id)
 	    	self._viewMgr:showDialog("global.GlobalSelectDialog",
 	        {   desc = lang("ac1051tips2_awake"),
 	            button1 = "确定",
@@ -248,7 +299,7 @@ function ACAwakenLimitTimeLayer:onInit()
 		--魂石上限提示
 	    local sysTeamD = tab.team[self._uiInfo["teamId"]]
 	    local _, hasNum = self._modelMgr:getModel("ItemModel"):getItemsById(sysTeamD["awakingUp"])
-	    local isTiped = self._ltAwkModel:getIsTiped()
+	    local isTiped = self._ltAwkModel:getIsTipedById(self._id)
 
 	    local function tenRecruitTip()
 	    	local tag = SystemUtils.loadAccountLocalData("LIMIT_AWAKE_NO_WARING")
@@ -266,7 +317,7 @@ function ACAwakenLimitTimeLayer:onInit()
 	    end
 
 	    if not isTiped and hasNum >= 520 then  --不是免费 / 魂石上限
-	    	self._ltAwkModel:setIsTiped(true)
+	    	self._ltAwkModel:setIsTipedById(true, self._id)
 	    	self._viewMgr:showDialog("global.GlobalSelectDialog",
 	        {   desc = lang("ac1051tips2_awake"),
 	            button1 = "确定",
@@ -295,7 +346,7 @@ function ACAwakenLimitTimeLayer:onInit()
     self:listenReflash("LimitAwakenModel", self.insertBroadcast)
 
     --获取宝箱奖励数据
-    self._boxRewards = self._ltAwkModel:getRewardListByIntIndex()
+    self._boxRewards = self._ltAwkModel:getRewardListById(self._id)
 
 	--场景监听
     self:registerScriptHandler(function(eventType)
@@ -326,7 +377,7 @@ function ACAwakenLimitTimeLayer:recruitBtnClick(inType)
     	return
     end
 
-    local isFree = self._modelMgr:getModel("PlayerTodayModel"):getDayInfo(75) or 0   --今日已领取次数
+    local isFree = self._ltAwkModel:isTodayHasFreeNumById(self._id)   --今日已领取次数
 	local sysTLConfig = tab.limitItemsConfig
 	local needGem
 	if inType == 1 then
@@ -341,7 +392,7 @@ function ACAwakenLimitTimeLayer:recruitBtnClick(inType)
 	else
 		curCoin = self._userModel:getData().gem or 0
 	end
-	if not (isFree == 0 and inType == 1 ) and curCoin < needGem then
+	if not (isFree and inType == 1 ) and curCoin < needGem then
 		-- DialogUtils.showNeedCharge({desc = lang("TIP_GLOBAL_LACK_GEM"), callback1=function( )
 		--     local viewMgr = ViewManager:getInstance()
 		--     viewMgr:showView("vip.VipView", {viewType = 0})
@@ -353,13 +404,9 @@ function ACAwakenLimitTimeLayer:recruitBtnClick(inType)
         return
 	end
 
-	self._serverMgr:sendMsg("LimitItemsServer", "limitItemsLottery", {num = inType}, true, {}, function(result, errorCode)
-		if inType == 1 then   --免费不消失，不必现bug，先手动修改
-			self._modelMgr:getModel("PlayerTodayModel"):setDayInfo(75, 1)
-		end
-		
+	self._serverMgr:sendMsg("LimitItemsServer", "limitItemsLottery", {num = inType, acId = self._id}, true, {}, function(result, errorCode)
 		self:refreshCostNum()			
-		self._viewMgr:showDialog("flashcard.DialogFlashLTAResult",{ 
+		self._viewMgr:showDialog("activity.acLimit.DialogFlashLTAResult",{ 
 			awards = result.reward or {},
 			showType = "awaken",   --限时兵团
 			costType = "gem",
@@ -367,6 +414,7 @@ function ACAwakenLimitTimeLayer:recruitBtnClick(inType)
 			buyNum = inType,
 			curData = self._data,
 			acId = self._acID,
+			id = self._id,
 			callback = function() self:reflashUI() end},true)
 		end)
 
@@ -383,7 +431,7 @@ function ACAwakenLimitTimeLayer:reflashUI()
 		self._refeshTimes = self._refeshTimes + 1
 	end
 	
-	self._data = self._ltAwkModel:getData()
+	self._data = self._ltAwkModel:getDataById(self._id)
 	-- dump(self._data, "reflashUI()")
 
 	--钻石
@@ -413,8 +461,8 @@ end
 function ACAwakenLimitTimeLayer:refreshCostNum()
 	local sysTLConfig = tab.limitItemsConfig
 	--免费次数
-	local isFree = self._modelMgr:getModel("PlayerTodayModel"):getDayInfo(75) or 0   --今日已领取次数
-	if isFree == 0 then
+	local isFree = self._ltAwkModel:isTodayHasFreeNumById(self._id)   --今日已领取次数
+	if isFree then
 		self:getUI("bg.bg1.recruit1.freeTip"):setVisible(true)
 		self:getUI("bg.bg1.recruit1.num"):setVisible(false)
 		self:getUI("bg.bg1.recruit1.icon"):setVisible(false)
@@ -654,7 +702,7 @@ function ACAwakenLimitTimeLayer:setRewards()
 			    	self._viewMgr:showTip("限时魂石活动已结束")
 			    	return
 			    end
-        		self._serverMgr:sendMsg("LimitItemsServer", "getLimitItemsBox", {id = sysIndex}, true, {}, function(result, errorCode)
+        		self._serverMgr:sendMsg("LimitItemsServer", "getLimitItemsBox", {id = sysIndex, acId = self._id}, true, {}, function(result, errorCode)
 					DialogUtils.showGiftGet({
 		                gifts = result.reward,
 		                callback = function()

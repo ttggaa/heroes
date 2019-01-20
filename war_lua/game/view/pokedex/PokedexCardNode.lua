@@ -81,11 +81,11 @@ function PokedexCardNode:reflashUI(data)
     -- end
 
     local tupian = "pokeImg_posBg0.png" 
-    for i=1,5 do
+    for i=1,6 do
         self._pokedex[i] = cc.Sprite:create()
         self._pokedex[i]:setSpriteFrame(tupian)
         self._pokedex[i]:setAnchorPoint(cc.p(1, 0))
-        self._pokedex[i]:setPosition(cc.p(35 + i*28, 20))
+        self._pokedex[i]:setPosition(cc.p(20 + i*28, 20))
         self._sp:addChild(self._pokedex[i])
     end
 end

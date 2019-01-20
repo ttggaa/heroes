@@ -11,13 +11,18 @@ function SpellBookCaseView:ctor(param)
     self._na = param and param.na
     self.fixMaxWidth = ADOPT_IPHONEX and 1136 or nil
     self._skillTalentModel = self._modelMgr:getModel("SkillTalentModel")
+
+    local his = SystemUtils.loadAccountLocalData("SKILL_TALENT_IN")
+    if not his then
+        SystemUtils.saveAccountLocalData("SKILL_TALENT_IN",1)
+    end
 end
 function SpellBookCaseView:getAsyncRes( )
-	return 
-	{
-		{"asset/ui/spellBook1.plist", "asset/ui/spellBook1.png"},
+    return 
+    {
+        {"asset/ui/spellBook1.plist", "asset/ui/spellBook1.png"},
         {"asset/ui/spellBook.plist", "asset/ui/spellBook.png"}
-	}
+    }
 end
 
 function SpellBookCaseView:setNavigation()
@@ -29,33 +34,33 @@ end
 -- end
 -- 初始化UI后会调用, 有需要请覆盖
 function SpellBookCaseView:onInit()
-	self._realBg = self:getUI("realBg")
-	self._realBg:loadTexture("asset/bg/spellBook_bg.jpg")
-	self._bg = self:getUI("bg")
-	-- titleTxt,pos,hasTextBg,fontSize
-	UIUtils:addFuncBtnName(self:getUI("bg.shopBtn"),"商店",nil,true)
-	UIUtils:addFuncBtnName(self:getUI("bg.breakBtn"),"分解",nil,true)
+    self._realBg = self:getUI("realBg")
+    self._realBg:loadTexture("asset/bg/spellBook_bg.jpg")
+    self._bg = self:getUI("bg")
+    -- titleTxt,pos,hasTextBg,fontSize
+    UIUtils:addFuncBtnName(self:getUI("bg.shopBtn"),"商店",nil,true)
+    UIUtils:addFuncBtnName(self:getUI("bg.breakBtn"),"分解",nil,true)
     UIUtils:addFuncBtnName(self:getUI("bg.drawBtn"),"规则",nil,true)
     UIUtils:addFuncBtnName(self:getUI("bg.ruleBtn"),"魔法天赋",nil,true)
     self._ruleBtn = self:getUI("bg.ruleBtn")
     self._bookItem = self:getUI("bg.bookItem")
-	self._bookItem:setSwallowTouches(false)
-	local children = self._bookItem:getChildren()
-	for k,v in pairs(children) do
-		if v.setSwallowTouches then
-			v:setSwallowTouches(false)
-		end
-	end
+    self._bookItem:setSwallowTouches(false)
+    local children = self._bookItem:getChildren()
+    for k,v in pairs(children) do
+        if v.setSwallowTouches then
+            v:setSwallowTouches(false)
+        end
+    end
 
-	self._orignData = clone(tab.skillBookBase) or {}
-	self._tableData = self:filterData()
-	self:addTableView()
-	
-	self:listenReflash("ItemModel", function( )
-		self:reflashUI()
+    self._orignData = clone(tab.skillBookBase) or {}
+    self._tableData = self:filterData()
+    self:addTableView()
+    
+    self:listenReflash("ItemModel", function( )
+        self:reflashUI()
     end)
     self:listenReflash("SpellBooksModel", function( )
-    	self:reflashUI()
+        self:reflashUI()
     end)
 
     self:registerClickEventByName("bg.breakBtn",function() 
@@ -110,9 +115,9 @@ function SpellBookCaseView:onInit()
     for i,v in ipairs(self._tabEventTarget) do
         v:setTitleText(lang(names[i]))
         v:setScaleAnim(true)
-    	self:registerClickEvent(v,function() 
-    		self:tabButtonClick(i)
-    	end)
+        self:registerClickEvent(v,function() 
+            self:tabButtonClick(i)
+        end)
     end
     -- 居中横向按钮
     local alignNodes = {}
@@ -245,14 +250,14 @@ function SpellBookCaseView:isCanUp( bookId )
 end
 
 function SpellBookCaseView:filterData( )
-	local tp,na = self._hIdx,self._vIdx
-	
-	local tableData = {}
-	for k,v in pairs(self._orignData) do
-		if (v.skillQuality == tp or tp == 5) and (v.nature == na or na == 5) and v.show == 1 then
-			table.insert(tableData,v)
-		end
-	end
+    local tp,na = self._hIdx,self._vIdx
+    
+    local tableData = {}
+    for k,v in pairs(self._orignData) do
+        if (v.skillQuality == tp or tp == 5) and (v.nature == na or na == 5) and v.show == 1 then
+            table.insert(tableData,v)
+        end
+    end
     table.sort(tableData,function( a,b )
 
         local aCanUp = self:isCanUp(a.id) 
@@ -282,11 +287,11 @@ function SpellBookCaseView:filterData( )
         end
 
     end)
-	self._tableData = tableData 
-	if self._tableView then
-		self._tableView:reloadData()
-	end
-	return tableData
+    self._tableData = tableData 
+    if self._tableView then
+        self._tableView:reloadData()
+    end
+    return tableData
 end
 
 -- 第一次进入调用, 有需要请覆盖
@@ -331,7 +336,7 @@ function SpellBookCaseView:reflashUI(data)
 end
 
 function SpellBookCaseView:tabButtonClick(idx,noAudio)
-	sender = self._tabEventTarget[idx]
+    sender = self._tabEventTarget[idx]
     if sender == nil then 
         return 
     end
@@ -346,21 +351,21 @@ function SpellBookCaseView:tabButtonClick(idx,noAudio)
     local beginIdx = 1
     local endIdx = 5
     if idx > 5 then
-    	beginIdx = 6
-		endIdx = 10
-	    self._hIdx = idx-5
-	else
-		self._vIdx = idx
+        beginIdx = 6
+        endIdx = 10
+        self._hIdx = idx-5
+    else
+        self._vIdx = idx
     end
     for i=beginIdx,endIdx do
-    	local btn = self._tabEventTarget[i]
-    	if i ~= idx then
-    		local text = btn:getTitleRenderer()
+        local btn = self._tabEventTarget[i]
+        if i ~= idx then
+            local text = btn:getTitleRenderer()
             btn:setTitleColor(UIUtils.colorTable.ccUITabColor1)
             text:disableEffect()
             -- btn:setScaleAnim(false)
             self:setTabStatus(btn, false,i)
-    	end
+        end
     end
     local text = sender:getTitleRenderer()
     text:disableEffect()
@@ -373,13 +378,13 @@ function SpellBookCaseView:tabButtonClick(idx,noAudio)
 end
 
 function SpellBookCaseView:setTabStatus( tabBtn,isSelect,idx )
-	tabBtn:setBright(not isSelect)
-	tabBtn:setEnabled(not isSelect)
-	local colorTab = {
-		[1] = {cc.c3b(255, 250, 224),ccc3(201, 177, 151)},
-		[2] = {cc.c3b(255, 250, 224),ccc3(142, 142, 142)},
-	}
-	local colorCur = colorTab[math.ceil(idx/5)]
+    tabBtn:setBright(not isSelect)
+    tabBtn:setEnabled(not isSelect)
+    local colorTab = {
+        [1] = {cc.c3b(255, 250, 224),ccc3(201, 177, 151)},
+        [2] = {cc.c3b(255, 250, 224),ccc3(142, 142, 142)},
+    }
+    local colorCur = colorTab[math.ceil(idx/5)]
     if isSelect then
         -- tabBtn:loadTextureNormal(isV and "globalBtnUI4_page1_p.png" or "globalBtnUI4_page1_p.png",1)
         local text = tabBtn:getTitleRenderer()
@@ -452,86 +457,86 @@ function SpellBookCaseView:tableCellAtIndex(table, idx)
     end
     local split = cell:getChildByName("split")
     if not split then
-    	split = ccui.ImageView:create()
-    	split:loadTexture("spellBook_splite.png",1)
-    	split:setName("split")
-    	split:setAnchorPoint(1,.5)
-    	split:setPosition(780,0)
+        split = ccui.ImageView:create()
+        split:loadTexture("spellBook_splite.png",1)
+        split:setName("split")
+        split:setAnchorPoint(1,.5)
+        split:setPosition(780,0)
 
-    	local splitL = ccui.ImageView:create()
-    	splitL:loadTexture("spellBook_splite.png",1)
-    	splitL:setAnchorPoint(0,0)
-    	splitL:setScale(-1,1)
-    	splitL:setPosition(1,0)
+        local splitL = ccui.ImageView:create()
+        splitL:loadTexture("spellBook_splite.png",1)
+        splitL:setAnchorPoint(0,0)
+        splitL:setScale(-1,1)
+        splitL:setPosition(1,0)
 
-    	split:addChild(splitL)
+        split:addChild(splitL)
 
-    	cell:addChild(split)
+        cell:addChild(split)
     end
     self:updateCell(cell,idx)
     return cell
 end
 
 function SpellBookCaseView:numberOfCellsInTableView(tableView)
-	local tableNum = table.nums(self._tableData)
-	local cellNum = math.ceil(tableNum/4)
+    local tableNum = table.nums(self._tableData)
+    local cellNum = math.ceil(tableNum/4)
     return cellNum
 end
 
 function SpellBookCaseView:updateCell( cell,idx )
-	-- 数据
-	local datas = {}
-	local dataBegin = math.min(idx*4+1,table.nums(self._tableData))
-	local dataEnd = math.min(idx*4+4,table.nums(self._tableData))
-	for i=1,4 do
-		local item = cell:getChildByName("item" .. i)
-		if (idx*4+i) <= dataEnd then
-			if not item then
-				item = self._bookItem:clone()
-				item:setName("item" .. i)
-				item:setPosition((i-1)*186+25,6)
-				cell:addChild(item)
-			end
-			item:setVisible(true)
-			self:updateItem(item,self._tableData[dataBegin-1+i])
-		else
-			if item then 
-				item:setVisible(false)
-			end
-		end
-	end
+    -- 数据
+    local datas = {}
+    local dataBegin = math.min(idx*4+1,table.nums(self._tableData))
+    local dataEnd = math.min(idx*4+4,table.nums(self._tableData))
+    for i=1,4 do
+        local item = cell:getChildByName("item" .. i)
+        if (idx*4+i) <= dataEnd then
+            if not item then
+                item = self._bookItem:clone()
+                item:setName("item" .. i)
+                item:setPosition((i-1)*186+25,6)
+                cell:addChild(item)
+            end
+            item:setVisible(true)
+            self:updateItem(item,self._tableData[dataBegin-1+i])
+        else
+            if item then 
+                item:setVisible(false)
+            end
+        end
+    end
 end
 
 function SpellBookCaseView:updateItem( oldItem,data )
-	if not data then return end
-	local item = oldItem or self._bookItem:clone()
+    if not data then return end
+    local item = oldItem or self._bookItem:clone()
 
-	-- 法术书名字
-	local itemBg = item:getChildByName("itemBg")
+    -- 法术书名字
+    local itemBg = item:getChildByName("itemBg")
     itemBg:loadTexture("spellBook_itemBg" .. data.skillQuality .. ".png",1)
     local name = item:getChildByName("name")
     local tailStr = ""
     local headStr = ""
-	-- if OS_IS_WINDOWS then
+    -- if OS_IS_WINDOWS then
  --        --headStr = "\n"
-	-- 	tailStr = "\n[" .. data.goodsId .. "/" .. data.id .. "]"
-	-- end
-	name:setString(headStr .. lang(data.name) .. tailStr)
+    --  tailStr = "\n[" .. data.goodsId .. "/" .. data.id .. "]"
+    -- end
+    name:setString(headStr .. lang(data.name) .. tailStr)
 
-	-- 法术书图片
-	local skillBookImg = item:getChildByName("skillBookImg")
-	local art = data.art 
-	local sfc = cc.SpriteFrameCache:getInstance()
-	if sfc:getSpriteFrameByName(art ..".jpg") then
-		skillBookImg:loadTexture("" .. art ..".jpg", 1)
-	else
-		skillBookImg:loadTexture("" .. art ..".png", 1) 
-	end
-	skillBookImg:setScale(62/skillBookImg:getContentSize().height)
+    -- 法术书图片
+    local skillBookImg = item:getChildByName("skillBookImg")
+    local art = data.art 
+    local sfc = cc.SpriteFrameCache:getInstance()
+    if sfc:getSpriteFrameByName(art ..".jpg") then
+        skillBookImg:loadTexture("" .. art ..".jpg", 1)
+    else
+        skillBookImg:loadTexture("" .. art ..".png", 1) 
+    end
+    skillBookImg:setScale(62/skillBookImg:getContentSize().height)
 
-	-- 进度条和数量
-	local num = item:getChildByName("num")
-	local proBar = item:getChildByName("proBar")
+    -- 进度条和数量
+    local num = item:getChildByName("num")
+    local proBar = item:getChildByName("proBar")
     local lvl = item:getChildByName("lvl")
 
     local spellInfo = self._spbInfo[tostring(data.id)]
@@ -561,7 +566,7 @@ function SpellBookCaseView:updateItem( oldItem,data )
     else
         skillBookImg:setBrightness(-0)
     end
-	if haveNum >= needNum and not isMaxLvl then
+    if haveNum >= needNum and not isMaxLvl then
         if level < 1 then
             upImg:loadTexture("skillBook_canActive.png",1)
         else
@@ -593,16 +598,16 @@ function SpellBookCaseView:updateItem( oldItem,data )
         if activeMc then
             activeMc:setVisible(false)
         end
-	end
-	self:registerTouchEvent(item,nil,nil,function() 
-		-- dump(self._spbModel:getData())
+    end
+    self:registerTouchEvent(item,nil,nil,function() 
+        -- dump(self._spbModel:getData())
         if not self._inScrolling then
-    		self._upDialog = self._viewMgr:showDialog("spellbook.SpellBookUpDialog",{spellId = data.id})
+            self._upDialog = self._viewMgr:showDialog("spellbook.SpellBookUpDialog",{spellId = data.id})
         else
             self._inScrolling = false
         end
-	end,nil)
-	item:setSwallowTouches(false)
+    end,nil)
+    item:setSwallowTouches(false)
 
     -- 角标
     local tagBg = item:getChildByName("tagBg")
@@ -633,7 +638,7 @@ function SpellBookCaseView:updateItem( oldItem,data )
             heroIcon:setVisible(false)
         end
     end
-	return item
+    return item
 end
 
 function SpellBookCaseView:reflashScore( )
@@ -647,7 +652,7 @@ function SpellBookCaseView:reflashScore( )
 end
 
 function SpellBookCaseView:sendActiveMsg( spellId )
-	self._serverMgr:sendMsg("HeroServer","combineSpellBook",{sid = spellId}, true, {}, function(result, success)
+    self._serverMgr:sendMsg("HeroServer","combineSpellBook",{sid = spellId}, true, {}, function(result, success)
     end)
 end
 
@@ -661,7 +666,7 @@ function SpellBookCaseView:updateAttrInfo( )
 end
 
 -- function SpellBookCaseView:sendUpMsg( spellId )
--- 	self._serverMgr:sendMsg("HeroServer","upLevelSpellBook",{sid = spellId}, true, {}, function(result, success)
+--  self._serverMgr:sendMsg("HeroServer","upLevelSpellBook",{sid = spellId}, true, {}, function(result, success)
 --     end)
 -- end
 

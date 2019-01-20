@@ -448,10 +448,14 @@ function CrusadeBattleNode:afterArenaBattle(data, inCallBack)
     local enemyDead = {}
     if not data.isSurrender then
         for k,v in pairs(data.dieList[1]) do
-            table.insert(allyDead, k)
+            if data.dieList[3][k] then
+                table.insert(allyDead, k)
+            end
         end
         for k,v in pairs(data.dieList[2]) do
-            table.insert(enemyDead, k)
+            if data.dieList[4][k] then
+                table.insert(enemyDead, k)
+            end
         end
     end
 
@@ -461,6 +465,7 @@ function CrusadeBattleNode:afterArenaBattle(data, inCallBack)
     if #allyDead == 0 then 
         allyDead = nil
     end
+
 
     if self._serverMgr ~= nil then
         local siegeBroken = 0

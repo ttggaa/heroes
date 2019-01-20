@@ -809,7 +809,8 @@ function GuildManageNewView:updateCell(inView, data)
 
     local level = inView:getChildByFullName("level")
     if level and data.lvl then
-        level:setString("Lv. " .. data.lvl)
+        local inParam = {lvlStr = "Lv." .. data.lvl, lvl = data.lvl, plvl = data.plvl}
+        tempLevl = UIUtils:adjustLevelShow(level, inParam, 1)
     end
 
     local vipImg = inView:getChildByFullName("vipImg")

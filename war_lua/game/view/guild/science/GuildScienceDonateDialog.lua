@@ -13,8 +13,6 @@ function GuildScienceDonateDialog:ctor(param)
     param.callback = nil
     self._donateData = param
 
-    print("baseIndex" .. param.baseIndex .. "childIndex" .. param.childIndex)
-
     self._baseIndex = param.baseIndex
     self._childIndex = param.childIndex
     self._backflowModel = self._modelMgr:getModel("BackflowModel")
@@ -66,6 +64,17 @@ function GuildScienceDonateDialog:onInit()
     local lab = self:getUI("bg.titleBg.expBg.lab")
     self._refExp = false
     self:updateCost()
+	self:updateOneKeyDonate()
+	local checkBox = self:getUI("bg.titleBg.oneKeyPanel.checkBox")
+	local userId = self._modelMgr:getModel("UserModel"):getRID()
+	local defaultKey = string.format("guildScienceOneKey_%s", userId)
+	checkBox:addEventListener(function(sender, eventType)
+        if eventType == 0 then
+            UserDefault:setStringForKey(defaultKey, 1)
+        else
+            UserDefault:setStringForKey(defaultKey, 0)
+        end
+    end)
 end
 
 function GuildScienceDonateDialog:updateCost()
@@ -145,10 +154,11 @@ function GuildScienceDonateDialog:reflashUI()
     donateValue:setString(userGuildData.dNum)
     local timesValue = self:getUI("bg.titleBg.timesValue")
     local times = guildModel:getDonateTimes()
+	local surplusTimes = times - userGuildData.dTimes
     if (times - userGuildData.dTimes) < 0 then
         timesValue:setString(0 .. "/" .. times)
     else
-        timesValue:setString((times - userGuildData.dTimes) .. "/" .. times)
+        timesValue:setString(surplusTimes .. "/" .. times)
     end
 
     if self._refExp == false then
@@ -242,9 +252,26 @@ function GuildScienceDonateDialog:reflashUI()
             else
                 local flag = false
                 local animStr = "juanxiandianji2_juanxiandonghua"
+                local cost = contribution["cost"][3]
+				local maxTimes = 1
+				local checkBox = self:getUI("bg.titleBg.oneKeyPanel.checkBox")
+				if checkBox:isSelected() then
+					local addExp = tab:GuildContribution(i).contribution
+					for i=self._level,limit_guild_level do
+						if i==self._level then
+							maxTimes = math.ceil((self._donateData.levelexp[i] - self._exp)/addExp)
+						else
+							maxTimes = maxTimes + math.ceil(self._donateData.levelexp[i]/addExp)
+						end
+					end
+					if maxTimes>surplusTimes then
+						maxTimes = surplusTimes
+					end
+					cost = cost*maxTimes
+				end
+				
                 if i == 1 then
                     local gold = userData.gold
-                    local cost = contribution["cost"][3]
                     if self.backType == i then
                        cost = cost*self.backDiscount
                     end
@@ -254,7 +281,7 @@ function GuildScienceDonateDialog:reflashUI()
                         flag = true
                     end
                 elseif i == 2 then
-                    local cost = contribution["cost"][3]
+--                    local cost = contribution["cost"][3]
                     if self.backType == i then
                        cost = cost*self.backDiscount
                     end
@@ -269,7 +296,7 @@ function GuildScienceDonateDialog:reflashUI()
                     end
                 elseif i == 3 then
                     animStr = "juanxiandianji2_juanxiandonghua"
-                    local cost = contribution["cost"][3]
+--                    local cost = contribution["cost"][3]
                     if self.backType == i then
                        cost = cost*self.backDiscount
                     end
@@ -296,7 +323,30 @@ function GuildScienceDonateDialog:reflashUI()
                     self:getUI("bg.tipImg"):setVisible(false)
                     
                     local param = {tid = self._donateData.id, did = i}
-                    self:techDonate(param)
+					if maxTimes~=1 then
+						param.times = maxTimes
+					end
+					if i~=3 then
+						self:techDonate(param)
+					else
+						local _time = self._modelMgr:getModel("UserModel"):getCurServerTime()
+						local closeSecondConfirm = SystemUtils.loadAccountLocalData("ScienceDonate")
+						if not closeSecondConfirm or TimeUtils.date("%m-%d", _time) ~= closeSecondConfirm then
+							DialogUtils.showSecondConfirmDialog({
+								costNum = cost,
+								desc = lang("GUILD_CONFIRM_TIPS_1"),
+								callback1 = function (state)
+									if state then 
+										SystemUtils.saveAccountLocalData("ScienceDonate", TimeUtils.date("%m-%d", _time)) 
+									end
+									self:techDonate(param)
+								end
+								})
+							return 
+						else
+							self:techDonate(param)
+						end
+					end
                 end
             end
         end)
@@ -682,6 +732,22 @@ function GuildScienceDonateDialog:teamPiaoNature1(str)
         cc.Spawn:create(cc.MoveBy:create(0.4, cc.p(0,10)),cc.FadeOut:create(0.7)),
         cc.RemoveSelf:create(true))
     natureLab:runAction(seqnature)
+end
+
+function GuildScienceDonateDialog:updateOneKeyDonate()
+	local oneKeyPanel = self:getUI("bg.titleBg.oneKeyPanel")
+	local myLevel = self._modelMgr:getModel("UserModel"):getPlayerLevel()
+	local limitLevel = tab:Setting("QUICKDONATE_LEVEL").value
+	if myLevel>=limitLevel then
+		oneKeyPanel:setVisible(true)
+		local checkBox = oneKeyPanel:getChildByName("checkBox")
+		local userId = self._modelMgr:getModel("UserModel"):getRID()
+		local defaultKey = string.format("guildScienceOneKey_%s", userId)
+		local checkState = tonumber(UserDefault:getStringForKey(defaultKey))
+		checkBox:setSelected((checkState and checkState==1) and true or false)
+	else
+		oneKeyPanel:setVisible(false)
+	end
 end
 
 

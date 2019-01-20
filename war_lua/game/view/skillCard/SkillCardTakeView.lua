@@ -16,16 +16,16 @@ local MAX_SCREEN_HEIGHT = MAX_SCREEN_HEIGHT
 local moveY1 = -100
 
 local function getMonthAndDay(time)
-	local m = TimeUtils_date("%m",time)
-	local d = TimeUtils_date("%d",time)
-	return string.format("%s月%s日",m,d)
+    local m = TimeUtils_date("%m",time)
+    local d = TimeUtils_date("%d",time)
+    return string.format("%s月%s日",m,d)
 end
 
 local SkillCardTakeView = class("SkillCardTakeView", BaseView)
 
 function SkillCardTakeView:ctor()
-	SkillCardTakeView.super.ctor(self)
-	self:registerScriptHandler(function(eventType)
+    SkillCardTakeView.super.ctor(self)
+    self:registerScriptHandler(function(eventType)
         if eventType == "exit" then 
             UIUtils:reloadLuaFile("skillCard.SkillCardTakeView")
         elseif eventType == "enter" then 
@@ -41,20 +41,20 @@ function SkillCardTakeView:ctor()
 end
 
 function SkillCardTakeView:getRegisterNames()
-	return{
-		{"shopBtn","shopBtn"}, -- 商店按钮
+    return{
+        {"shopBtn","shopBtn"}, -- 商店按钮
         {"skillBtn","skillBtn"}, -- 法术按钮
-		{"list","rightTopPanel.list"},
-		{"checkBox","bottomPanel.checkBox"},
-		{"oneGet","bottomPanel.oneGet"},
-		{"tenGet","bottomPanel.tenGet"},
-		{"oneGemCostPanel","bottomPanel.oneGemCostPanel"},
-		{"oneItemCostPanel","bottomPanel.oneItemCostPanel"},
-		{"tenItemCostPanel","bottomPanel.tenItemCostPanel"},
-		{"tenGemCostPanel","bottomPanel.tenGemCostPanel"},
-		{"timeDes1","rightTopPanel.timeDes1"},
-		{"timeDes2","rightTopPanel.timeDes2"}, 
-		{"oneFreePanel","bottomPanel.oneFreePanel"},
+        {"list","rightTopPanel.list"},
+        {"checkBox","bottomPanel.checkBox"},
+        {"oneGet","bottomPanel.oneGet"},
+        {"tenGet","bottomPanel.tenGet"},
+        {"oneGemCostPanel","bottomPanel.oneGemCostPanel"},
+        {"oneItemCostPanel","bottomPanel.oneItemCostPanel"},
+        {"tenItemCostPanel","bottomPanel.tenItemCostPanel"},
+        {"tenGemCostPanel","bottomPanel.tenGemCostPanel"},
+        {"timeDes1","rightTopPanel.timeDes1"},
+        {"timeDes2","rightTopPanel.timeDes2"}, 
+        {"oneFreePanel","bottomPanel.oneFreePanel"},
         {"animaNode","animaNode"},
         {"peopleImage","bg.peopleImage"},
         {"perpleBg","bg.perpleBg"},
@@ -65,11 +65,11 @@ function SkillCardTakeView:getRegisterNames()
         {"icon","bottomPanel.icon"},
         {"tips","bottomPanel.tips"},
 
-	}
+    }
 end
 
 function SkillCardTakeView:onInit()
-	UIUtils:addFuncBtnName(self._shopBtn,"法术商店",nil,true )
+    UIUtils:addFuncBtnName(self._shopBtn,"法术商店",nil,true )
     UIUtils:addFuncBtnName(self._skillBtn,"法术书柜",nil,true )
     self._peopleImage:loadTexture("asset/bg/skillCardTake_peple.png")
     self._perpleBg:loadTexture("asset/bg/skillCardTake_bottomBg.png")
@@ -106,27 +106,27 @@ function SkillCardTakeView:onInit()
     icon2:setScale(0.9)
     icon2:loadTexture("globalImageUI_keyin2.png",1)
 
-	local _,haveNum = self._ItemModel:getItemsById(needItemId)
+    local _,haveNum = self._ItemModel:getItemsById(needItemId)
     self._checkBox:setSelected(haveNum > 0)
     self._selectUseItem = haveNum > 0
     if haveNum == 0 then
         self._checkBox:setVisible(false)
     end
 
-	self._checkBox:addEventListener(function (_, state)--state 0 选中，1取消
+    self._checkBox:addEventListener(function (_, state)--state 0 选中，1取消
         print("touch check box...",state)
         self._selectUseItem = state == 0
         self:updateMiddleBottomView()
     end)
 
     self:registerClickEvent(self._oneGet,function()
-    	self:onOneGet()
+        self:onOneGet()
     end)
     self:registerClickEvent(self._tenGet,function()
-    	self:tenGet()
+        self:tenGet()
     end)
     self:registerClickEvent(self._shopBtn,function()
-    	self:onShop()
+        self:onShop()
     end)
     self:registerClickEvent(self._skillBtn,function()
         self:onSkillView()
@@ -181,7 +181,7 @@ function SkillCardTakeView:onInit()
         self._firstGet:runAction(cc.RepeatForever:create(seq))
     end
     self._icon:loadTexture("globalImageUI_keyin2.png",1)
-
+    self:setEnterFlag()
 end
 
 function SkillCardTakeView:updateRedPoint()
@@ -190,26 +190,27 @@ function SkillCardTakeView:updateRedPoint()
 end
 
 local effectName = {
-	"wupinguang_itemeffectcollection",                -- 转光
+    "wupinguang_itemeffectcollection",                -- 转光
     "wupinkuangxingxing_itemeffectcollection",        -- 星星
     "tongyongdibansaoguang_itemeffectcollection",     -- 扫光
     "diguang_itemeffectcollection",                   -- 底光
 }
 
 --[[
-	刷新热点面板
+    刷新热点面板
 ]]
 function SkillCardTakeView:updateHotView()
-	local curServerTime = self._userModel:getCurServerTime()
-	local beginTime,endTime = TimeUtils.getWeekBeginAndEnd(curServerTime)
-	local hour = tonumber(TimeUtils_date("%H",curServerTime))
-	if hour < 5 then
-		curServerTime = curServerTime - 86400
-	end
-	local year = TimeUtils_date("%Y",curServerTime)
-	local dmonth = TimeUtils_date("%W",curServerTime)
-	local id = tonumber(string.format("%02d%02d",tonumber(year),tonumber(dmonth)))
-	local hotData1 = tab:ScrollHotSpot(id)
+    local curServerTime = self._userModel:getCurServerTime()
+    local serverWeek = self._userModel:getData().week
+    local beginTime,endTime = TimeUtils.getWeekBeginAndEnd(curServerTime)
+    local hour = tonumber(TimeUtils_date("%H",curServerTime))
+    if hour < 5 then
+        curServerTime = curServerTime - 86400
+    end
+    local year = TimeUtils_date("%Y",curServerTime)
+    local dmonth = TimeUtils_date("%W",curServerTime)
+    local id = serverWeek or tonumber(string.format("%02d%02d",tonumber(year),tonumber(dmonth)))
+    local hotData1 = tab:ScrollHotSpot(tonumber(id))
     local scrollShow1 = hotData1.scrollShow
 
     --[[
@@ -235,7 +236,7 @@ function SkillCardTakeView:updateHotView()
     self._nextActiveID = id
 
 
-	local giftId = hotData1 and hotData1.scrollTemplate or 1
+    local giftId = hotData1 and hotData1.scrollTemplate or 1
     local conditionDay = 3
     self._isHideTab = true
     if curServerTime + conditionDay * 86400 >= endTime then
@@ -248,44 +249,44 @@ function SkillCardTakeView:updateHotView()
         ["nextId"] = self._nextActiveID,
         ["hide"] = self._isHideTab
     }
-	local giftData = tab:ScrollTemplate(giftId).art
-	dump(giftData,"giftData",10)
-	local giftNum = table.nums(giftData)
-	local widthCell = 65
-	self._list:removeAllChildren()
-	self._list:setClippingEnabled(true)
-	self._list:setInnerContainerSize(cc.size(widthCell*giftNum,self._list:getContentSize().height))
+    local giftData = tab:ScrollTemplate(giftId).art
+    dump(giftData,"giftData",10)
+    local giftNum = table.nums(giftData)
+    local widthCell = 65
+    self._list:removeAllChildren()
+    self._list:setClippingEnabled(true)
+    self._list:setInnerContainerSize(cc.size(widthCell*giftNum,self._list:getContentSize().height))
 
-	local tabData = tab.tool
-	for i=1,giftNum do
-		local data = giftData[i]
-	    local icon = IconUtils:createItemIconById({itemId = data[2], itemData = tabData[data[2]],eventStyle = 1, showSpecailSkillBookTip = true})
-    	local effect = effectName[tonumber(data[3])] or effectName[1]
-    	local zOrder = 10
-    	local scale = 0.9
-    	local point = cc.p(-2, -5)
-    	if effect == "diguang_itemeffectcollection" then
-    		zOrder = -2
-    		scale = 0.6
-    		point = cc.p(10,12)
-    	end
-    	local bgMc = IconUtils:addEffectByName({effect})
+    local tabData = tab.tool
+    for i=1,giftNum do
+        local data = giftData[i]
+        local icon = IconUtils:createItemIconById({itemId = data[2], itemData = tabData[data[2]],eventStyle = 1, showSpecailSkillBookTip = true})
+        local effect = effectName[tonumber(data[3])] or effectName[1]
+        local zOrder = 10
+        local scale = 0.9
+        local point = cc.p(-2, -5)
+        if effect == "diguang_itemeffectcollection" then
+            zOrder = -2
+            scale = 0.6
+            point = cc.p(10,12)
+        end
+        local bgMc = IconUtils:addEffectByName({effect})
         bgMc:setName("bgMc")
         bgMc:setPosition(point)
         icon:addChild(bgMc,zOrder)
         icon:setScale(0.6)
         bgMc:setScale(scale)
-    	self._list:addChild(icon)
-    	icon:setPosition((i-1)*widthCell+widthCell*0.1,2)
-	end
+        self._list:addChild(icon)
+        icon:setPosition((i-1)*widthCell+widthCell*0.1,2)
+    end
 
-	self._timeDes1:setString("持续时间:")
-	--持续时间
-	local des = ""
-	des = getMonthAndDay(beginTime) .. "05:00~"
-	des = des .. getMonthAndDay(endTime) .. "05:00"
-	print("des",des)
-	self._timeDes2:setString(des)
+    self._timeDes1:setString("持续时间:")
+    --持续时间
+    local des = ""
+    des = getMonthAndDay(beginTime) .. "05:00~"
+    des = des .. getMonthAndDay(endTime) .. "05:00"
+    print("des",des)
+    self._timeDes2:setString(des)
 
     self:preRedPoint()
 end
@@ -301,8 +302,8 @@ end
 
 -- 当前是否有免费次数
 function SkillCardTakeView:isFreeTime()
-	local getTimes = self._playerModel:getData().day68 or 0
-	return getTimes <= 0 
+    local getTimes = self._playerModel:getData().day68 or 0
+    return getTimes <= 0 
 end
 
 
@@ -311,7 +312,7 @@ function SkillCardTakeView:onAdd()
 end
 
 --[[
-	中间底部面板
+    中间底部面板
 ]]
 function SkillCardTakeView:updateMiddleBottomView()
     local _,haveNum = self._ItemModel:getItemsById(needItemId)
@@ -325,7 +326,7 @@ function SkillCardTakeView:updateMiddleBottomView()
     local isFree = self:isFreeTime()
     --单次抽是否使用道具
     local isItemShow = not isFree and haveNum > 0 and self._selectUseItem
-	--十次抽是否使用道具    
+    --十次抽是否使用道具    
     local isTenItemShow = haveNum >= 10 and self._selectUseItem
 
     
@@ -337,22 +338,22 @@ function SkillCardTakeView:updateMiddleBottomView()
     self._tenGemCostPanel:setVisible(not isTenItemShow)
 
     if isFree then
-    	local freeDes = self._oneFreePanel:getChildByFullName("count")
-		freeDes:setString("本次免费")
+        local freeDes = self._oneFreePanel:getChildByFullName("count")
+        freeDes:setString("本次免费")
     end
 
     if isItemShow then
-    	local oneItemCostLabel = self._oneItemCostPanel:getChildByFullName("count")
-    	local costDes = haveNum .. "/" .. 1
-		oneItemCostLabel:setString(costDes)
+        local oneItemCostLabel = self._oneItemCostPanel:getChildByFullName("count")
+        local costDes = haveNum .. "/" .. 1
+        oneItemCostLabel:setString(costDes)
     else
-    	local oneCostLabel = self._oneGemCostPanel:getChildByFullName("count")
-		oneCostLabel:setString(oneGemPrice)
-		if userGemCount >= oneGemPrice then
-			oneCostLabel:setColor(cc.c4b(255,255,255,255))
-		else
-			oneCostLabel:setColor(cc.c4b(205,32,30,255))
-		end
+        local oneCostLabel = self._oneGemCostPanel:getChildByFullName("count")
+        oneCostLabel:setString(oneGemPrice)
+        if userGemCount >= oneGemPrice then
+            oneCostLabel:setColor(cc.c4b(255,255,255,255))
+        else
+            oneCostLabel:setColor(cc.c4b(205,32,30,255))
+        end
         local icon = self._oneGemCostPanel:getChildByFullName("icon")
         if isUserLuck then
             icon:loadTexture(IconUtils.resImgMap.luckyCoin,1)
@@ -362,17 +363,17 @@ function SkillCardTakeView:updateMiddleBottomView()
     end
 
     if isTenItemShow then
-    	local costDes = haveNum .. "/" .. 10
-    	local tenItemCostLable = self._tenItemCostPanel:getChildByFullName("count")
-		tenItemCostLable:setString(costDes)
+        local costDes = haveNum .. "/" .. 10
+        local tenItemCostLable = self._tenItemCostPanel:getChildByFullName("count")
+        tenItemCostLable:setString(costDes)
     else
-    	local tenCostLabel = self._tenGemCostPanel:getChildByFullName("count")
-		tenCostLabel:setString(tenGemPrice)
-		if userGemCount >= tenGemPrice then
-			tenCostLabel:setColor(cc.c4b(255,255,255,255))
-		else
-			tenCostLabel:setColor(cc.c4b(205,32,30,255))
-		end
+        local tenCostLabel = self._tenGemCostPanel:getChildByFullName("count")
+        tenCostLabel:setString(tenGemPrice)
+        if userGemCount >= tenGemPrice then
+            tenCostLabel:setColor(cc.c4b(255,255,255,255))
+        else
+            tenCostLabel:setColor(cc.c4b(205,32,30,255))
+        end
         local icon = self._tenGemCostPanel:getChildByFullName("icon")
         if isUserLuck then
             icon:loadTexture(IconUtils.resImgMap.luckyCoin,1)
@@ -413,7 +414,7 @@ end
 --单次抽
 --hero.drawSpeelBook type 0免费抽取1道具抽取2钻石抽取
 function SkillCardTakeView:onOneGet()
-	if not self._isItemShow and not self._isFree then
+    if not self._isItemShow and not self._isFree then
         local isUserLuck = self._userModel:drawUseLuckyCoin()
         if isUserLuck then
             local userGemCount = self._userModel:getData().luckyCoin
@@ -437,12 +438,12 @@ function SkillCardTakeView:onOneGet()
                 return
             end
         end
-	end
+    end
 
-	self._buyNum = 1
-	local isUserItem = self._isFree and 0 or self._isItemShow and 1 or 2
-	local param = {num =1, type = isUserItem}
-	self._serverMgr:sendMsg("HeroServer", "drawSpeelBook", param, true, {}, function(result)
+    self._buyNum = 1
+    local isUserItem = self._isFree and 0 or self._isItemShow and 1 or 2
+    local param = {num =1, type = isUserItem}
+    self._serverMgr:sendMsg("HeroServer", "drawSpeelBook", param, true, {}, function(result)
         if not result then
             self._playerModel:updateDayInfo({day68 = 1})
             self:updateMiddleBottomView()
@@ -457,17 +458,17 @@ function SkillCardTakeView:onOneGet()
         print("errorId",errorId)
     end)
 
-	-- self._buyNum = 1
+    -- self._buyNum = 1
  --    self._serverMgr:sendMsg("TeamServer", "drawAward", {typeId = 2, num = 1}, true, {}, function(result)
- --    	if result then
- --    		self:lock(-1)
-	--         ScheduleMgr:delayCall(2000, self, function( )
-	--             if self.unlock then 
-	--                 self:unlock()
-	--             end     
-	--             self:showResult(result)
-	--         end)
- --    	end
+ --     if result then
+ --         self:lock(-1)
+    --         ScheduleMgr:delayCall(2000, self, function( )
+    --             if self.unlock then 
+    --                 self:unlock()
+    --             end     
+    --             self:showResult(result)
+    --         end)
+ --     end
  --    end,
  --    function( )
  --        if self.unlock then 
@@ -541,7 +542,7 @@ end
 
 --十连抽
 function SkillCardTakeView:tenGet()
-	if not self._isTenItemShow then
+    if not self._isTenItemShow then
         print("aaaa")
         local isUserLuck = self._userModel:drawUseLuckyCoin()
         if isUserLuck then
@@ -567,12 +568,12 @@ function SkillCardTakeView:tenGet()
                 return
             end
         end
-	end
+    end
     print("aaaabb")
-	self._buyNum = 10
-	local isUserItem = self._isTenItemShow and 1 or 2
-	local param = {num =10, type = isUserItem}
-	self._serverMgr:sendMsg("HeroServer", "drawSpeelBook", param, true, {}, function(result)
+    self._buyNum = 10
+    local isUserItem = self._isTenItemShow and 1 or 2
+    local param = {num =10, type = isUserItem}
+    self._serverMgr:sendMsg("HeroServer", "drawSpeelBook", param, true, {}, function(result)
         if not result then
             self._playerModel:updateDayInfo({day68 = 1})
             self:updateMiddleBottomView()
@@ -590,8 +591,8 @@ function SkillCardTakeView:tenGet()
 end
 
 function SkillCardTakeView:showResult(result)
-	self._viewMgr:showDialog("skillCard.SkillCardResultView",{awards = (result.rewards or {}),
-	isFirstUserItem = self._selectUseItem,buyNum = self._buyNum,
+    self._viewMgr:showDialog("skillCard.SkillCardResultView",{awards = (result.rewards or {}),
+    isFirstUserItem = self._selectUseItem,buyNum = self._buyNum,
     callback = function()
         self:showAnimation(3,function ()
             self:updateMiddleBottomView()
@@ -601,7 +602,7 @@ end
 
 --商店
 function SkillCardTakeView:onShop()
-	print("商店")
+    print("商店")
     self._serverMgr:sendMsg("ShopServer", "getShopInfo", {type = "skillbook"}, true, {}, function(result)
         dump(result,"SkillCardTakeView",10)
         self._viewMgr:showDialog("skillCard.SkillCardShopView",{},true)
@@ -630,8 +631,8 @@ function SkillCardTakeView:onPreLook()
 end
 
 function SkillCardTakeView:getAsyncRes()
-	return {
-	{"asset/ui/skillCard.plist","asset/ui/skillCard.png"}
+    return {
+    {"asset/ui/skillCard.plist","asset/ui/skillCard.png"}
 }
 end
 function SkillCardTakeView:setNavigation()
@@ -643,8 +644,25 @@ function SkillCardTakeView:setNavigation()
     end
 end
 
+
+-- 每次打开UI标记
+function SkillCardTakeView:setEnterFlag()
+    local curServerTime = self._userModel:getCurServerTime()
+    local timeDate
+    local tempCurDayTime = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(curServerTime,"%Y-%m-%d 05:00:00"))
+    if curServerTime > tempCurDayTime then
+        timeDate = TimeUtils.getDateString(curServerTime,"%Y%m%d")
+    else
+        timeDate = TimeUtils.getDateString(curServerTime - 86400,"%Y%m%d")
+    end
+    local tempdate = SystemUtils.loadAccountLocalData("SKILLCARDTAKE_IS_SHOWED_ITEM")
+    if tempdate ~= timeDate then
+        SystemUtils.saveAccountLocalData("SKILLCARDTAKE_IS_SHOWED_ITEM", timeDate)
+    end
+end
+
 function SkillCardTakeView:getBgName()
-	return "skillCardTake.jpg"
+    return "skillCardTake.jpg"
 end
 
 function SkillCardTakeView:onDestroy()

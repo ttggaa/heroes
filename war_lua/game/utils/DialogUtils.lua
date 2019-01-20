@@ -96,6 +96,20 @@ print("costType..in dialogutils",costType,costImg)
 
 end
 
+-- 弹出二次确认 消耗XX购买 ?
+function DialogUtils.showSecondConfirmDialog(param) -- costType,costNum,callback1,callback2 
+	local costNum = param.costNum or 0
+	local callback1 = param.callback1
+	local callback2 = param.callback2
+
+	local descStr = param.desc or ""
+	--[[descStr = "[color=462800,fontsize=24]確認消耗[-][color=3d1f00,fontsize=24] "..(costNum or 0)
+	descStr = descStr .. "[color=462800,fontsize=24]购买?[-] "--]]
+	local viewMgr = ViewManager:getInstance()
+	return viewMgr:showSecondConfirmDialog( descStr, "", callback1, 
+		"", callback2)
+end
+
 -- 确定弹窗 是否。。。。？
 function DialogUtils.showShowSelect(param)
     param = param or {}
@@ -159,28 +173,37 @@ function DialogUtils.showGiftGet( param )
         UIUtils:showFloatItems(gifts,param)
     else
         local isAvatar = false
+        local avatarNum = 0
         local isSkin = false
+        local isTeamSkin = false
         if gifts and type(gifts) == "table" and #gifts ~= 0 then
             for k,v in pairs(gifts) do
                 if type(v) == "table" then
                     if v[1] == "avatarFrame" or v["type"] == "avatarFrame" 
                         or v[1] == "avatar" or v["type"] == "avatar" then
 
+                        avatarNum = avatarNum + 1
                         isAvatar = true
                         -- break
                     end
                     if v[1] == "hSkin" or v["type"] == "hSkin"  then 
                         isSkin = true
                     end
+                    if v[1] == "tSkin" or v["type"] == "tSkin"  then 
+                        isTeamSkin = true
+                    end
                 end
             end
         end
         -- 只有一个头像或者头像框需要特殊展示 hgf
-        if isAvatar and table.nums(gifts) == 1 then
+        if isAvatar and (avatarNum ~= 0 and table.nums(gifts) == avatarNum) then
             DialogUtils.showAvatarFrameGet( {gifts = gifts})
         elseif isSkin and table.nums(gifts) == 1 then
             local skinItemID = gifts[1].typeId or gifts[1][2]
             DialogUtils.showSkinGetDialog({skinId = skinItemID})
+        elseif isTeamSkin and table.nums(gifts) == 1 then
+            local skinItemID = gifts[1].typeId or gifts[1][2]
+            DialogUtils.showTeamSkinGetDialog({skinId = skinItemID})
         else
             if not viewType then
                 return node.view:showDialog("global.GlobalGiftGetDialog", param, true,false,nil,true)
@@ -224,7 +247,9 @@ end
 -- 展示怪兽
 function DialogUtils.showTeam( param )
     param = param or {}
-    param.itemId = 3000+(param.teamId or 1) 
+    --由于team表中的新阵营加了超出4位数的结构，所以这里通过以前的方法获取碎片数据就有问题了 dongcheng 2018.6.2
+--    param.itemId = 3000 + (param.teamId or 1)
+    param.itemId = tonumber("3"..(param.teamId or 1)) 
     param.showTeam = true
     DialogUtils.showCard(param)
 end
@@ -374,9 +399,21 @@ function DialogUtils.showSkinGetDialog(param)
     local callBack = param.callBack or nil
     local viewMgr = ViewManager:getInstance()
     local node = viewMgr._viewLayer:getChildren()[#viewMgr._viewLayer:getChildren()]
-   
+    
    -- , forceShow, Async, callback, noPop)
     return node.view:showDialog("global.GlobalSkinGetDialog", {skinID = skinId,callBack = callBack}, true)
+end
+
+-- 获得兵团皮肤
+function DialogUtils.showTeamSkinGetDialog(param)    
+    -- dump(param,"param",4)
+    local skinId  = param.skinId or nil
+    local callBack = param.callBack or nil
+    local viewMgr = ViewManager:getInstance()
+    local node = viewMgr._viewLayer:getChildren()[#viewMgr._viewLayer:getChildren()]
+    
+   -- , forceShow, Async, callback, noPop)
+    return node.view:showDialog("team.TeamSkinGetDialog", {skinID = skinId,callBack = callBack}, true)
 end
 
 -- 打开兵团圣徽详情

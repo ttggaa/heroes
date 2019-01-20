@@ -267,6 +267,253 @@ function GuildMapLayer:updateMySelfState()
     end  
     
     self:handlePlayerTimngQueue(self._userId, curGridKey, userInfo)
+	
+	self:updateHeroTreasure()
+	
+end
+
+function GuildMapLayer:updateHeroTreasure()
+    local guildId = self._modelMgr:getModel("UserModel"):getData().guildId
+    local currentGuildId = self._guildMapModel:getData().currentGuildId
+    local isSelfMap = (tostring(guildId) == tostring(currentGuildId))
+    if self._intanceMcAnimNode and self._intanceMcAnimNode.compass then
+        self._intanceMcAnimNode.compass:setVisible(isSelfMap)
+        self._intanceMcAnimNode.treasureDisBg:setVisible(isSelfMap)
+    end
+    if not isSelfMap then
+        return
+    end
+
+	if self._guildMapModel:getTreasureState() and self._intanceMcAnimNode then
+		local compassBg, compassCenter, compassArrow, treasureDisBg, disLab, posLab, disType, disLab
+		local treasureData = self._guildMapModel:getTreasureData()
+		if not self._intanceMcAnimNode.compass then--有藏宝图正在使用
+			compassBg = cc.Sprite:createWithSpriteFrameName("mapTreasure_compassBg.png")
+			compassBg:setPosition(cc.p(self._intanceMcAnimNode:getContentSize().width/2, 330))
+			compassBg:setScale(2.2)
+			self._intanceMcAnimNode:addChild(compassBg, 5)
+            self._intanceMcAnimNode.compassBg = compassBg
+			
+			compassCenter = cc.Sprite:createWithSpriteFrameName("mapTreasure_compassCenter.png")
+			compassCenter:setPosition(cc.p(compassBg:getContentSize().width/2, compassBg:getContentSize().height/2))
+			compassBg:addChild(compassCenter, 1)
+			
+			compassArrow = cc.Sprite:createWithSpriteFrameName("mapTreasure_compassArrow.png")
+			compassArrow:setAnchorPoint(0.5, 0.14)
+			compassArrow:setName("compassArrow")
+			compassArrow:setPosition(compassCenter:getPosition())
+			compassBg:addChild(compassArrow)
+
+            local compassBgW = compassBg:getContentSize().width
+            local compassBgH = compassBg:getContentSize().height
+            local labTxt = {"N", "E", "S", "W"}
+            local labPos = {cc.p(compassBgW / 2, compassBgH - 10), cc.p(compassBgW - 10, compassBgH / 2), cc.p(compassBgW / 2, 10), cc.p(10, compassBgH / 2)}
+            for i = 1, 4 do
+                posLab = ccui.Text:create(labTxt[i], UIUtils.ttfName, 14)
+                posLab:setColor(cc.c4b(78, 255, 211, 255))
+                posLab:setPosition(labPos[i])
+                compassBg:addChild(posLab)
+            end
+			
+			treasureDisBg = cc.Sprite:createWithSpriteFrameName("mapTreasure_disBg.png")
+			treasureDisBg:setPosition(cc.p(self._intanceMcAnimNode:getContentSize().width/2, 0))
+			treasureDisBg:setName("treasureDisBg")
+			treasureDisBg:setScale(2.2)
+			self._intanceMcAnimNode.treasureDisBg = treasureDisBg
+			self._intanceMcAnimNode:addChild(treasureDisBg, 10)
+			
+			local treasurePoint = string.split(treasureData.point, ",")
+			local dis = math.abs(tonumber(treasurePoint[1])-self._curGrid.a) + math.abs(tonumber(treasurePoint[2])-self._curGrid.b)
+			local disText = "宝藏距离"
+			local disColor = cc.c3b(253, 223, 97)
+			if dis>50 then
+				disText = disText..">50"
+			elseif dis>30 then
+				disText = disText..">30"
+			else
+				if dis<=3 then
+					disText = disText.."≤3"
+					disColor = cc.c3b(243, 48, 46)
+                    disType = 1
+				elseif dis<=5 then
+					disText = disText.."≤5"
+					disColor = cc.c3b(243, 48, 46)
+                    disType = 1
+				elseif dis<=10 then
+					disText = disText.."≤10"
+                    disType = 2
+				elseif dis<=15 then
+					disText = disText.."≤15"
+                    disType = 2
+				elseif dis<=20 then
+					disText = disText.."≤20"
+				elseif dis<=30 then
+					disText = disText.."≤30"
+				end
+			end
+			disLab = cc.Label:createWithTTF(disText, UIUtils.ttfName, 16)
+			disLab:setPosition(cc.p(treasureDisBg:getContentSize().width/2, treasureDisBg:getContentSize().height/2))
+			disLab:setName("disLab")
+			disLab:setColor(disColor)
+            disLab:enableOutline(cc.c4b(0,0,0,255), 1)
+			treasureDisBg:addChild(disLab)
+		else
+			compassBg = self._intanceMcAnimNode.compass
+			compassArrow = compassBg:getChildByName("compassArrow")
+			treasureDisBg = self._intanceMcAnimNode:getChildByName("treasureDisBg")
+		end
+		local treasureEle = self._gridElements[treasureData.point]
+		local treasurePos = self._bgSprite:convertToWorldSpace(cc.p(treasureEle:getPosition()))
+		local myPos = self._bgSprite:convertToWorldSpace(cc.p(self._intanceMcAnimNode:getPosition()))
+		local angle = 360-MathUtils.angleAtan2(treasurePos, myPos)
+		compassArrow:setRotation(angle)
+		
+		self._intanceMcAnimNode.compass = compassBg
+		if self._intanceMcAnimNode:getScaleX()<0 then
+			compassBg:setScaleX(-1 * math.abs(compassBg:getScaleX()))
+			treasureDisBg:setScaleX(-1 * math.abs(treasureDisBg:getScaleX()))
+		else
+			compassBg:setScaleX(1 * math.abs(compassBg:getScaleX()))
+			treasureDisBg:setScaleX(1 * math.abs(treasureDisBg:getScaleX()))
+		end
+
+        local compassAnim1 = compassBg:getChildByFullName("compassAnim1")
+        local compassAnim2 = compassBg:getChildByFullName("compassAnim2")
+        if disType and disType == 1 then 
+            if not compassAnim1 then
+                compassAnim1 = mcMgr:createViewMC("luopantishi2_lianmengxunbao", true, false)
+                compassAnim1:setPosition(compassBg:getContentSize().width / 2, compassBg:getContentSize().height / 2)
+                compassAnim1:setName("compassAnim1")
+                compassBg:addChild(compassAnim1)
+            end
+            if compassAnim2 then
+                compassAnim2:removeFromParentAndCleanup()
+            end
+            compassArrow:stopAllActions()
+            disLab:stopAllActions()
+            compassArrow:runAction(cc.RepeatForever:create(cc.Sequence:create(cc.RotateTo:create(0.1, angle - 5), cc.RotateTo:create(0.1, angle + 5))))
+            disLab:runAction(cc.RepeatForever:create(cc.Sequence:create(cc.FadeTo:create(0.4, 150), cc.FadeTo:create(0.4, 255))))
+        elseif disType and disType == 2 then
+            if not compassAnim2 then
+                compassAnim2 = mcMgr:createViewMC("luopantishi1_lianmengxunbao", true, false)
+                compassAnim2:setPosition(compassBg:getContentSize().width / 2, compassBg:getContentSize().height / 2)
+                compassAnim2:setName("compassAnim2")
+                compassBg:addChild(compassAnim2)
+            end
+            if compassAnim1 then
+                compassAnim1:removeFromParentAndCleanup()
+            end
+            compassArrow:stopAllActions()
+            disLab:stopAllActions()
+            compassArrow:runAction(cc.RepeatForever:create(cc.Sequence:create(cc.RotateTo:create(0.2, angle - 5), cc.RotateTo:create(0.2, angle + 5))))
+            disLab:runAction(cc.RepeatForever:create(cc.Sequence:create(cc.FadeTo:create(1, 150), cc.FadeTo:create(1, 255))))
+        else
+            if compassAnim1 then
+                compassAnim1:removeFromParentAndCleanup()
+            end
+            if compassAnim2 then
+                compassAnim2:removeFromParentAndCleanup()
+            end
+            compassArrow:stopAllActions()
+            disLab:stopAllActions()
+            disLab:setOpacity(255)
+        end
+	elseif self._intanceMcAnimNode and self._intanceMcAnimNode.compass then
+		self._intanceMcAnimNode.compass:removeFromParent()
+		self._intanceMcAnimNode.compass = nil
+		self._intanceMcAnimNode.treasureDisBg:removeFromParent()
+		self._intanceMcAnimNode.treasureDisBg = nil
+	end
+end
+
+function GuildMapLayer:reloadTreasureCompass()
+	if self._guildMapModel:getTreasureState() and self._intanceMcAnimNode.compass and self._intanceMcAnimNode:isVisible() then
+		local compassArrow = self._intanceMcAnimNode.compass:getChildByName("compassArrow")
+		
+		local treasureData = self._guildMapModel:getTreasureData()
+		local treasureEle = self._gridElements[treasureData.point]
+		local treasurePos = self._bgSprite:convertToWorldSpace(cc.p(treasureEle:getPosition()))
+		local myPos = self._bgSprite:convertToWorldSpace(cc.p(self._intanceMcAnimNode:getPosition()))
+		local angle = 360-MathUtils.angleAtan2(treasurePos, myPos)
+		compassArrow:setRotation(angle)
+		
+		local disType
+		local treasurePoint = string.split(treasureData.point, ",")
+		local dis = math.abs(tonumber(treasurePoint[1])-self._curGrid.a) + math.abs(tonumber(treasurePoint[2])-self._curGrid.b)
+		local disText = "宝藏距离"
+		local disColor = cc.c3b(253, 223, 97)
+		if dis>50 then
+			disText = disText..">50"
+		elseif dis>30 then
+			disText = disText..">30"
+		else
+			if dis<=3 then
+				disText = disText.."≤3"
+				disColor = cc.c3b(243, 48, 46)
+				disType = 1
+			elseif dis<=5 then
+				disText = disText.."≤5"
+				disColor = cc.c3b(243, 48, 46)
+				disType = 1
+			elseif dis<=10 then
+				disText = disText.."≤10"
+				disType = 2
+			elseif dis<=15 then
+				disText = disText.."≤15"
+				disType = 2
+			elseif dis<=20 then
+				disText = disText.."≤20"
+			elseif dis<=30 then
+				disText = disText.."≤30"
+			end
+		end
+		local disLab = self._intanceMcAnimNode.treasureDisBg:getChildByName("disLab")
+		disLab:setColor(disColor)
+		disLab:setString(disText)
+
+		local compassBg = self._intanceMcAnimNode.compassBg
+		local compassAnim1 = compassBg:getChildByFullName("compassAnim1")
+		local compassAnim2 = compassBg:getChildByFullName("compassAnim2")
+		if disType and disType == 1 then 
+			if not compassAnim1 then
+				compassAnim1 = mcMgr:createViewMC("luopantishi2_lianmengxunbao", true, false)
+				compassAnim1:setPosition(compassBg:getContentSize().width / 2, compassBg:getContentSize().height / 2)
+				compassAnim1:setName("compassAnim1")
+				compassBg:addChild(compassAnim1)
+			end
+			if compassAnim2 then
+				compassAnim2:removeFromParentAndCleanup()
+			end
+			compassArrow:stopAllActions()
+			disLab:stopAllActions()
+			compassArrow:runAction(cc.RepeatForever:create(cc.Sequence:create(cc.RotateTo:create(0.1, angle - 5), cc.RotateTo:create(0.1, angle + 5))))
+			disLab:runAction(cc.RepeatForever:create(cc.Sequence:create(cc.FadeTo:create(0.4, 150), cc.FadeTo:create(0.4, 255))))
+		elseif disType and disType == 2 then
+			if not compassAnim2 then
+				compassAnim2 = mcMgr:createViewMC("luopantishi1_lianmengxunbao", true, false)
+				compassAnim2:setPosition(compassBg:getContentSize().width / 2, compassBg:getContentSize().height / 2)
+				compassAnim2:setName("compassAnim2")
+				compassBg:addChild(compassAnim2)
+			end
+			if compassAnim1 then
+				compassAnim1:removeFromParentAndCleanup()
+			end
+			compassArrow:stopAllActions()
+			disLab:stopAllActions()
+			compassArrow:runAction(cc.RepeatForever:create(cc.Sequence:create(cc.RotateTo:create(0.2, angle - 5), cc.RotateTo:create(0.2, angle + 5))))
+			disLab:runAction(cc.RepeatForever:create(cc.Sequence:create(cc.FadeTo:create(1, 150), cc.FadeTo:create(1, 255))))
+		else
+			if compassAnim1 then
+				compassAnim1:removeFromParentAndCleanup()
+			end
+			if compassAnim2 then
+				compassAnim2:removeFromParentAndCleanup()
+			end
+			compassArrow:stopAllActions()
+			disLab:stopAllActions()
+			disLab:setOpacity(255)
+		end
+	end
 end
 
 function GuildMapLayer:initFogs()
@@ -299,7 +546,7 @@ function GuildMapLayer:initFogs()
                 -- sp:setBlendFunc({src = gl.ZERO, dst = gl.ONE_MINUS_SRC_ALPHA})
                 sp.gridKey = k
                 self._gridFogs[k] = sp
-                self._bgSprite:addChild(sp, 300)
+                self._bgSprite:addChild(sp, 99)
             end
             if backMapList[k] ~= nil then 
                 tempBuildShapes[k] = v
@@ -672,7 +919,8 @@ function GuildMapLayer:wakeUpMcFPS()
     if not self._mcfps or #self._mcfps == 0 then return end
     while count < 2 do
         local heroMc = self._mcfps[self._playerIndex]
-        if heroMc and heroMc.isVisible ~= nil and  heroMc:isVisible() then
+
+        if heroMc and heroMc.isVisible ~= nil and not tolua.isnull(heroMc) and heroMc:isVisible() then
             if heroMc:getCurrentFrame() == heroMc:getTotalFrames() then
                 heroMc:gotoAndPlay(1)
             end
@@ -739,7 +987,13 @@ function GuildMapLayer:updateMapEle(inGridKey, inGrid, inMapInfo)
 				local nowTime = self._modelMgr:getModel("UserModel"):getCurServerTime()
 				local isTimeOver = nowTime >= inMapInfo.guild.stime + lifeTime
 				local isOtherJoin = userModel:getRID()~=inMapInfo.guild.stid and inMapInfo.guild.ifJoin==1
-				if isTimeOver or isOtherJoin then
+				
+				--判断藏宝图
+				local haveTreasure = false
+				if inMapInfo.my and inMapInfo.my.tmKey~=nil and inMapInfo.my.tType~=nil then
+					haveTreasure = true
+				end
+				if isTimeOver or isOtherJoin or haveTreasure then
 					isSkipGuild = true
 				end
 			end
@@ -813,11 +1067,10 @@ function GuildMapLayer:updateMapEle(inGridKey, inGrid, inMapInfo)
             return
         end
         self:removeEleByGridKey(inGridKey, true)
-
         local elementSp = nil
         if sysGuildMapThing.qiangdu == 1 then
             elementSp = self:createBossElement(mapItem, sysGuildMapThing)
-        elseif mapItem.formation ~= nil then
+        elseif mapItem.formation ~= nil and sysGuildMapThing.func~=GuildConst.ELEMENT_EVENT_TYPE.MAP_TREASURE then
             elementSp = self:createTeamElement(mapItem, sysGuildMapThing, typeName)
 
         elseif sysGuildMapThing.func ==  GuildConst.ELEMENT_EVENT_TYPE.NPC or
@@ -1371,7 +1624,6 @@ function GuildMapLayer:createTeamElement(mapItem, sysGuildMapThing, typeName)
     local formation = mapItem.formation
     local sysTeam = tab:Team(formation["team1"])
     local elementSp = ccui.Widget:create()
-
     local tempSp = cc.Sprite:create("asset/uiother/steam/" .. sysTeam.steam .. ".png")
     if formation["team1"] == 107 or formation["team1"] == 507 then 
         tempSp:setScale(0.5)
@@ -1844,7 +2096,7 @@ function GuildMapLayer:touchRemoteGridEvent(inA, inB, inNotLoop)
     local showRemoteEventTip = {
         [1] = true, [2] = true, [3] = true, [5] = true, [6] = true, 
         [8] = true, [9] = true, [11] = true, [12] = true, [10] = true, 
-        [15] = true, [16] = true, [17] = true, [20] = true, [21] = true, [22] = true, [23] = true, [26] = true, [27] = true, [28] = true,}
+        [15] = true, [16] = true, [17] = true, [20] = true, [21] = true, [22] = true, [23] = true, [26] = true, [27] = true, [28] = true, [29] = true, [30] = true,}
     if sysGuildMapThing ~= nil then
 		if sysGuildMapThing.func==GuildConst.ELEMENT_EVENT_TYPE.OFFICER then
 			local playerLevel = self._modelMgr:getModel("UserModel"):getPlayerLevel()

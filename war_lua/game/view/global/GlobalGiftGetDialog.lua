@@ -22,7 +22,9 @@ local iconIdMap = IconUtils.iconIdMap
 local transferText = {
     avatarFrame = lang("DIAMONDPRICE_4"),
     avatar = lang("DIAMONDPRICE_5"),
-    hSkin = lang("DIAMONDPRICE_6")
+    hSkin = lang("DIAMONDPRICE_6"),
+    heroShadow = lang("DIAMONDPRICE_7"),
+    tSkin = lang("DIAMONDPRICE_6"),
 }
 
 local GlobalGiftGetDialog = class("GlobalGiftGetDialog",BasePopView)
@@ -33,10 +35,11 @@ function GlobalGiftGetDialog:ctor(data)
     self.addition = data.addition   --by wangyan 远征加成显示
     self._items = {} -- 物品图标列表
     self._heros = {} -- 英雄
-	self._isFam = data.isFam
+    self._isFam = data.isFam
     self._newTreasures = {} -- 宝物
     self._avatarInfo = {}  -- 头像相关
     self._skinInfo = {}     -- 皮肤相关
+    self._tSkinInfo = {}     -- 皮肤相关
     self._txPlusMap = {} -- qq 会员 超级会员 微信游戏中心加成
     self._txPlusIconMap = {} -- 记录加成图标
     self.bgName = "bg.bg1"
@@ -65,7 +68,7 @@ end
 
 -- 初始化UI后会调用, 有需要请覆盖
 function GlobalGiftGetDialog:onInit()
-	-- self._scrollView = self:getUI("bg.scrollView")
+    -- self._scrollView = self:getUI("bg.scrollView")
     self._bg = self:getUI("bg")
     self._bg0 = self:getUI("bg.bg0")
     self._bg0:setVisible(false)
@@ -201,6 +204,10 @@ function GlobalGiftGetDialog:reflashUI(data)
                 table.insert(self._skinInfo,gifts[k])
                 self._haveNewSkin = true   -- 有皮肤
                 gifts[k] = nil
+            elseif (v[1] and v[1] == "tSkin") or (v.type and v.type == "tSkin") then
+                table.insert(self._tSkinInfo,gifts[k])
+                self._haveNewTeamSkin = true   -- 有皮肤
+                gifts[k] = nil
             end
             -- 过滤出 qq会员和微信特权
             -- print("v.txPlus..?",v.txPlus)
@@ -229,8 +236,9 @@ function GlobalGiftGetDialog:reflashUI(data)
         end
     end
     gifts = self._gifts
+    -- gifts[#gifts + 1] = {["type"] = "heroshadow",["typeId"] = 1001,["num"] = 1}
     -- 英雄放到最后
-    -- dump(self._gifts)
+    -- dump(gifts,"=======gifts======")
 
     local haveTreasure
     -- 如果有可批量使用的礼包进入背包，通知主界面 by guojun 2016.8.20
@@ -468,7 +476,10 @@ function GlobalGiftGetDialog:createItem( data,x,y,index,nextFunc )
         and itemType ~= "avatar" 
         and itemType ~= "hSkin" 
         and itemType ~= "siegeProp"
-		and itemType ~= "rune"
+        and itemType ~= "rune"
+        and itemType ~= "heroShadow"
+        and itemType ~= "arrow" --add by wangyan
+        and itemType ~= "tSkin"
     then
         itemId = iconIdMap[itemType]
     end
@@ -483,6 +494,8 @@ function GlobalGiftGetDialog:createItem( data,x,y,index,nextFunc )
         and itemType ~= "avatarFrame" 
         and itemType ~= "avatar" 
         and itemType ~= "hSkin" 
+        and itemType ~= "arrow"
+        and itemType ~= "tSkin"
     then
         itemData = tab.team[itemId]
     end
@@ -517,8 +530,17 @@ function GlobalGiftGetDialog:createItem( data,x,y,index,nextFunc )
         local param = {itemId = itemId, level = 1, itemData = itemData, quality = itemData.quality, iconImg = itemData.art, eventStyle = 1}
         item = IconUtils:createWeaponsBagItemIcon(param)
     elseif itemType == "rune" then
-		itemData = tab:Rune(itemId)
-		item =IconUtils:createHolyIconById({suitData = itemData})
+        itemData = tab:Rune(itemId)
+        item =IconUtils:createHolyIconById({suitData = itemData})
+    elseif itemType == "heroShadow" then
+        print("======itemId========"..itemId)
+        itemData = clone(tab:HeroShadow(itemId))
+        item = IconUtils:createShadowIcon({itemData = itemData,count = itemNum})
+        item.iconColor.nameLab:setVisible(false)
+    elseif itemType == "arrow" then
+        item = IconUtils:createArrowBoxRewadById(data)
+    elseif itemType == "battleSoul" then
+		item = IconUtils:createItemIconById({itemId = itemId,num = itemNum, eventStyle = 0, battleSoulType = data[2] or data.typeId })
 	else
         --todo
         item = IconUtils:createItemIconById({itemId = itemId,num = itemNum,itemData = itemData,effect = false })
@@ -555,41 +577,41 @@ function GlobalGiftGetDialog:createItem( data,x,y,index,nextFunc )
     item:setScale(0.85)
     item:setScaleAnim(false)
     item:setAnchorPoint(0,0)
-	if #self._gifts>1 then
-		item:setPosition(x,y)
-	else
-		item:setPosition(self._isFam and self._rewardPanel:getContentSize().width/4+x or x,y)
-	end
+    if #self._gifts>1 then
+        item:setPosition(x,y)
+    else
+        item:setPosition(self._isFam and self._rewardPanel:getContentSize().width/4+x or x,y)
+    end
     item:setVisible(true)
     local itemNormalScale = .9 --80/item:getContentSize().width
     if itemData and (itemData.name or itemData.heroname) then
-	    local itemName = ccui.Text:create()
+        local itemName = ccui.Text:create()
         itemName:setFontName(UIUtils.ttfName)
         itemName:setTextAreaSize(cc.size(100,65))
         -- itemName:ignoreContentAdaptWithSize(false)
         -- itemName:setContentSize(cc.size(50,100))
         itemName:setTextHorizontalAlignment(1)
         itemName:setTextVerticalAlignment(0)
-	    itemName:setString(lang(tostring(itemData.name or itemData.heroname)))
-	    itemName:setFontSize(20)
+        itemName:setString(lang(tostring(itemData.name or itemData.heroname)))
+        itemName:setFontSize(20)
         itemName:getVirtualRenderer():setLineHeight(20)
-		local color = 1
-		if itemType=="rune" then
-			color = itemData.quality
-		else
-			color = ItemUtils.findResIconColor(itemId,itemNum)
-		end
+        local color = 1
+        if itemType=="rune" then
+            color = itemData.quality
+        else
+            color = ItemUtils.findResIconColor(itemId,itemNum)
+        end
         itemName:setColor(UIUtils.colorTable["ccColorQuality" .. (color or 1)])
         itemName:setFontName(UIUtils.ttfName)        
         -- itemName:getVirtualRenderer():setLineHeight(100.0)
         -- itemName:enableOutline(cc.c4b(0,0,0,255),2)
         itemName:setAnchorPoint(0.5,1)
-	    itemName:setPosition(item:getContentSize().width/2,0)
+        itemName:setPosition(item:getContentSize().width/2,0)
         itemName:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor,1)
-	    item:addChild(itemName)
+        item:addChild(itemName)
         itemName:setVisible(false)
         table.insert(self._itemNames,itemName)
-	end
+    end
     if self.viewType then
         -- self._bg0:addChild(item)
         self._rewardPanel:addChild(item) 
@@ -827,6 +849,10 @@ function GlobalGiftGetDialog:closeFunc( )
     if self._haveNewSkin then 
         local skinItemID = self._skinInfo[1].typeId or self._skinInfo[1][2]
         DialogUtils.showSkinGetDialog({skinId = skinItemID})
+    end
+    if self._haveNewTeamSkin then 
+        local skinItemID = self._skinInfo[1].typeId or self._skinInfo[1][2]
+        DialogUtils.showTeamSkinGetDialog({skinId = skinItemID})
     end
 
     if self.close then                       

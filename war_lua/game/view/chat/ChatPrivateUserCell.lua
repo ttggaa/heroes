@@ -10,6 +10,7 @@ function ChatPrivateUserCell:ctor()
     -- ChatPrivateUserCell.super.ctor(self)
     self._viewMgr = ViewManager:getInstance()
     self._modelMgr = ModelManager:getInstance()
+    self._chatModel = self._modelMgr:getModel("ChatModel")
 end
 
 
@@ -93,14 +94,20 @@ function ChatPrivateUserCell:reflashUI(userData, isClick, isUnread, inCallback)
 		if self._userData["user"].rid == "bug_op" then
 			self._headIcon = IconUtils:createHeadIconById({art = "ti_xiaojingling", level = 0, tp = 4, avatarFrame=userData["user"]["avatarFrame"]})
 		else
-			self._headIcon = IconUtils:createHeadIconById({avatar = userData["user"].avatar, tp = 4, avatarFrame=userData["user"]["avatarFrame"]})
+			local headP = {avatar = userData["user"].avatar, tp = 4, avatarFrame=userData["user"]["avatarFrame"], plvl = userData.plvl}
+			self._headIcon = IconUtils:createHeadIconById(headP)
 		end
 		self._headIcon:setScale(0.73)
 		self._headIcon:setAnchorPoint(cc.p(0, 0.5))
 		self._headIcon:setPosition(13, self._layout:getContentSize().height/2)  --18
 		self._layout:addChild(self._headIcon)
 	else
-		IconUtils:updateHeadIconByView(self._headIcon,{avatar = userData["user"].avatar, tp = 4,avatarFrame=userData["user"]["avatarFrame"]})
+		if self._userData["user"].rid == "bug_op" then
+            IconUtils:updateHeadIconByView(self._avatar,{art = "ti_xiaojingling", level = 0, tp = 4, avatarFrame=userData["user"]["avatarFrame"]})
+        else
+        	local headP = {avatar = userData["user"].avatar, tp = 4,avatarFrame=userData["user"]["avatarFrame"], plvl = userData.plvl}
+            IconUtils:updateHeadIconByView(self._avatar, headP)
+        end
 	end
 
 	registerClickEvent(self._headIcon, function() 
@@ -119,8 +126,9 @@ function ChatPrivateUserCell:reflashUI(userData, isClick, isUnread, inCallback)
                 info.battle.msg = info.msg
                 info.battle.rank = info.rank
                 if self._viewMgr then
+                	self._chatModel:refreshPriUserData(info.battle, userData["user"])  --更新私聊左侧玩家数据
                 	self._viewMgr:showDialog("chat.DialogFriendHandle",
-                		{detailData = info.battle, openType = "private", isFakeNpc = true, callback = inCallback}, true)
+                		{detailData = info.battle, uiData = userData["user"], openType = "private", isFakeNpc = true, callback = inCallback}, true)
                 end
             	end)
 
@@ -128,8 +136,9 @@ function ChatPrivateUserCell:reflashUI(userData, isClick, isUnread, inCallback)
 			local fId = (self._userData["user"].lvl and self._userData["user"].lvl >= 15) and 101 or 1
             ServerManager:getInstance():sendMsg("UserServer", "getTargetUserBattleInfo", {tagId = self._userData["user"]["rid"], fid = fId, fsec = self._userData["user"]["sec"]}, true, {}, function(result)                 
                 if self._viewMgr then
+                	self._chatModel:refreshPriUserData(result, userData["user"])  --更新私聊左侧玩家数据
                     self._viewMgr:showDialog("chat.DialogFriendHandle", 
-                    	{detailData = result, openType = "private", callback = inCallback}, true)
+                    	{detailData = result, uiData = userData["user"], openType = "private", callback = inCallback}, true)
                 end
             	end)
 		end
@@ -146,14 +155,14 @@ function ChatPrivateUserCell:reflashUI(userData, isClick, isUnread, inCallback)
 	--lv
 	if self._userData["user"].rid ~= "bug_op" then
 		if self._lvLab == nil then
-			self._lvLab = cc.Label:createWithTTF("Lv." .. userData["user"].lvl, UIUtils.ttfName, 20)
+			self._lvLab = cc.Label:createWithTTF("", UIUtils.ttfName, 20)
 			self._lvLab:setColor(cc.c4b(134, 92, 48, 255))
 			self._lvLab:setAnchorPoint(cc.p(0,0.5))
 			self._lvLab:setPosition(87, 44)
-			self._layout:addChild(self._lvLab)
-		else
-			self._lvLab:setString("Lv." .. userData["user"].lvl)
+			self._layout:addChild(self._lvLab)			
 		end
+		local inParam = {lvlStr = "Lv." .. userData["user"].lvl, lvl = userData["user"].lvl, plvl = userData["user"].plvl}
+		UIUtils:adjustLevelShow(self._lvLab, inParam, 1)
 	end
 	
 	--未读标志 红点

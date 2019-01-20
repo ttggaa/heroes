@@ -5,29 +5,18 @@
     Description: File description
 --]]
 
-local PokedexSFromDialog = class("PokedexSFromDialog",BasePopView)
+local PokedexSFromDialog = class("PokedexSFromDialog", BaseLayer)
 function PokedexSFromDialog:ctor(param)
     self.super.ctor(self)
     if not param then
         param = {}
     end
-    self._callback = param.callback
 end
 
 -- 初始化UI后会调用, 有需要请覆盖
 function PokedexSFromDialog:onInit()
     self._userModel = self._modelMgr:getModel("UserModel")
     self._pokedexModel = self._modelMgr:getModel("PokedexModel")
-
-    self:registerClickEventByName("bg.closeBtn", function()
-        self:close()
-        -- self:changePFormation()
-    end )
-
-    local titleBg = self:getUI("bg.headBg.titleBg")
-
-    local pFormation = self._pokedexModel:getPFormation()
-    self._tableData = pFormation
 
     self._pokCell = self:getUI("bg.cell")
     self._pokCell:setVisible(false)
@@ -41,49 +30,23 @@ end
 
 function PokedexSFromDialog:changePFormation()
     if self._userPfId == self._selectPokedex then
-        self:close()
         return
     end
     local param = {id = self._selectPokedex}
     self._serverMgr:sendMsg("PokedexServer", "changePFormation", param, true, {}, function (result)
         self._userPfId = self._selectPokedex or 1
-        if self._callback then
-            self._callback()
-        end
-        self:close()
     end)
 end
 
 
 -- 接收自定义消息
 function PokedexSFromDialog:reflashUI(data)
+    local pFormation = self._pokedexModel:getPFormation()
+    self._tableData = pFormation
     dump(self._tableData)
     self._tableView:reloadData()
-
-    -- local formInfo = {{},{}}
-    -- -- local formNum = table.nums(formInfo)
-    -- self._scrollView:removeAllChildren()
-    -- local cellW,cellH = self._cell:getContentSize().width,self._cell:getContentSize().height
-    -- cellW = cellW+3
-    -- cellH = cellH+3
-    -- local x,y = 0,0
-    -- local height = 250
-    -- local offsetX,offsetY = 2,5
-    -- for i=1,8 do
-    --     local formD = formInfo[i]
-    --     local cell = self:createFormCell(formD,i)
-    --     x = (i-1)%2*cellW
-    --     y = height - math.floor((i-1)/2)*cellH
-    --     cell:setPosition(x+offsetX,y+offsetY)
-    --     self._scrollView:addChild(cell)
-    -- end
 end
 
-
-
---[[
-用tableview实现
---]]
 function PokedexSFromDialog:addTableView()
     local tableViewBg = self:getUI("bg.tableViewBg")
     self._tableView = cc.TableView:create(cc.size(tableViewBg:getContentSize().width, tableViewBg:getContentSize().height))
@@ -96,11 +59,7 @@ function PokedexSFromDialog:addTableView()
     self._tableView:registerScriptHandler(function(table, idx) return self:tableCellAtIndex(table, idx) end,cc.TABLECELL_SIZE_AT_INDEX)
     self._tableView:registerScriptHandler(function(table) return self:numberOfCellsInTableView(table) end,cc.NUMBER_OF_CELLS_IN_TABLEVIEW)
     self._tableView:setBounceable(false)
-    -- self._tableView:reloadData()
-    -- if self._tableView.setDragSlideable ~= nil then 
-    --     self._tableView:setDragSlideable(true)
-    -- end
-    
+
     tableViewBg:addChild(self._tableView)
 end
 
@@ -176,7 +135,6 @@ function PokedexSFromDialog:updateFormationCell(inView, indexId, cellNum)
         btn:loadTextures("globalButtonUI13_1_2.png","globalButtonUI13_1_2.png",nil,1)
         btn:setTitleText("使用")
         self:registerClickEvent(btn, function()
-            print("indexId========", indexId)
             self._selectPokedex = indexId
             self._tableView:reloadData()
             self:changePFormation()
@@ -211,7 +169,6 @@ function PokedexSFromDialog:sendUnlockMsg()
         end
     end
 
-    print("formNum=========", formNum)
     if not formNum or formNum > slotMaxNum then
         self._viewMgr:showTip("编组已满")
         return 

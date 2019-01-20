@@ -41,38 +41,34 @@ function UserDialog:onInit()
     self._union:getParent():addChild(self._guildExitBtn)
 
     self:registerClickEvent(self._guildExitBtn, function ( )
+		local tips = lang("GUILD_EXIT_TIPS_4")
+		local player_level = self._userModel:getData().lvl
+		local limit_level = tab:Setting("G_GUILD_EXIT_LEVEL").value
+		if player_level >= tonumber(limit_level) then
+			tips = lang("GUILD_EXIT_TIPS_1")
+		end
+		self._viewMgr:showDialog("global.GlobalSelectDialog",
+			{desc = tips,
+			alignNum = 1,
+			-- button1 = "确定",
+			-- button2 = "取消", 
+			callback1 = function ()
+				self._serverMgr:sendMsg("GuildServer", "quitGuild", {}, true, {}, function (result)
+					self._viewMgr:showTip("已成功退出联盟！")
+					self._modelMgr:getModel("MainViewModel"):reflashMainView()
+					self._modelMgr:getModel("UserModel"):updateGuildLevel(0)
+					--删除全局抢红包界面  wangyan
+					if self._viewMgr._redBoxLayer.robLayer ~= nil then
+						self._viewMgr._redBoxLayer.robLayer:removeFromParent(true)
+						self._viewMgr._redBoxLayer.robLayer = nil
+					end
+					-- 更新联盟显示
+					self:updateGuildInfo()
+				end)
+			end,
+			callback2 = function()
 
-
-
-    local tips = lang("GUILD_EXIT_TIPS_4")
-    local player_level = self._userModel:getData().lvl
-    local limit_level = tab:Setting("G_GUILD_EXIT_LEVEL").value
-    if player_level >= tonumber(limit_level) then
-        tips = lang("GUILD_EXIT_TIPS_1")
-    end
-    self._viewMgr:showDialog("global.GlobalSelectDialog",
-                {desc = tips,
-                alignNum = 1,
-                -- button1 = "确定",
-                -- button2 = "取消", 
-                callback1 = function ()
-                    self._serverMgr:sendMsg("GuildServer", "quitGuild", {}, true, {}, function (result)
-                        self._viewMgr:showTip("已成功退出联盟！")
-                        self._modelMgr:getModel("MainViewModel"):reflashMainView()
-                        self._modelMgr:getModel("UserModel"):updateGuildLevel(0)
-
-                        --删除全局抢红包界面  wangyan
-                        if self._viewMgr._redBoxLayer.robLayer ~= nil then
-                            self._viewMgr._redBoxLayer.robLayer:removeFromParent(true)
-                            self._viewMgr._redBoxLayer.robLayer = nil
-                        end
-                        -- 更新联盟显示
-                        self:updateGuildInfo()
-                    end)
-                end,
-                callback2 = function()
-
-                end},true)    
+			end},true)    
     end)
 
     self._nameBg = self:getUI("bg.bgPanel.nameBg")
@@ -95,6 +91,13 @@ function UserDialog:onInit()
     self._headIcon = self:getUI("bg.bgPanel.headImgNode")
 
     self._expProBar = self:getUI("bg.bgPanel.expProBar")
+    self._level = self:getUI("bg.bgPanel.level")
+    self._pTalent_progress = self:getUI("bg.bgPanel.pTalent_progress")
+    self._expProBg = self:getUI("bg.bgPanel.expProBg")
+    self._expProFrame = self:getUI("bg.bgPanel.expProFrame")
+    self._exp = self:getUI("bg.bgPanel.exp")
+
+    self._pTalent_progress:getChildByFullName("pExp"):enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
 
     --设置面板
     -- for i = 1, 3 do
@@ -457,7 +460,7 @@ function UserDialog:onInit()
     expExchange:setVisible(false)
     self:registerClickEvent(expExchange,function( sender )
         self._serverMgr:sendMsg("ShopServer", "getShopInfo", {type = "exp"}, true, {}, function(result)
-            dump(result,"aaaa",10)
+            -- dump(result,"aaaa",10)
             self._viewMgr:showDialog("shop.ExpShopView",{callBack = function()
                 self:checkExpExchangeStatus()
             end},true)
@@ -962,11 +965,12 @@ function UserDialog:reflashUI(data)
         end
     end
 
+    local headP = {avatar = self._userInfo.avatar,level = self._userInfo.lvl or 0,tp = 4, isSelf = true, tencetTp = tencetTp, plvl = self._userInfo.plvl}
     if not self._avatar then 
-        self._avatar = IconUtils:createHeadIconById({avatar = self._userInfo.avatar,level = self._userInfo.lvl or 0,tp = 4, isSelf = true, tencetTp = tencetTp})   --,tp = 2
+        self._avatar = IconUtils:createHeadIconById(headP)   --,tp = 2
         self._headIcon:addChild(self._avatar)
     else
-        IconUtils:updateHeadIconByView(self._avatar,{avatar = self._userInfo.avatar,self._userInfo.lvl or 0,tp = 4, isSelf = true, tencetTp = tencetTp})   --level = ,tp = 2
+        IconUtils:updateHeadIconByView(self._avatar,headP)   --level = ,tp = 2
     end
     -- if self._avatar then
     --     self._avatar:removeFromParent()
@@ -976,23 +980,48 @@ function UserDialog:reflashUI(data)
     -- self._avatar:setAnchorPoint(cc.p(0,0))
     -- self._avatar:setPosition(5, 5)
     -- self._headIcon:addChild(self._avatar)
-    
+    UIUtils:adjustLevelShow(self._level, {lvlStr = "Lv." .. self._userInfo.lvl}, 1)
+    self._pTalent_progress:setVisible(self._userModel:isHaveParagonLevel())
+    self._expProBar:setVisible(not self._userModel:isHaveParagonLevel())
+    self._expProFrame:setVisible(not self._userModel:isHaveParagonLevel())
+    self._expProBg:setVisible(not self._userModel:isHaveParagonLevel())
+    self._exp:setVisible(not self._userModel:isHaveParagonLevel())
+    local expExchange = self:getUI("bg.expExchange")
+    local exchangePosX = 595
+    if self._userModel:isHaveParagonLevel() then
+        exchangePosX = 645
+    end
+    expExchange:setPositionX(exchangePosX)
+    self:getUI("bg.exp_qipao"):setPositionX(expExchange:getPositionX() + expExchange:getContentSize().width / 2)
+
     local nowExp = self._userInfo.exp
-    local nextExp = tab:UserLevel(self._userInfo.lvl).exp or "Max"
-    local str = nowExp .. "/" .. nextExp --string.format("%d %d", nowExp/nextExp)    
-    self._exp:setString( str )
-    -- self._exp:enableOutline(cc.c4b(0,0,0,255),1.5)
-    if tonumber(nextExp) then
-        self._expProBar:setPercent(nowExp/nextExp*100)
-         self._exp:setString( str )
+
+    if self._userModel:isMaxParagonLevel() then
+        self._pTalent_progress:getChildByFullName("pExpProBar"):setPercent(100)
+        self._pTalent_progress:getChildByFullName("pExp"):setString( "Max" )
+
+    elseif self._userModel:isHaveParagonLevel() then
+        local nextExp = tab:ParagonLevel((self._userInfo.plvl or 0) + 1).exp or "Max"
+        local str = nowExp .. "/" .. nextExp --string.format("%d %d", nowExp/nextExp)  
+        if tonumber(nextExp) then
+            self._pTalent_progress:getChildByFullName("pExpProBar"):setPercent(nowExp/nextExp*100)
+            self._pTalent_progress:getChildByFullName("pExp"):setString( str )
+        else
+            self._pTalent_progress:getChildByFullName("pExpProBar"):setPercent(100)
+            self._pTalent_progress:getChildByFullName("pExp"):setString( "Max" )
+        end
     else
-        self._expProBar:setPercent(100)
-        self._exp:setString( "Max" )
+        local nextExp = tab:UserLevel(self._userInfo.lvl).exp or "Max"
+        local str = nowExp .. "/" .. nextExp --string.format("%d %d", nowExp/nextExp)  
+        if tonumber(nextExp) then
+            self._expProBar:setPercent(nowExp/nextExp*100)
+             self._exp:setString( str )
+        else
+            self._expProBar:setPercent(100)
+            self._exp:setString( "Max" )  
+        end
     end
-    if self._userModel:isMaxLevel() then
-        self._expProBar:setPercent(100)
-        self._exp:setString( "Max" )
-    end
+    
     self:updateGuildInfo()
 
     -- 用户信息
@@ -1007,9 +1036,6 @@ function UserDialog:reflashUI(data)
         priviliImg:setVisible(false)
         privili:setString("新手")
     end
-
-    local level = self:getUI("bg.bgPanel.level")
-    level:setString("Lv." .. self._userInfo.lvl)
 
     local changeName = self:getUI("bg.bgPanel.changeName")
     local vipLvl = self._modelMgr:getModel("VipModel"):getData().level or 0

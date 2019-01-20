@@ -395,6 +395,12 @@ function GuildMapSecondEventView:onInit14_1()
     else
         gemLab:setString(60 / self._sysGuildMapThing.point * rewardGemNum1)
     end
+	--0点~8点获得为0
+	local time8 = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(curTime,"%Y-%m-%d 08:00:00"))
+	local time0 = time8 - 8*60*60
+	if curTime>=time0 and curTime<=time8 then
+		gemLab:setString(0)
+	end
 
     if isDoubleReward == true then
         if gemLab.doubleTip == nil then
@@ -518,21 +524,39 @@ function GuildMapSecondEventView:onInit14_1()
                     local surplusTime = 0
                     while true do
                         local tmpTime = 0
+						local subTime
                         -- 系数
                         local rewardGemNum = rewardGemNum1
                         local endTime = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(operateTime,"%Y-%m-%d 05:00:00"))
-                        if operateTime >= endTime then 
+						local newEndTime = endTime
+                        if operateTime >= endTime then
                             tmpTime = operateTime
                             endTime = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(operateTime + 86400,"%Y-%m-%d 05:00:00"))
+							newEndTime = endTime
                             subTime = endTime - operateTime
                         else
                             tmpTime = operateTime - 86400
                             subTime = endTime - operateTime
                         end
                         if subTime > (curTime - operateTime) then 
-                            subTime = (curTime - operateTime) 
+                            subTime = (curTime - operateTime)
+							endTime = curTime
                         end
-                        
+						
+						local newSubTime = subTime
+						local operateHour = tonumber(TimeUtils.getDateString(operateTime, "%H"))
+						local endHour = tonumber(TimeUtils.getDateString(endTime, "%H"))
+						if operateHour<8 then
+							local tempTime8 = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(operateTime,"%Y-%m-%d 08:00:00"))
+							newSubTime = newSubTime - (tempTime8-operateTime)
+						end
+						if endHour<8 then
+							local tempTime0 = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(endTime,"%Y-%m-%d 00:00:00"))
+							newSubTime = newSubTime - (endTime - tempTime0)
+						end
+						if newSubTime<=0 then
+							newSubTime = 0
+						end
                         -- 计算周几
                         local operateDate = TimeUtils.date("*t", tmpTime)
                         local curWakeDay = 1
@@ -549,12 +573,13 @@ function GuildMapSecondEventView:onInit14_1()
                         local midTime = 0
                         local singleRewardNum = 0
                         -- 跨今天5点时候   那么昨天的数往上取  当天的往下取 
-                        if curTime >= endTime  then 
-                            midTime =  math.ceil(subTime / 3600 * 10) / 10
-                            singleRewardNum = math.ceil((midTime * 60 / self._sysGuildMapThing.point) * rewardGemNum) 
+                        if curTime >= newEndTime  then 
+							
+                            midTime =  math.ceil(newSubTime / 3600 * 100) / 100
+                            singleRewardNum = math.ceil((midTime * 60 / self._sysGuildMapThing.point)) * rewardGemNum
                         else
-                            midTime = math.floor(subTime / 3600 * 10) / 10
-                            singleRewardNum = math.floor((midTime * 60 / self._sysGuildMapThing.point) * rewardGemNum) 
+                            midTime = math.floor(newSubTime / 3600 * 100) / 100
+                            singleRewardNum = math.floor((midTime * 60 / self._sysGuildMapThing.point)) * rewardGemNum
                         end
                         rewardTime = rewardTime + midTime
                         rewardNum = rewardNum + singleRewardNum

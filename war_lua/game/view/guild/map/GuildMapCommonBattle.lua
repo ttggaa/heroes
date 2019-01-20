@@ -63,8 +63,13 @@ function GuildMapCommonBattle:getPvpRes()
         end
         local mySelfHp = math.ceil(battleResult.hp[1] / battleResult.hp[2] * 100)
         local enemyHp = math.ceil(battleResult.hp[3] / battleResult.hp[4] * 100)
-        if self._battleWin == 1 and mySelfHp <= 0 then 
+        -- print("\n***********************\n", mySelfHp, enemyHp, battleResult.win, battleResult.hp[1], battleResult.hp[2], battleResult.hp[3], battleResult.hp[4],"\n***********************\n")
+        if battleResult.win == 1 and mySelfHp <= 0 then 
             mySelfHp = 1
+        end
+        
+        if battleResult.win == 1 and enemyHp > 0 then
+            enemyHp = 0
         end
 
         self._serverMgr:sendMsg("GuildMapServer", "getPvpRes", 
@@ -414,6 +419,192 @@ function GuildMapCommonBattle:pveAfter(data, inCallBack)
     end)
 end
 
+
+--藏宝图战斗
+function GuildMapCommonBattle:treasureBefore()
+    self._battleWin = 0
+    self._battleResult = nil
+    self._serverMgr:sendMsg("GuildMapServer", "tMapPveBefore", {tagPoint = self._targetId}, true, {}, function (result, error)
+        if error and error ~= 0 then
+            self:close()
+            return
+        end
+        return self:treasureBeforeFinish(result)
+    end)
+end
+
+function GuildMapCommonBattle:treasureBeforeFinish(result)
+    -- dump(result)
+    if result == nil or result.token == nil then 
+        return
+    end
+    self._token = result.token
+
+    local formationModel = self._modelMgr:getModel("FormationModel")
+    local GuildMapUtils = require "game.view.guild.map.GuildMapUtils"
+    local enemyInfo 
+    -- local enemyFormation
+    local enemyFormationData 
+    if self._mapInfomation ~= nil then
+        enemyInfo  = GuildMapUtils:initBattleData(self._mapInfomation)
+
+         -- 给布阵传递怪兽数据
+        self._guildMapModel:setEnemyTeamData(enemyInfo.team)
+        -- 给布阵传递英雄数据
+        self._guildMapModel:setEnemyHeroData(enemyInfo.hero)
+
+        if self._mapInfomation.formation.hero ~= nil and enemyInfo.hero ~= nil then
+            self._mapInfomation.formation.hero.score = enemyInfo.hero.score
+        end
+        self._mapInfomation.formation.score = enemyInfo.score
+
+        -- enemyFormation = self._mapInfomation.formation
+        enemyFormationData = {[formationModel.kFormationTypeGuild] = self._mapInfomation.formation}
+
+    end
+    local function callBattle(inLeftData)
+        -- 我方联盟探索buffer, 服务器传回的数据自带buff
+
+        GuildConst.IS_ENTER_BATTLE = true
+        self._viewMgr:popView()
+        if self._pveBattleFunction == nil then 
+            self._pveBattleFunction = BattleUtils.enterBattleView_GuildPVE
+        end
+        if self._isBossBattle then 
+            self._pveBattleFunction(self._bossLvl, --等级
+                                    self._bossHp > 100, --是否秒人， 耐力>100为true
+            inLeftData,
+            function (info, callback)
+                if info.isSurrender then 
+                    callback(nil)
+                    return
+                end
+                if self.treasureAfter == nil then return end
+                self:treasureAfter(info, callback)
+            end,
+            function (info)
+                print("退出战斗")
+
+                if self._callback ~= nil and self._battleResult ~= nil then 
+                    self._battleResult.win = self._battleWin
+                    self._callback(self._battleResult)
+                end
+                --[[if self.close == nil then return end
+                -- 退出战斗
+                self:close(true)--]]
+            end)
+        else 
+            BattleUtils.enterBattleView_GuildPVE(inLeftData, enemyInfo, 
+            function (info, callback)
+                if info.isSurrender then 
+                    callback(nil)
+                    return
+                end
+                if self.treasureAfter == nil then return end
+                self:treasureAfter(info, callback)
+            end,
+            function (info)
+                print("退出战斗")
+
+                if self._callback ~= nil and self._battleResult ~= nil then 
+                    self._battleResult.win = self._battleWin
+                    self._callback(self._battleResult)
+                end
+                --[[if self.close == nil then return end
+                -- 退出战斗 
+                self:close(true)--]]
+            end)
+        end
+    end
+
+    self._formationView = true
+    self._viewMgr:showView("formation.NewFormationView", {
+        formationType = formationModel.kFormationTypeGuild,
+        enemyFormationData = enemyFormationData,
+        callback = function(inLeftData)
+            if self._serverMgr == nil then return end
+            self._formationView = false
+            self._serverMgr:sendMsg("FormationServer", "getSelfBattleInfo", {fid = 9}, true, {}, function(_result) 
+                callBattle(BattleUtils.jsonData2lua_battleData(_result["atk"]))
+            end)
+        end,
+        closeCallback = function()
+            self._formationView = false
+            --[[if self.parentView ~= nil then
+                self.parentView:setMaskLayerOpacity(0)
+            end
+            
+            if self._callback ~= nil then
+                self._callback(nil)
+            end
+            if self.close == nil then return end
+            self:setVisible(false)
+            self:close(false)--]]
+        end
+        }
+    )
+
+end
+
+function GuildMapCommonBattle:treasureAfter(data, inCallBack)
+    if data.win then
+        self._battleWin = 1
+    end
+    
+    local allyDead = {}
+    local enemyDead = {}
+    if not data.isSurrender then
+        for k,v in pairs(data.dieList[1]) do
+            table.insert(allyDead, k)
+        end
+        for k,v in pairs(data.dieList[2]) do
+            table.insert(enemyDead, k)
+        end
+    end
+
+    if #enemyDead == 0 then 
+        enemyDead = nil
+    end
+    if #allyDead == 0 then 
+        allyDead = nil
+    end
+        
+    local mySelfHp = math.ceil(data.hp[1] / data.hp[2] * 100)
+    local enemyHp = math.ceil(data.hp[3] / data.hp[4] * 100)
+
+    local param = {tagPoint = self._targetId, type = self._eleTypeName, token = self._token, 
+    args = json.encode({win= self._battleWin, skillList = data.skillList, 
+        serverInfoEx = data.serverInfoEx,
+        time = data.time, uhp = mySelfHp, mhp = enemyHp, allyDead=allyDead, enemyDead=enemyDead})}
+    self._serverMgr:sendMsg("GuildMapServer", "tMapPveAfter", param, true, {}, function(result)
+        if result == nil then 
+            return 
+        end
+        local mapList = self._guildMapModel:getData().mapList
+
+        local afterEnemyMapHurt = 0
+        local afterMyselfMapHurt = 0
+        if self._battleWin == 1 then
+            afterMyselfMapHurt = self._modelMgr:getModel("UserModel"):getData().roleGuild.mapHurt
+        else
+            afterMyselfMapHurt = 0
+        end
+        if (mapList[self._targetId] == nil and mapList[self._targetId][self._eleTypeName] == nil) or 
+            (mapList[self._targetId] ~= nil and mapList[self._targetId][self._eleTypeName] == nil) then 
+            afterEnemyMapHurt = 0
+        else
+            afterEnemyMapHurt = mapList[self._targetId][self._eleTypeName].npcHp
+        end        
+        result.mapHurt = {self._myselfMapHurt, afterMyselfMapHurt, self._enemyMapHurt, afterEnemyMapHurt}
+
+
+        self._battleResult = result
+        -- 像战斗层传送数据
+        if inCallBack ~= nil then
+            inCallBack(result)
+        end
+    end)
+end
 
 function GuildMapCommonBattle:closeInit()
     self:setVisible(false)

@@ -14,6 +14,7 @@ function TaskModel:ctor()
         task = {
             mainTasks = {},
             detailTasks = {},
+            weekTasks = {},
         },
 
         grow = {
@@ -22,6 +23,13 @@ function TaskModel:ctor()
         },
 
         active = {
+            recordTime = 0,
+            reward1 = 0,
+            reward2 = 0,
+            reward3 = 0,
+            val = 0,
+        },
+        weekAcReward  = {
             recordTime = 0,
             reward1 = 0,
             reward2 = 0,
@@ -151,6 +159,7 @@ function TaskModel:checkData()
             task = {
                 mainTasks = {},
                 detailTasks = {},
+                weekTasks = {},
             },
 
             grow = {
@@ -165,16 +174,27 @@ function TaskModel:checkData()
                 reward3 = 0,
                 val = 0,
             },
+            weekAcReward  = {
+                recordTime = 0,
+                reward1 = 0,
+                reward2 = 0,
+                reward3 = 0,
+                val = 0,
+            },
+
         }
     elseif not self._data.task then
         self._data.task = {
             mainTasks = {},
             detailTasks = {},
+            weekTasks = {},
         }
     elseif not self._data.task.mainTasks then
         self._data.task.mainTasks = {}
     elseif not self._data.task.detailTasks then
         self._data.task.detailTasks = {}
+    elseif not self._data.task.weekTasks then
+        self._data.task.weekTasks = {}
     end
 
     if not self._data.grow then
@@ -204,6 +224,27 @@ function TaskModel:checkData()
         for i=1, 3 do
             if not self._data.active["reward" .. i] then
                 self._data.active["reward" .. i] = 0
+            end
+        end
+    end
+
+    -- 周常
+    if not self._data.weekAcReward then
+        self._data.weekAcReward = {
+            recordTime = 0,
+            reward1 = 0,
+            reward2 = 0,
+            reward3 = 0,
+            val = 0,
+        }
+    elseif not self._data.weekAcReward.recordTime then
+        self._data.weekAcReward.recordTime = 0
+    elseif not self._data.weekAcReward.val then
+        self._data.weekAcReward.val = 0
+    else
+        for i=1, 3 do
+            if not self._data.weekAcReward["reward" .. i] then
+                self._data.weekAcReward["reward" .. i] = 0
             end
         end
     end
@@ -257,6 +298,9 @@ function TaskModel:onChangeTask(data)
 
     if data._carry_.task and data._carry_.task.detailTasks then
         table.merge(self._data.task.detailTasks, data._carry_.task.detailTasks)
+    end
+    if data._carry_.task and data._carry_.task.weekTasks then
+        table.merge(self._data.task.weekTasks, data._carry_.task.weekTasks)
     end
     self:reflashData()
 end
@@ -380,6 +424,35 @@ function TaskModel:updateDetailTaskActiveData(activeData, success)
     ]]
 end
 
+function TaskModel:updateWeeklyTaskData(taskData, success)
+    if not success then return end
+    if taskData.weekAcReward and taskData.weekAcReward.val then
+        self._data.weekAcReward.val = taskData.weekAcReward.val
+    end
+    taskData.weekAcReward = nil
+    for k, v in pairs(taskData.task.weekTasks) do
+        if not self._data.task.weekTasks[k] then
+            self._data.task.weekTasks[k] = {}
+        end
+        for kk, vv in pairs(v) do
+            self._data.task.weekTasks[k][kk] = vv
+        end
+    end
+    taskData.task = nil
+    self:updateReward(taskData)
+   
+end
+
+function TaskModel:updateWeeklyTaskActiveData(activeData, success)
+    if not success then return end
+    for k, v in pairs(activeData.weekAcReward) do
+        self._data.weekAcReward[k] = v
+    end
+    activeData.weekAcReward = nil
+    self:updateReward(activeData)
+    
+end
+
 function TaskModel:getData()
     return self._data
 end
@@ -413,6 +486,14 @@ function TaskModel:hasTaskCanGet()
         end
     end
 
+    if self._data.task.weekTasks then
+        for k, v in pairs(self._data.task.weekTasks) do
+            if 1 == v.status then
+                return true
+            end
+        end
+    end
+
     local currentGrow = 0
     if self._data.grow and self._data.grow.val then
         currentGrow = self._data.grow.val
@@ -429,6 +510,17 @@ function TaskModel:hasTaskCanGet()
 
     if self._data.active and self._data.active.val then
         local activeConfig = {50, 100, 200}
+        for i = 1, 3 do
+            if self._data.active["reward" .. i] then
+                if 0 == self._data.active["reward" .. i] and self._data.active.val >= activeConfig[i] then
+                    return true
+                end
+            end
+        end
+    end
+
+    if self._data.weekAcReward and self._data.weekAcReward.val then
+        local activeConfig = {250, 500, 750}
         for i = 1, 3 do
             if self._data.active["reward" .. i] then
                 if 0 == self._data.active["reward" .. i] and self._data.active.val >= activeConfig[i] then
@@ -482,6 +574,25 @@ function TaskModel:hasTaskCanGetByType(taskType)
             for i = 1, 3 do
                 if self._data.active["reward" .. i] then
                     if 0 == self._data.active["reward" .. i] and self._data.active.val >= activeConfig[i] then
+                        return true
+                    end
+                end
+            end
+        end
+        return false
+    elseif taskType == TaskItemView.kViewTypeItemWeekly then
+        if self._data.task.weekTasks then
+            for k, v in pairs(self._data.task.weekTasks) do
+                if 1 == v.status then
+                    return true
+                end
+            end
+        end
+        if self._data.weekAcReward and self._data.weekAcReward.val then
+            local activeConfig = {250, 500, 750}
+            for i = 1, 3 do
+                if self._data.weekAcReward["reward" .. i] then
+                    if 0 == self._data.weekAcReward["reward" .. i] and self._data.weekAcReward.val >= activeConfig[i] then
                         return true
                     end
                 end

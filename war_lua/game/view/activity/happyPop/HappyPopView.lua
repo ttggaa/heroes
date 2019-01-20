@@ -18,7 +18,6 @@ function HappyPopView:ctor(param)
 	self._cards = {}     	--牌列表
 	self._lastCard = nil   	--上一张奇数牌
 	self._curShowNum = 0    --当前显示的牌数(小于等于6张)
-	self._clickTime = 0     --单副牌开始的时间（用来最小翻牌结束时间防作弊判断）
 	self._callback = param.callback
 	
 	--[[
@@ -42,6 +41,8 @@ function HappyPopView:onInit()
 	self._clipLayer = self:getUI("bg.clipLayer")
 	self._clipLayer:setSwallowTouches(true)
 	self._clipLayer:setVisible(false)
+
+	self:getUI("bg.skipBtn"):setVisible(false)
 
 	--装饰点
 	local cardBg = self:getUI("bg.cardBg")	
@@ -543,7 +544,8 @@ function HappyPopView:revertCard(card)
 						local matches = self._data["match"] or {}
 						if #matches >= 18 then
 							if card.type == 4 then   --最后一副是时钟牌,更新时间
-								self:gameOver(matchCard, card)
+								local overParam = {matchCard, card}
+								self:gameOver(overParam)
 							else
 								self:gameOver()
 							end
@@ -794,7 +796,7 @@ end
 
 function HappyPopView:timeCountDown()
 	self._isTimeStart = true
-	self._clickTime = self._userModel:getCurServerTime()
+	self._hPopModel:setClickTime(true)
 
 	local Image_83 = self:getUI("bg.sp.Image_83")
     local countNum = self:getUI("bg.sp.Image_83.timeStr")
@@ -812,8 +814,8 @@ function HappyPopView:timeCountDown()
           
             if self._tempTime <= 0 then
                 self._tempTime = 0
-                self:gameOver()   --游戏结束
-                self._isGameOver = true
+                self:gameOver({[3] = 2})   --游戏结束
+                self._isGameOver = true  --先结束再设置状态
             end
 
             self._tempTime = self._tempTime - 1
@@ -835,7 +837,13 @@ function HappyPopView:getTimeStr(inTime)
 end
 
 --inType: 1换牌  2时间到
-function HappyPopView:gameOver(card1, card2)
+function HappyPopView:gameOver(inParam)
+	local card1, card2, overType = nil, nil, 1
+	if inParam and type(inParam) == "table" then
+		card1 = inParam[1]
+		card2 = inParam[2]
+		overType = inParam[3]
+	end
 	self._clipLayer:setVisible(true)
 	if self._isGameOver then   --游戏结束 防止跟换牌请求冲突
 		return
@@ -845,9 +853,11 @@ function HappyPopView:gameOver(card1, card2)
 
 	--最小翻牌时间检查
 	local curTime = self._userModel:getCurServerTime()
-	if curTime - self._clickTime <= tab.magicTrainingCfg["FAST_CLEAN_TIME"]["value"] then
-		ApiUtils.playcrab_lua_error("happyPop openCard=====", curTime, self._clickTime, curTime - self._clickTime)
+	local clickTime = self._hPopModel:getClickTime()
+	if curTime - clickTime <= tab.magicTrainingCfg["FAST_CLEAN_TIME"]["value"] and overType ~= 2 then
+		ApiUtils.playcrab_lua_error("happyPop openCard=====", serialize({curTime, clickTime, curTime - clickTime}))
 		self._hPopModel:notifyCheatClose()
+		self._hPopModel:clearClickTime()
 		return
 	end
 
@@ -888,6 +898,7 @@ function HappyPopView:gameOver(card1, card2)
 		self._lastCard = nil
 		self._isGameOver = false
 		self._curShowNum = 0
+		self._hPopModel:setClickTime(true)   --开始点击时间
 
 		self._clipLayer:setVisible(false)
 
@@ -909,6 +920,7 @@ function HappyPopView:gameOver(card1, card2)
 	local lastInfo = self._data["info"]
 	local inParam = {positions = json.encode(self._data["match"]), countDown = self._tempTime}
 	self._serverMgr:sendMsg("MagicTrainingServer", "openCard", inParam, true, {}, function(result, errorCode)
+		self._hPopModel:clearClickTime()   --重置开始点击时间
 		--报错日志打点
 		if result["error"] and result["error"] ~= 0 then
 			ApiUtils.playcrab_lua_error("happyPop openCard====="..result["error"], serialize(inParam))

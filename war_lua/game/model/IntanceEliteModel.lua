@@ -271,7 +271,7 @@ function IntanceEliteModel:getSectionInfo(inSectionId)
         end
     end    
     -- 增加经营副本章信息是否开启
-    if self._data.ecSectionId >= inSectionId then 
+    if self._data.curSectionId >= inSectionId then 
         section.isOpen = true
     else
         section.isOpen = false

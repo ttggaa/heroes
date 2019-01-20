@@ -127,11 +127,55 @@ function AcRuneCardLayer:updateInfoPanel()
 
     -- 热点panel
     local hotPanel = self:getUI("bg.hotPanel")
+    if not self._leftArrow then 
+        self._leftArrow = mcMgr:createViewMC("zuojiantou_teamnatureanim", true, false)
+        self._leftArrow:setScale(0.8)
+        self._leftArrow:setPosition(10, 37)
+        hotPanel:addChild(self._leftArrow)
+    end
+    if not self._rightArrow then 
+        self._rightArrow = mcMgr:createViewMC("youjiantou_teamnatureanim", true, false)
+        self._rightArrow:setScale(0.8)
+        self._rightArrow:setPosition(hotPanel:getContentSize().width - 10, 37)
+        hotPanel:addChild(self._rightArrow)
+    end
+    local scrollView = self:getUI("bg.hotPanel.scrollView")
+    -- scrollView:setBounceEnabled(true)
+    local width1 = scrollView:getContentSize().width
+    local width = width1
+    if table.nums(show) * 62 > width then
+        width = table.nums(show) * 62 
+        scrollView:addEventListener(function(sender, eventType)
+            if eventType == 2 then
+                -- event.name = "SCROLL_TO_LEFT"
+                if self._leftArrow then
+                    self._leftArrow:setVisible(false)
+                end
+            elseif eventType == 3 then
+                -- event.name = "SCROLL_TO_RIGHT"
+                if self._rightArrow then
+                    self._rightArrow:setVisible(false)
+                end
+            else
+                if self._leftArrow then
+                    self._leftArrow:setVisible(true)
+                end
+                if self._rightArrow then
+                    self._rightArrow:setVisible(true)
+                end
+            end
+        end)
+    else
+        width = width
+    end
+    self._leftArrow:setVisible(false)
+    self._rightArrow:setVisible(width > width1)
+    scrollView:setInnerContainerSize(cc.size(width,scrollView:getContentSize().height))
     -- dump(show,"show==>",5)
     local itemId
     local rType
     local icon
-    local posX = 5
+    local posX = 2
     for k,v in pairs(show) do
         itemId = v[2]
         rType = v[1]
@@ -152,7 +196,7 @@ function AcRuneCardLayer:updateInfoPanel()
         end
         icon:setPosition(posX,5)
         posX = posX + 62
-        hotPanel:addChild(icon)
+        scrollView:addChild(icon)
     end
 
     -- 周卡奖励

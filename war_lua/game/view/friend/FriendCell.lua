@@ -157,15 +157,15 @@ function FriendCell:reflashPlatformUI(userData, inType, callback, idx)
 
     --lv
 	if self._lvLabP == nil then
-		self._lvLabP = cc.Label:createWithTTF("Lv." .. (userData["level"] or 0), UIUtils.ttfName, 20)
+		self._lvLabP = cc.Label:createWithTTF("", UIUtils.ttfName, 20)
 		self._lvLabP:setColor(UIUtils.colorTable.ccUIBaseTextColor1)
 		self._lvLabP:setAnchorPoint(cc.p(0,0.5))
 		self._lvLabP:setPosition(400, 86) 
 		self:addChild(self._lvLabP)
 		table.insert(self._platformEle, self._lvLabP)
-	else
-		self._lvLabP:setString("Lv." .. (userData["level"] or 0))
 	end
+	local inParam = {lvlStr = "Lv." .. (userData["level"] or 0), lvl = userData["lvl"], plvl = userData["plvl"]}
+	UIUtils:adjustLevelShow(self._lvLabP, inParam, 1)
 
 	--排名
 	local rankImgData = {"arenaRank_first.png","arenaRank_second.png","arenaRank_third.png"}
@@ -255,9 +255,10 @@ function FriendCell:reflashOtherUI(userData, inType, callback, idx)
     self._disImg:setPosition(291, 86)
 
     --头像
+    local headP = {avatar = userData["avatar"], tp = 4,avatarFrame = userData["avatarFrame"], tencetTp = userData["qqVip"], plvl = userData["plvl"]}
 	if not self._avatar then
 		local tencetTp = self._modelMgr:getModel("TencentPrivilegeModel"):getQQVip()
-        self._avatar = IconUtils:createHeadIconById({avatar = userData["avatar"], tp = 4,avatarFrame = userData["avatarFrame"], tencetTp = userData["qqVip"]})   
+        self._avatar = IconUtils:createHeadIconById(headP)   
         self._avatar:setAnchorPoint(0, 0.5)
         self._avatar:setPosition(17, self:getContentSize().height*0.5 - 1)
         self:addChild(self._avatar, 2)
@@ -270,20 +271,20 @@ function FriendCell:reflashOtherUI(userData, inType, callback, idx)
 		end)
     else
     	local tencetTp = self._modelMgr:getModel("TencentPrivilegeModel"):getQQVip()
-        IconUtils:updateHeadIconByView(self._avatar,{avatar = userData["avatar"], tp = 4,avatarFrame = userData["avatarFrame"], tencetTp = userData["qqVip"]}) 
+        IconUtils:updateHeadIconByView(self._avatar, headP) 
     end
 
     --lv
 	if self._lvLab == nil then
-		self._lvLab = cc.Label:createWithTTF("Lv." .. (userData["lvl"] or 0), UIUtils.ttfName, 20)
+		self._lvLab = cc.Label:createWithTTF("", UIUtils.ttfName, 20)
 		self._lvLab:setColor(UIUtils.colorTable.ccUIBaseTextColor1)
 		self._lvLab:setAnchorPoint(cc.p(0,0.5))
 		self._lvLab:setPosition(302, 86)
 		self:addChild(self._lvLab)
 		table.insert(self._gameEle, self._lvLab)
-	else
-		self._lvLab:setString("Lv." .. (userData["lvl"] or 0))
 	end
+	local inParam = {lvlStr = "Lv." .. (userData["lvl"] or 0), lvl = userData["lvl"], plvl = userData["plvl"]}
+	UIUtils:adjustLevelShow(self._lvLab, inParam, 1)
 
     --战斗力
 	if self._battleLab == nil then

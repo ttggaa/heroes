@@ -74,6 +74,8 @@ function NewFormationDescriptionView:checkIsHaveSpellSkill()
             return
     elseif self._iconType == NewFormationIconView.kIconTypeCrossPKHero then
         heroData = self._crossModel:getEnemyHeroData(self._iconId)
+    elseif self._iconType == NewFormationIconView.kIconTypeClimbTowerHero then
+        heroData = self._modelMgr:getModel("PurgatoryModel"):getEnemyHeroData()
     else
         if self._iconId and not self._isCustom then 
             heroData = self._heroModel:getData()[tostring(self._iconId)]
@@ -137,6 +139,8 @@ function NewFormationDescriptionView:onInit()
     UIUtils:setTitleFormat(label_title, 3)
     local label_title1 = self:getUI("bg.layer.layer_team.layer_right.team_info_2.label_title")
     UIUtils:setTitleFormat(label_title1, 3)
+    local label_title2 = self:getUI("bg.layer.layer_team.layer_right.team_info_3.label_title")
+    UIUtils:setTitleFormat(label_title2, 3)
 
     self._team._star = {}
     for i = 1, 6 do
@@ -157,6 +161,10 @@ function NewFormationDescriptionView:onInit()
     self._team._labelZiZhiDes = self:getUI("bg.layer.layer_team.layer_right.team_info_1.label_zizhi_des")
     self._team._labelLocationDes = self:getUI("bg.layer.layer_team.layer_right.team_info_1.label_location_des")
     self._team._labelLocationDes:setTextAreaSize(cc.size(264,60))
+    self._team._teamInfo = self:getUI("bg.layer.layer_team.layer_right.team_info_2")
+    self._team._teamInfo1 = self:getUI("bg.layer.layer_team.layer_right.team_info_3")
+    self._team._teamInfo:setVisible(true)
+    self._team._teamInfo1:setVisible(false)
     self._team._skill = {}
     for i = 1, 4 do
         self._team._skill[i] = {}
@@ -167,6 +175,18 @@ function NewFormationDescriptionView:onInit()
         -- self._team._skill[i]._name:enableShadow(UIUtils.colorTable.ccUIBaseShadowColor, cc.size(0, -2))
         self._team._skill[i]._level = self:getUI("bg.layer.layer_team.layer_right.team_info_2.layer_skill_icon_" .. i .. ".label_skill_level")
         self._team._skill[i]._locked = self:getUI("bg.layer.layer_team.layer_right.team_info_2.layer_skill_icon_" .. i .. ".image_skill_locked")
+    end
+
+    self._team._skill1 = {}
+    for i = 1, 5 do
+        self._team._skill1[i] = {}
+        self._team._skill1[i]._icon = self:getUI("bg.layer.layer_team.layer_right.team_info_3.layer_skill_icon_" .. i)
+        self._team._skill1[i]._name = self:getUI("bg.layer.layer_team.layer_right.team_info_3.layer_skill_icon_" .. i .. ".label_skill_name")
+        self._team._skill1[i]._name:setFontName(UIUtils.ttfName)
+        self._team._skill1[i]._name:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor,1)
+        -- self._team._skill1[i]._name:enableShadow(UIUtils.colorTable.ccUIBaseShadowColor, cc.size(0, -2))
+        self._team._skill1[i]._level = self:getUI("bg.layer.layer_team.layer_right.team_info_3.layer_skill_icon_" .. i .. ".label_skill_level")
+        self._team._skill1[i]._locked = self:getUI("bg.layer.layer_team.layer_right.team_info_3.layer_skill_icon_" .. i .. ".image_skill_locked")
     end
 
     -- hero
@@ -283,6 +303,10 @@ function NewFormationDescriptionView:onInit()
         [NewFormationIconView.kIconTypeCrossPKHero] = handler(self, self.updateCrossPKHeroInformation),
         [NewFormationIconView.kIconTypeClimbTowerTeam] = handler(self, self.updateClimbTowerTeamInformation),
         [NewFormationIconView.kIconTypeClimbTowerHero] = handler(self, self.updateClimbTowerHeroInformation),
+        [NewFormationIconView.kIconTypeStakeAtk1Team] = handler(self, self.updateStakeAtk1TeamInformation),
+        [NewFormationIconView.kIconTypeStakeAtk1Hero] = handler(self, self.updateStakeAtk1HeroInformation),
+        [NewFormationIconView.kIconTypeProfessionTeam] = handler(self, self.updateInstanceTeamInformation),
+        [NewFormationIconView.kIconTypeProfessionHero] = handler(self, self.updateNpcHeroInformation),
         [1000] = handler(self, self.update1000TeamInformation),
     }
 
@@ -401,11 +425,9 @@ function NewFormationDescriptionView:updateTeamInformation()
     local steam = TeamUtils.getNpcTableValueByTeam(teamTableData, "steam")
     local useless1 = nil
     local useless2 = nil
-    if isAwaking then
-        teamName, useless1, useless2, steam = TeamUtils:getTeamAwakingTab(teamData,self._changedId)
-    end
-
-    self._team._layerClass:setBackGroundImage(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+    teamName, useless1, useless2, steam = TeamUtils:getTeamAwakingTab(teamData,self._changedId)
+    local className = TeamUtils:getClassIconNameByTeamD(teamData, "classlabel", teamTableData, true)
+    self._team._layerClass:setBackGroundImage(IconUtils.iconPath .. className .. ".png", 1)
     TeamUtils.showTeamLabelTip(self._team._layerClass, 7, teamData.teamId)
     local quality = self._teamModel:getTeamQualityByStage(teamData.stage)
     self._team._labelName:setColor(UIUtils.colorTable["ccColorQuality" .. quality[1]])
@@ -471,23 +493,35 @@ function NewFormationDescriptionView:updateTeamInformation()
 
     self._team._labelGroupDes:setString(lang(tab:Race(teamTableData.race[1]).name))
     self._team._labelNumDes:setString((6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")) * (6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")))
-    self._team._labelZiZhiDes:setString(12 + teamTableData.zizhi)
+    self._team._labelZiZhiDes:setString(self._modelMgr:getModel("TeamModel"):getTeamZiZhiText(teamTableData.zizhi))
     self._team._labelLocationDes:setString(lang(teamTableData.dingwei))
 
+    local showSkill = self._teamModel:getTeamSkillShowSort(teamData, true)
+    local skillList = self._team._skill
     local dazhaoImg = self:getUI("bg.layer.layer_team.layer_right.team_info_2.dazhao")
+    local iconScale = 0.8
+    if #showSkill == 5 then
+        skillList = self._team._skill1
+        dazhaoImg = self:getUI("bg.layer.layer_team.layer_right.team_info_3.dazhao")
+        iconScale = 0.7
+        self._team._teamInfo:setVisible(false)
+        self._team._teamInfo1:setVisible(true)
+    end
+
     dazhaoImg:setZOrder(10)
     dazhaoImg:setVisible(false)
     local teamSkillData = clone(teamData)
     teamSkillData.teamId = teamTableData.id
     local rune = teamData.rune
-    for i = 1, 4 do
-        local iconParent = self._team._skill[i]._icon
-        local labelName = self._team._skill[i]._name
-        local labelLevel = self._team._skill[i]._level
-        local imageLocked = self._team._skill[i]._locked
-        local skillLevel = teamData["sl" .. i]
-        local skillType = teamOwnSkillData[i][1]
-        local skillId = teamOwnSkillData[i][2]
+    for i = 1, #showSkill do
+        local showSkillIndex = showSkill[i]
+        local iconParent = skillList[i]._icon
+        local labelName = skillList[i]._name
+        local labelLevel = skillList[i]._level
+        local imageLocked = skillList[i]._locked
+        local skillLevel = teamData["sl" .. showSkillIndex] or 0
+        local skillType = teamOwnSkillData[showSkillIndex][1]
+        local skillId = teamOwnSkillData[showSkillIndex][2]
         local skillTableData = SkillUtils:getTeamSkillByType(skillId, skillType)
 
         local uSkill = false    -- 是否大招技能加成
@@ -506,11 +540,6 @@ function NewFormationDescriptionView:updateTeamInformation()
             end
             addLevel = level
         end
-        local icon = IconUtils:createTeamSkillIconById({teamSkill = skillTableData, teamData = teamSkillData, level = skillLevel,addLevel=addLevel, eventStyle = 1})
-        icon:setScale(0.8)
-        icon:setPosition(cc.p(-5, -5))
-        iconParent:addChild(icon)
-        labelName:setString(lang(skillTableData.name))
 
         labelLevel:setVisible(skillLevel > 0)
         imageLocked:setVisible(skillLevel <= 0)        
@@ -524,11 +553,35 @@ function NewFormationDescriptionView:updateTeamInformation()
             addTxt:setColor(UIUtils.colorTable.ccUIBaseColor9)
             addTxt:setPosition(labelLevel:getPositionX()+labelLevel:getContentSize().width,labelLevel:getPositionY())
             labelLevel:getParent():addChild(addTxt,2)
+        else
+            addLevel = 0
         end
+
+        local icon = IconUtils:createTeamSkillIconById({teamSkill = skillTableData, teamData = teamSkillData, level = skillLevel,addLevel=addLevel, eventStyle = 1})
+        icon:setScale(iconScale)
+        icon:setPosition(cc.p(-5, -5))
+        iconParent:addChild(icon)
+        labelName:setString(lang(skillTableData.name))
 
         if skillTableData.dazhao and skillTableData.dazhao == 1 then 
             dazhaoImg:setVisible(true)  
             dazhaoImg:setPosition(iconParent:getPositionX()+18, iconParent:getPositionY()+64)         
+        end
+
+        local lingyuImg = iconParent:getChildByFullName("lingyuImg")
+        if lingyuImg then
+            lingyuImg:setVisible(false)
+        end
+        if skillTableData.lingyu and skillTableData.lingyu == 1 then
+            if not lingyuImg then
+                lingyuImg = ccui.ImageView:create()
+                lingyuImg:loadTexture("label_big_skill_lingyu.png", 1)
+                lingyuImg:setPosition(15, iconParent:getContentSize().height - 15)
+                lingyuImg:setRotation(-25)
+                iconParent:addChild(lingyuImg)
+                lingyuImg:setScale(0.85)
+            end
+            lingyuImg:setVisible(true)
         end
     end
 end
@@ -538,8 +591,12 @@ function NewFormationDescriptionView:updateHireTeamInformation()
     self._team._layer:setVisible(true)
     self._title:setString("兵团信息")
     self._hero._layer:setVisible(false)
-
-    local teamData = clone(self._guildModel:getEnemyDataById(self._iconId, self._iconSubtype))
+    local runesTable = nil
+    local tempTeamData,tempRunes = self._guildModel:getEnemyDataById(self._iconId, self._iconSubtype)
+    local teamData = clone(tempTeamData)
+    if tempRunes then
+        runesTable = tempRunes
+    end
     if not teamData then
         teamData = self._teamModel:getTeamAndIndexById(self._iconId)
     end 
@@ -558,11 +615,10 @@ function NewFormationDescriptionView:updateHireTeamInformation()
     local steam = TeamUtils.getNpcTableValueByTeam(teamTableData, "steam")
     local useless1 = nil
     local useless2 = nil
-    if isAwaking then
-        teamName, useless1, useless2, steam = TeamUtils:getTeamAwakingTab(teamData,self._changedId)
-    end
+    teamName, useless1, useless2, steam = TeamUtils:getTeamAwakingTab(teamData,self._changedId)
 
-    self._team._layerClass:setBackGroundImage(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+    local className = TeamUtils:getClassIconNameByTeamD(teamData, "classlabel", teamTableData, true)
+    self._team._layerClass:setBackGroundImage(IconUtils.iconPath .. className .. ".png", 1)
     TeamUtils.showTeamLabelTip(self._team._layerClass, 7, teamData.teamId)
     local quality = self._teamModel:getTeamQualityByStage(teamData.stage)
     self._team._labelName:setColor(UIUtils.colorTable["ccColorQuality" .. quality[1]])
@@ -625,25 +681,37 @@ function NewFormationDescriptionView:updateHireTeamInformation()
 
     self._team._labelGroupDes:setString(lang(tab:Race(teamTableData.race[1]).name))
     self._team._labelNumDes:setString((6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")) * (6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")))
-    self._team._labelZiZhiDes:setString(12 + teamTableData.zizhi)
+    self._team._labelZiZhiDes:setString(self._modelMgr:getModel("TeamModel"):getTeamZiZhiText(teamTableData.zizhi))
     self._team._labelLocationDes:setString(lang(teamTableData.dingwei))
 
+    local showSkill = self._teamModel:getTeamSkillShowSort(teamData, true)
+    local skillList = self._team._skill
     local dazhaoImg = self:getUI("bg.layer.layer_team.layer_right.team_info_2.dazhao")
+    local iconScale = 0.8
+    if #showSkill == 5 then
+        skillList = self._team._skill1
+        dazhaoImg = self:getUI("bg.layer.layer_team.layer_right.team_info_3.dazhao")
+        iconScale = 0.7
+        self._team._teamInfo:setVisible(false)
+        self._team._teamInfo1:setVisible(true)
+    end
+
     dazhaoImg:setZOrder(10)
     dazhaoImg:setVisible(false)
     local teamSkillData = clone(teamData)
     teamSkillData.teamId = teamTableData.id
-    for i = 1, 4 do
-        local iconParent = self._team._skill[i]._icon
-        local labelName = self._team._skill[i]._name
-        local labelLevel = self._team._skill[i]._level
-        local imageLocked = self._team._skill[i]._locked
-        local skillLevel = teamData["sl" .. i]
-        local skillType = teamOwnSkillData[i][1]
-        local skillId = teamOwnSkillData[i][2]
+    for i = 1, #showSkill do
+        local showSkillIndex = showSkill[i]
+        local iconParent = skillList[i]._icon
+        local labelName = skillList[i]._name
+        local labelLevel = skillList[i]._level
+        local imageLocked = skillList[i]._locked
+        local skillLevel = teamData["sl" .. showSkillIndex] or 0
+        local skillType = teamOwnSkillData[showSkillIndex][1]
+        local skillId = teamOwnSkillData[showSkillIndex][2]
         local skillTableData = SkillUtils:getTeamSkillByType(skillId, skillType)
         local icon = IconUtils:createTeamSkillIconById({teamSkill = skillTableData, teamData = teamSkillData, level = skillLevel, eventStyle = 1})
-        icon:setScale(0.8)
+        icon:setScale(iconScale)
         icon:setPosition(cc.p(-5, -5))
         iconParent:addChild(icon)
         labelName:setString(lang(skillTableData.name))
@@ -655,7 +723,28 @@ function NewFormationDescriptionView:updateHireTeamInformation()
             dazhaoImg:setVisible(true)  
             dazhaoImg:setPosition(iconParent:getPositionX()+18, iconParent:getPositionY()+64)         
         end
+
+        local lingyuImg = iconParent:getChildByFullName("lingyuImg")
+        if lingyuImg then
+            lingyuImg:setVisible(false)
+        end
+        if skillTableData.lingyu and skillTableData.lingyu == 1 then
+            if not lingyuImg then
+                lingyuImg = ccui.ImageView:create()
+                lingyuImg:loadTexture("label_big_skill_lingyu.png", 1)
+                lingyuImg:setPosition(15, iconParent:getContentSize().height - 15)
+                lingyuImg:setRotation(-25)
+                iconParent:addChild(lingyuImg)
+                lingyuImg:setScale(0.85)
+            end
+            lingyuImg:setVisible(true)
+        end
     end
+    --圣辉图标
+    -- if runesTable then
+        UIUtils:createHolyDetailBtn(self:getUI("bg.layer.layer_team.layer_left") ,{teamData = teamData, runes = runesTable or {} ,pos = cc.p(240,350)} )
+    -- end
+    UIUtils:createExclusiveInfoNode(self:getUI("bg.layer.layer_team.layer_left") ,{teamData = teamData, pos = cc.p(240, 300)} )
 end
 
 function NewFormationDescriptionView:updateInstanceTeamInformation()
@@ -673,7 +762,8 @@ function NewFormationDescriptionView:updateInstanceTeamInformation()
     ]]
     local teamOwnSkillData = TeamUtils.getNpcTableValueByTeam(teamTableData, "skill")
 
-    self._team._layerClass:setBackGroundImage(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+    local className = TeamUtils:getNpcClassName(teamTableData, "classlabel")
+    self._team._layerClass:setBackGroundImage(IconUtils.iconPath .. className .. ".png", 1)
     TeamUtils.showTeamLabelTip(self._team._layerClass, 7, teamTableData.id)
     local quality = self._teamModel:getTeamQualityByStage(teamTableData.stage)
     self._team._labelName:setColor(UIUtils.colorTable["ccColorQuality" .. quality[1]])
@@ -746,7 +836,7 @@ function NewFormationDescriptionView:updateInstanceTeamInformation()
 
     self._team._labelGroupDes:setString(lang(tab:Race(teamTableData.race[1]).name))
     self._team._labelNumDes:setString((6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")) * (6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")))
-    self._team._labelZiZhiDes:setString(12 + teamTableData.zizhi or 0)
+    self._team._labelZiZhiDes:setString(self._modelMgr:getModel("TeamModel"):getTeamZiZhiText(teamTableData.zizhi))
     self._team._labelLocationDes:setString(lang(teamTableData.dingwei))
     local dazhaoImg = self:getUI("bg.layer.layer_team.layer_right.team_info_2.dazhao")
     dazhaoImg:setZOrder(10)
@@ -773,6 +863,21 @@ function NewFormationDescriptionView:updateInstanceTeamInformation()
             dazhaoImg:setVisible(true)  
             dazhaoImg:setPosition(iconParent:getPositionX()+18, iconParent:getPositionY()+64)         
         end
+        local lingyuImg = iconParent:getChildByFullName("lingyuImg")
+        if lingyuImg then
+            lingyuImg:setVisible(false)
+        end
+        if skillTableData.lingyu and skillTableData.lingyu == 1 then
+            if not lingyuImg then
+                lingyuImg = ccui.ImageView:create()
+                lingyuImg:loadTexture("label_big_skill_lingyu.png", 1)
+                lingyuImg:setPosition(15, iconParent:getContentSize().height - 15)
+                lingyuImg:setRotation(-25)
+                iconParent:addChild(lingyuImg)
+                lingyuImg:setScale(0.85)
+            end
+            lingyuImg:setVisible(true)
+        end
     end
 end
 
@@ -792,7 +897,8 @@ function NewFormationDescriptionView:updateArenaTeamInformation()
     ]]
     local teamOwnSkillData = teamTableData.skill
 
-    self._team._layerClass:setBackGroundImage(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+    local className = TeamUtils:getClassIconNameByTeamD(teamData, "classlabel", teamTableData, true)
+    self._team._layerClass:setBackGroundImage(IconUtils.iconPath .. className .. ".png", 1)
     TeamUtils.showTeamLabelTip(self._team._layerClass, 7, teamData.teamId)
     local quality = self._teamModel:getTeamQualityByStage(teamData.stage)
     self._team._labelName:setColor(UIUtils.colorTable["ccColorQuality" .. quality[1]])
@@ -841,22 +947,33 @@ function NewFormationDescriptionView:updateArenaTeamInformation()
 
     self._team._labelGroupDes:setString(lang(tab:Race(teamTableData.race[1]).name))
     self._team._labelNumDes:setString((6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")) * (6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")))
-    self._team._labelZiZhiDes:setString(12 + teamTableData.zizhi)
+    self._team._labelZiZhiDes:setString(self._modelMgr:getModel("TeamModel"):getTeamZiZhiText(teamTableData.zizhi))
     self._team._labelLocationDes:setString(lang(teamTableData.dingwei))
+    local showSkill = self._teamModel:getTeamSkillShowSort(teamData, true)
+    local skillList = self._team._skill
     local dazhaoImg = self:getUI("bg.layer.layer_team.layer_right.team_info_2.dazhao")
+    local iconScale = 0.8
+    if #showSkill == 5 then
+        skillList = self._team._skill1
+        dazhaoImg = self:getUI("bg.layer.layer_team.layer_right.team_info_3.dazhao")
+        iconScale = 0.7
+        self._team._teamInfo:setVisible(false)
+        self._team._teamInfo1:setVisible(true)
+    end
     dazhaoImg:setZOrder(10)
     dazhaoImg:setVisible(false)
-    for i = 1, 4 do
-        local iconParent = self._team._skill[i]._icon
-        local labelName = self._team._skill[i]._name
-        local labelLevel = self._team._skill[i]._level
-        local imageLocked = self._team._skill[i]._locked
-        local skillLevel = teamData["sl" .. i]
-        local skillType = teamOwnSkillData[i][1]
-        local skillId = teamOwnSkillData[i][2]
+    for i = 1, #showSkill do
+        local showSkillIndex = showSkill[i]
+        local iconParent = skillList[i]._icon
+        local labelName = skillList[i]._name
+        local labelLevel = skillList[i]._level
+        local imageLocked = skillList[i]._locked
+        local skillLevel = teamData["sl" .. showSkillIndex] or 0
+        local skillType = teamOwnSkillData[showSkillIndex][1]
+        local skillId = teamOwnSkillData[showSkillIndex][2]
         local skillTableData = SkillUtils:getTeamSkillByType(skillId, skillType)
         local icon = IconUtils:createTeamSkillIconById({teamSkill = skillTableData, teamData = teamData, level = skillLevel, eventStyle = 1})
-        icon:setScale(0.8)
+        icon:setScale(iconScale)
         icon:setPosition(cc.p(-5, -5))
         iconParent:addChild(icon)
         labelName:setString(lang(skillTableData.name))
@@ -866,6 +983,22 @@ function NewFormationDescriptionView:updateArenaTeamInformation()
         if skillTableData.dazhao and skillTableData.dazhao == 1 then 
             dazhaoImg:setVisible(true)  
             dazhaoImg:setPosition(iconParent:getPositionX()+18, iconParent:getPositionY()+64)         
+        end
+
+        local lingyuImg = iconParent:getChildByFullName("lingyuImg")
+        if lingyuImg then
+            lingyuImg:setVisible(false)
+        end
+        if skillTableData.lingyu and skillTableData.lingyu == 1 then
+            if not lingyuImg then
+                lingyuImg = ccui.ImageView:create()
+                lingyuImg:loadTexture("label_big_skill_lingyu.png", 1)
+                lingyuImg:setPosition(15, iconParent:getContentSize().height - 15)
+                lingyuImg:setRotation(-25)
+                iconParent:addChild(lingyuImg)
+                lingyuImg:setScale(0.85)
+            end
+            lingyuImg:setVisible(true)
         end
     end
 end
@@ -885,7 +1018,8 @@ function NewFormationDescriptionView:updateAiRenMuWuTeamInformation()
     ]]
     local teamOwnSkillData = TeamUtils.getNpcTableValueByTeam(teamTableData, "skill")
 
-    self._team._layerClass:setBackGroundImage(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+    local className = TeamUtils:getNpcClassName(teamTableData)
+    self._team._layerClass:setBackGroundImage(IconUtils.iconPath .. className .. ".png", 1)
     TeamUtils.showTeamLabelTip(self._team._layerClass, 7, teamTableData.id)
     local quality = self._teamModel:getTeamQualityByStage(teamTableData.stage)
     self._team._labelName:setColor(UIUtils.colorTable["ccColorQuality" .. quality[1]])
@@ -933,7 +1067,7 @@ function NewFormationDescriptionView:updateAiRenMuWuTeamInformation()
 
     self._team._labelGroupDes:setString(lang(tab:Race(teamTableData.race[1]).name))
     self._team._labelNumDes:setString((6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")) * (6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")))
-    self._team._labelZiZhiDes:setString(12 + teamTableData.zizhi)
+    self._team._labelZiZhiDes:setString(self._modelMgr:getModel("TeamModel"):getTeamZiZhiText(teamTableData.zizhi))
     self._team._labelLocationDes:setString(lang(teamTableData.dingwei))
     local dazhaoImg = self:getUI("bg.layer.layer_team.layer_right.team_info_2.dazhao")
     dazhaoImg:setZOrder(10)
@@ -958,6 +1092,22 @@ function NewFormationDescriptionView:updateAiRenMuWuTeamInformation()
         if skillTableData.dazhao and skillTableData.dazhao == 1 then 
             dazhaoImg:setVisible(true)  
             dazhaoImg:setPosition(iconParent:getPositionX()+18, iconParent:getPositionY()+64)         
+        end
+
+        local lingyuImg = iconParent:getChildByFullName("lingyuImg")
+        if lingyuImg then
+            lingyuImg:setVisible(false)
+        end
+        if skillTableData.lingyu and skillTableData.lingyu == 1 then
+            if not lingyuImg then
+                lingyuImg = ccui.ImageView:create()
+                lingyuImg:loadTexture("label_big_skill_lingyu.png", 1)
+                lingyuImg:setPosition(15, iconParent:getContentSize().height - 15)
+                lingyuImg:setRotation(-25)
+                iconParent:addChild(lingyuImg)
+                lingyuImg:setScale(0.85)
+            end
+            lingyuImg:setVisible(true)
         end
     end
 end
@@ -977,7 +1127,8 @@ function NewFormationDescriptionView:updateZombieTeamInformation()
     ]]
     local teamOwnSkillData = TeamUtils.getNpcTableValueByTeam(teamTableData, "skill")
 
-    self._team._layerClass:setBackGroundImage(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+    local className = TeamUtils:getNpcClassName(teamTableData)
+    self._team._layerClass:setBackGroundImage(IconUtils.iconPath .. className .. ".png", 1)
     TeamUtils.showTeamLabelTip(self._team._layerClass, 7, teamTableData.id)
     local quality = self._teamModel:getTeamQualityByStage(teamTableData.stage)
     self._team._labelName:setColor(UIUtils.colorTable["ccColorQuality" .. quality[1]])
@@ -1024,7 +1175,7 @@ function NewFormationDescriptionView:updateZombieTeamInformation()
 
     self._team._labelGroupDes:setString(lang(tab:Race(teamTableData.race[1]).name))
     self._team._labelNumDes:setString((6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")) * (6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")))
-    self._team._labelZiZhiDes:setString(12 + teamTableData.zizhi)
+    self._team._labelZiZhiDes:setString(self._modelMgr:getModel("TeamModel"):getTeamZiZhiText(teamTableData.zizhi))
     self._team._labelLocationDes:setString(lang(teamTableData.dingwei))
     local dazhaoImg = self:getUI("bg.layer.layer_team.layer_right.team_info_2.dazhao")
     dazhaoImg:setZOrder(10)
@@ -1049,6 +1200,22 @@ function NewFormationDescriptionView:updateZombieTeamInformation()
         if skillTableData.dazhao and skillTableData.dazhao == 1 then 
             dazhaoImg:setVisible(true)  
             dazhaoImg:setPosition(iconParent:getPositionX()+18, iconParent:getPositionY()+64)         
+        end
+
+        local lingyuImg = iconParent:getChildByFullName("lingyuImg")
+        if lingyuImg then
+            lingyuImg:setVisible(false)
+        end
+        if skillTableData.lingyu and skillTableData.lingyu == 1 then
+            if not lingyuImg then
+                lingyuImg = ccui.ImageView:create()
+                lingyuImg:loadTexture("label_big_skill_lingyu.png", 1)
+                lingyuImg:setPosition(15, iconParent:getContentSize().height - 15)
+                lingyuImg:setRotation(-25)
+                iconParent:addChild(lingyuImg)
+                lingyuImg:setScale(0.85)
+            end
+            lingyuImg:setVisible(true)
         end
     end
 end
@@ -1068,7 +1235,8 @@ function NewFormationDescriptionView:updateDragonTeamInformation()
     ]]
     local teamOwnSkillData = TeamUtils.getNpcTableValueByTeam(teamTableData, "skill")
 
-    self._team._layerClass:setBackGroundImage(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+    local className = TeamUtils:getNpcClassName(teamTableData)
+    self._team._layerClass:setBackGroundImage(IconUtils.iconPath .. className .. ".png", 1)
     TeamUtils.showTeamLabelTip(self._team._layerClass, 7, teamTableData.id)
     local quality = self._teamModel:getTeamQualityByStage(teamTableData.stage)
     self._team._labelName:setColor(UIUtils.colorTable["ccColorQuality" .. quality[1]])
@@ -1115,7 +1283,7 @@ function NewFormationDescriptionView:updateDragonTeamInformation()
 
     self._team._labelGroupDes:setString(lang(tab:Race(teamTableData.race[1]).name))
     self._team._labelNumDes:setString((6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")) * (6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")))
-    self._team._labelZiZhiDes:setString(12 + teamTableData.zizhi)
+    self._team._labelZiZhiDes:setString(self._modelMgr:getModel("TeamModel"):getTeamZiZhiText(teamTableData.zizhi))
     self._team._labelLocationDes:setString(lang(teamTableData.dingwei))
 
     local dazhaoImg = self:getUI("bg.layer.layer_team.layer_right.team_info_2.dazhao")
@@ -1141,6 +1309,22 @@ function NewFormationDescriptionView:updateDragonTeamInformation()
         if skillTableData.dazhao and skillTableData.dazhao == 1 then 
             dazhaoImg:setVisible(true)  
             dazhaoImg:setPosition(iconParent:getPositionX()+18, iconParent:getPositionY()+64)         
+        end
+
+        local lingyuImg = iconParent:getChildByFullName("lingyuImg")
+        if lingyuImg then
+            lingyuImg:setVisible(false)
+        end
+        if skillTableData.lingyu and skillTableData.lingyu == 1 then
+            if not lingyuImg then
+                lingyuImg = ccui.ImageView:create()
+                lingyuImg:loadTexture("label_big_skill_lingyu.png", 1)
+                lingyuImg:setPosition(15, iconParent:getContentSize().height - 15)
+                lingyuImg:setRotation(-25)
+                iconParent:addChild(lingyuImg)
+                lingyuImg:setScale(0.85)
+            end
+            lingyuImg:setVisible(true)
         end
     end
 end
@@ -1166,11 +1350,9 @@ function NewFormationDescriptionView:updateCrusadeTeamInformation()
     local steam = TeamUtils.getNpcTableValueByTeam(teamTableData, "steam")
     local useless1 = nil
     local useless2 = nil
-    if isAwaking then
-        teamName, useless1, useless2, steam = TeamUtils:getTeamAwakingTab(teamData,self._changedId)
-    end
-
-    self._team._layerClass:setBackGroundImage(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+    teamName, useless1, useless2, steam = TeamUtils:getTeamAwakingTab(teamData,self._changedId)
+    local className = TeamUtils:getClassIconNameByTeamD(teamData, "classlabel", teamTableData, true)
+    self._team._layerClass:setBackGroundImage(IconUtils.iconPath .. className .. ".png", 1)
     TeamUtils.showTeamLabelTip(self._team._layerClass, 7, teamData.teamId)
     local quality = self._teamModel:getTeamQualityByStage(teamData.stage)
     self._team._labelName:setColor(UIUtils.colorTable["ccColorQuality" .. quality[1]])
@@ -1227,23 +1409,35 @@ function NewFormationDescriptionView:updateCrusadeTeamInformation()
 
     self._team._labelGroupDes:setString(lang(tab:Race(teamTableData.race[1]).name))
     self._team._labelNumDes:setString((6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")) * (6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")))
-    self._team._labelZiZhiDes:setString(12 + teamTableData.zizhi)
+    self._team._labelZiZhiDes:setString(self._modelMgr:getModel("TeamModel"):getTeamZiZhiText(teamTableData.zizhi))
     self._team._labelLocationDes:setString(lang(teamTableData.dingwei))
 
+    local showSkill = self._teamModel:getTeamSkillShowSort(teamData, true)
+    local skillList = self._team._skill
     local dazhaoImg = self:getUI("bg.layer.layer_team.layer_right.team_info_2.dazhao")
+    local iconScale = 0.8
+    if #showSkill == 5 then
+        skillList = self._team._skill1
+        dazhaoImg = self:getUI("bg.layer.layer_team.layer_right.team_info_3.dazhao")
+        iconScale = 0.7
+        self._team._teamInfo:setVisible(false)
+        self._team._teamInfo1:setVisible(true)
+    end
+
     dazhaoImg:setZOrder(10)
     dazhaoImg:setVisible(false)
-    for i = 1, 4 do
-        local iconParent = self._team._skill[i]._icon
-        local labelName = self._team._skill[i]._name
-        local labelLevel = self._team._skill[i]._level
-        local imageLocked = self._team._skill[i]._locked
-        local skillLevel = teamData["sl" .. i]
-        local skillType = teamOwnSkillData[i][1]
-        local skillId = teamOwnSkillData[i][2]
+    for i = 1, #showSkill do
+        local showSkillIndex = showSkill[i]
+        local iconParent = skillList[i]._icon
+        local labelName = skillList[i]._name
+        local labelLevel = skillList[i]._level
+        local imageLocked = skillList[i]._locked
+        local skillLevel = teamData["sl" .. showSkillIndex] or 0
+        local skillType = teamOwnSkillData[showSkillIndex][1]
+        local skillId = teamOwnSkillData[showSkillIndex][2]
         local skillTableData = SkillUtils:getTeamSkillByType(skillId, skillType)
         local icon = IconUtils:createTeamSkillIconById({teamSkill = skillTableData, teamData = teamData, level = skillLevel, eventStyle = 1})
-        icon:setScale(0.8)
+        icon:setScale(iconScale)
         icon:setPosition(cc.p(-5, -5))
         iconParent:addChild(icon)
         labelName:setString(lang(skillTableData.name))
@@ -1254,11 +1448,27 @@ function NewFormationDescriptionView:updateCrusadeTeamInformation()
             dazhaoImg:setVisible(true)  
             dazhaoImg:setPosition(iconParent:getPositionX()+18, iconParent:getPositionY()+64)         
         end
+
+        local lingyuImg = iconParent:getChildByFullName("lingyuImg")
+        if lingyuImg then
+            lingyuImg:setVisible(false)
+        end
+        if skillTableData.lingyu and skillTableData.lingyu == 1 then
+            if not lingyuImg then
+                lingyuImg = ccui.ImageView:create()
+                lingyuImg:loadTexture("label_big_skill_lingyu.png", 1)
+                lingyuImg:setPosition(15, iconParent:getContentSize().height - 15)
+                lingyuImg:setRotation(-25)
+                iconParent:addChild(lingyuImg)
+                lingyuImg:setScale(0.85)
+            end
+            lingyuImg:setVisible(true)
+        end
     end
 end
 
 function NewFormationDescriptionView:updateLocalTeamInformation()
-    --print("NewFormationDescriptionView:updateLocalTeamInformation")
+    -- print("NewFormationDescriptionView:updateLocalTeamInformation")
     self._team._layer:setVisible(true)
     self._title:setString("兵团信息")
     self._hero._layer:setVisible(false)
@@ -1321,22 +1531,35 @@ function NewFormationDescriptionView:updateLocalTeamInformation()
 
     self._team._labelGroupDes:setString(lang(tab:Race(teamTableData.race[1]).name))
     self._team._labelNumDes:setString((6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")) * (6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")))
-    self._team._labelZiZhiDes:setString(12 + teamTableData.zizhi)
+    self._team._labelZiZhiDes:setString(self._modelMgr:getModel("TeamModel"):getTeamZiZhiText(teamTableData.zizhi))
     self._team._labelLocationDes:setString(lang(teamTableData.dingwei))
+    
+    local showSkill = self._teamModel:getTeamSkillShowSort({teamId = self._iconId}, true)
+    local skillList = self._team._skill
     local dazhaoImg = self:getUI("bg.layer.layer_team.layer_right.team_info_2.dazhao")
+    local iconScale = 0.8
+    if #showSkill == 5 then
+        skillList = self._team._skill1
+        dazhaoImg = self:getUI("bg.layer.layer_team.layer_right.team_info_3.dazhao")
+        iconScale = 0.7
+        self._team._teamInfo:setVisible(false)
+        self._team._teamInfo1:setVisible(true)
+    end
+
     dazhaoImg:setZOrder(10)
     dazhaoImg:setVisible(false)
-    for i = 1, 4 do
-        local iconParent = self._team._skill[i]._icon
-        local labelName = self._team._skill[i]._name
-        local labelLevel = self._team._skill[i]._level
-        local imageLocked = self._team._skill[i]._locked
+    for i = 1, #showSkill do
+        local showSkillIndex = showSkill[i]
+        local iconParent = skillList[i]._icon
+        local labelName = skillList[i]._name
+        local labelLevel = skillList[i]._level
+        local imageLocked = skillList[i]._locked
         local skillLevel = 0
-        local skillType = teamOwnSkillData[i][1]
-        local skillId = teamOwnSkillData[i][2]
+        local skillType = teamOwnSkillData[showSkillIndex][1]
+        local skillId = teamOwnSkillData[showSkillIndex][2]
         local skillTableData = SkillUtils:getTeamSkillByType(skillId, skillType)
         local icon = IconUtils:createTeamSkillIconById({teamSkill = skillTableData, teamData = teamTableData, level = skillLevel, eventStyle = 1})
-        icon:setScale(0.8)
+        icon:setScale(iconScale)
         icon:setPosition(cc.p(-5, -5))
         iconParent:addChild(icon)
         labelName:setString(lang(skillTableData.name))
@@ -1346,6 +1569,22 @@ function NewFormationDescriptionView:updateLocalTeamInformation()
         if skillTableData.dazhao and skillTableData.dazhao == 1 then 
             dazhaoImg:setVisible(true)  
             dazhaoImg:setPosition(iconParent:getPositionX()+18, iconParent:getPositionY()+64)         
+        end
+        
+        local lingyuImg = iconParent:getChildByFullName("lingyuImg")
+        if lingyuImg then
+            lingyuImg:setVisible(false)
+        end
+        if skillTableData.lingyu and skillTableData.lingyu == 1 then
+            if not lingyuImg then
+                lingyuImg = ccui.ImageView:create()
+                lingyuImg:loadTexture("label_big_skill_lingyu.png", 1)
+                lingyuImg:setPosition(15, iconParent:getContentSize().height - 15)
+                lingyuImg:setRotation(-25)
+                iconParent:addChild(lingyuImg)
+                lingyuImg:setScale(0.85)
+            end
+            lingyuImg:setVisible(true)
         end
     end
 end
@@ -1372,10 +1611,9 @@ function NewFormationDescriptionView:updateGuildTeamInformation()
     local steam = TeamUtils.getNpcTableValueByTeam(teamTableData, "steam")
     local useless1 = nil
     local useless2 = nil
-    if isAwaking then
-        teamName, useless1, useless2, steam = TeamUtils:getTeamAwakingTab(teamData,self._changedId)
-    end
-    self._team._layerClass:setBackGroundImage(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+    teamName, useless1, useless2, steam = TeamUtils:getTeamAwakingTab(teamData,self._changedId)
+    local className = TeamUtils:getClassIconNameByTeamD(teamData, "classlabel", teamTableData, true)
+    self._team._layerClass:setBackGroundImage(IconUtils.iconPath .. className .. ".png", 1)
     TeamUtils.showTeamLabelTip(self._team._layerClass, 7, teamData.teamId)
     local quality = self._teamModel:getTeamQualityByStage(teamData.stage)
     self._team._labelName:setColor(UIUtils.colorTable["ccColorQuality" .. quality[1]])
@@ -1433,22 +1671,35 @@ function NewFormationDescriptionView:updateGuildTeamInformation()
 
     self._team._labelGroupDes:setString(lang(tab:Race(teamTableData.race[1]).name))
     self._team._labelNumDes:setString((6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")) * (6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")))
-    self._team._labelZiZhiDes:setString(12 + teamTableData.zizhi)
+    self._team._labelZiZhiDes:setString(self._modelMgr:getModel("TeamModel"):getTeamZiZhiText(teamTableData.zizhi))
     self._team._labelLocationDes:setString(lang(teamTableData.dingwei))
+    
+    local showSkill = self._teamModel:getTeamSkillShowSort(teamData, true)
+    local skillList = self._team._skill
     local dazhaoImg = self:getUI("bg.layer.layer_team.layer_right.team_info_2.dazhao")
+    local iconScale = 0.8
+    if #showSkill == 5 then
+        skillList = self._team._skill1
+        dazhaoImg = self:getUI("bg.layer.layer_team.layer_right.team_info_3.dazhao")
+        iconScale = 0.7
+        self._team._teamInfo:setVisible(false)
+        self._team._teamInfo1:setVisible(true)
+    end
+
     dazhaoImg:setZOrder(10)
     dazhaoImg:setVisible(false)
-    for i = 1, 4 do
-        local iconParent = self._team._skill[i]._icon
-        local labelName = self._team._skill[i]._name
-        local labelLevel = self._team._skill[i]._level
-        local imageLocked = self._team._skill[i]._locked
-        local skillLevel = teamData["sl" .. i]
-        local skillType = teamOwnSkillData[i][1]
-        local skillId = teamOwnSkillData[i][2]
+    for i = 1, #showSkill do
+        local showSkillIndex = showSkill[i]
+        local iconParent = skillList[i]._icon
+        local labelName = skillList[i]._name
+        local labelLevel = skillList[i]._level
+        local imageLocked = skillList[i]._locked
+        local skillLevel = teamData["sl" .. showSkillIndex] or 0
+        local skillType = teamOwnSkillData[showSkillIndex][1]
+        local skillId = teamOwnSkillData[showSkillIndex][2]
         local skillTableData = SkillUtils:getTeamSkillByType(skillId, skillType)
         local icon = IconUtils:createTeamSkillIconById({teamSkill = skillTableData, teamData = teamData, level = skillLevel, eventStyle = 1})
-        icon:setScale(0.8)
+        icon:setScale(iconScale)
         icon:setPosition(cc.p(-5, -5))
         iconParent:addChild(icon)
         labelName:setString(lang(skillTableData.name))
@@ -1458,6 +1709,22 @@ function NewFormationDescriptionView:updateGuildTeamInformation()
         if skillTableData.dazhao and skillTableData.dazhao == 1 then 
             dazhaoImg:setVisible(true)  
             dazhaoImg:setPosition(iconParent:getPositionX()+18, iconParent:getPositionY()+64)         
+        end
+
+        local lingyuImg = iconParent:getChildByFullName("lingyuImg")
+        if lingyuImg then
+            lingyuImg:setVisible(false)
+        end
+        if skillTableData.lingyu and skillTableData.lingyu == 1 then
+            if not lingyuImg then
+                lingyuImg = ccui.ImageView:create()
+                lingyuImg:loadTexture("label_big_skill_lingyu.png", 1)
+                lingyuImg:setPosition(15, iconParent:getContentSize().height - 15)
+                lingyuImg:setRotation(-25)
+                iconParent:addChild(lingyuImg)
+                lingyuImg:setScale(0.85)
+            end
+            lingyuImg:setVisible(true)
         end
     end
 end
@@ -1485,11 +1752,9 @@ function NewFormationDescriptionView:updateMFTeamInformation()
     local steam = TeamUtils.getNpcTableValueByTeam(teamTableData, "steam")
     local useless1 = nil
     local useless2 = nil
-    if isAwaking then
-        teamName, useless1, useless2, steam = TeamUtils:getTeamAwakingTab(teamData,self._changedId)
-    end
-
-    self._team._layerClass:setBackGroundImage(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+    teamName, useless1, useless2, steam = TeamUtils:getTeamAwakingTab(teamData,self._changedId)
+    local className = TeamUtils:getClassIconNameByTeamD(teamData, "classlabel", teamTableData, true)
+    self._team._layerClass:setBackGroundImage(IconUtils.iconPath .. className .. ".png", 1)
     TeamUtils.showTeamLabelTip(self._team._layerClass, 7, teamData.teamId)
     local quality = self._teamModel:getTeamQualityByStage(teamData.stage)
     self._team._labelName:setColor(UIUtils.colorTable["ccColorQuality" .. quality[1]])
@@ -1546,22 +1811,35 @@ function NewFormationDescriptionView:updateMFTeamInformation()
 
     self._team._labelGroupDes:setString(lang(tab:Race(teamTableData.race[1]).name))
     self._team._labelNumDes:setString((6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")) * (6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")))
-    self._team._labelZiZhiDes:setString(12 + teamTableData.zizhi)
+    self._team._labelZiZhiDes:setString(self._modelMgr:getModel("TeamModel"):getTeamZiZhiText(teamTableData.zizhi))
     self._team._labelLocationDes:setString(lang(teamTableData.dingwei))
+    
+    local showSkill = self._teamModel:getTeamSkillShowSort(teamData, true)
+    local skillList = self._team._skill
     local dazhaoImg = self:getUI("bg.layer.layer_team.layer_right.team_info_2.dazhao")
+    local iconScale = 0.8
+    if #showSkill == 5 then
+        skillList = self._team._skill1
+        dazhaoImg = self:getUI("bg.layer.layer_team.layer_right.team_info_3.dazhao")
+        iconScale = 0.7
+        self._team._teamInfo:setVisible(false)
+        self._team._teamInfo1:setVisible(true)
+    end
+
     dazhaoImg:setZOrder(10)
     dazhaoImg:setVisible(false)
-    for i = 1, 4 do
-        local iconParent = self._team._skill[i]._icon
-        local labelName = self._team._skill[i]._name
-        local labelLevel = self._team._skill[i]._level
-        local imageLocked = self._team._skill[i]._locked
-        local skillLevel = teamData["sl" .. i]
-        local skillType = teamOwnSkillData[i][1]
-        local skillId = teamOwnSkillData[i][2]
+    for i = 1, #showSkill do
+        local showSkillIndex = showSkill[i]
+        local iconParent = skillList[i]._icon
+        local labelName = skillList[i]._name
+        local labelLevel = skillList[i]._level
+        local imageLocked = skillList[i]._locked
+        local skillLevel = teamData["sl" .. showSkillIndex] or 0
+        local skillType = teamOwnSkillData[showSkillIndex][1]
+        local skillId = teamOwnSkillData[showSkillIndex][2]
         local skillTableData = SkillUtils:getTeamSkillByType(skillId, skillType)
         local icon = IconUtils:createTeamSkillIconById({teamSkill = skillTableData, teamData = teamData, level = skillLevel, eventStyle = 1})
-        icon:setScale(0.8)
+        icon:setScale(iconScale)
         icon:setPosition(cc.p(-5, -5))
         iconParent:addChild(icon)
         labelName:setString(lang(skillTableData.name))
@@ -1572,11 +1850,27 @@ function NewFormationDescriptionView:updateMFTeamInformation()
             dazhaoImg:setVisible(true)  
             dazhaoImg:setPosition(iconParent:getPositionX()+18, iconParent:getPositionY()+64)         
         end
+
+        local lingyuImg = iconParent:getChildByFullName("lingyuImg")
+        if lingyuImg then
+            lingyuImg:setVisible(false)
+        end
+        if skillTableData.lingyu and skillTableData.lingyu == 1 then
+            if not lingyuImg then
+                lingyuImg = ccui.ImageView:create()
+                lingyuImg:loadTexture("label_big_skill_lingyu.png", 1)
+                lingyuImg:setPosition(15, iconParent:getContentSize().height - 15)
+                lingyuImg:setRotation(-25)
+                iconParent:addChild(lingyuImg)
+                lingyuImg:setScale(0.85)
+            end
+            lingyuImg:setVisible(true)
+        end
     end
 end
 
 function NewFormationDescriptionView:update1000TeamInformation()
-    --print("NewFormationDescriptionView:updateLocalTeamInformation")
+    -- print("NewFormationDescriptionView:updateLocalTeamInformation")
     self._team._layer:setVisible(true)
     self._title:setString("兵团信息")
     self._hero._layer:setVisible(false)
@@ -1639,22 +1933,35 @@ function NewFormationDescriptionView:update1000TeamInformation()
 
     self._team._labelGroupDes:setString(lang(tab:Race(teamTableData.race[1]).name))
     self._team._labelNumDes:setString((6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")) * (6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")))
-    self._team._labelZiZhiDes:setString(12 + teamTableData.zizhi)
+    self._team._labelZiZhiDes:setString(self._modelMgr:getModel("TeamModel"):getTeamZiZhiText(teamTableData.zizhi))
     self._team._labelLocationDes:setString(lang(teamTableData.dingwei))
+    
+    local showSkill = self._teamModel:getTeamSkillShowSort({teamId = self._iconId}, true)
+    local skillList = self._team._skill
     local dazhaoImg = self:getUI("bg.layer.layer_team.layer_right.team_info_2.dazhao")
+    local iconScale = 0.8
+    if #showSkill == 5 then
+        skillList = self._team._skill1
+        dazhaoImg = self:getUI("bg.layer.layer_team.layer_right.team_info_3.dazhao")
+        iconScale = 0.7
+        self._team._teamInfo:setVisible(false)
+        self._team._teamInfo1:setVisible(true)
+    end
+
     dazhaoImg:setZOrder(10)
     dazhaoImg:setVisible(false)
-    for i = 1, 4 do
-        local iconParent = self._team._skill[i]._icon
-        local labelName = self._team._skill[i]._name
-        local labelLevel = self._team._skill[i]._level
-        local imageLocked = self._team._skill[i]._locked
+    for i = 1, #showSkill do
+        local showSkillIndex = showSkill[i]
+        local iconParent = skillList[i]._icon
+        local labelName = skillList[i]._name
+        local labelLevel = skillList[i]._level
+        local imageLocked = skillList[i]._locked
         local skillLevel = 0
-        local skillType = teamOwnSkillData[i][1]
-        local skillId = teamOwnSkillData[i][2]
+        local skillType = teamOwnSkillData[showSkillIndex][1]
+        local skillId = teamOwnSkillData[showSkillIndex][2]
         local skillTableData = SkillUtils:getTeamSkillByType(skillId, skillType)
         local icon = IconUtils:createTeamSkillIconById({teamSkill = skillTableData, teamData = teamTableData, level = skillLevel, eventStyle = 1})
-        icon:setScale(0.8)
+        icon:setScale(iconScale)
         icon:setPosition(cc.p(-5, -5))
         iconParent:addChild(icon)
         labelName:setString(lang(skillTableData.name))
@@ -1664,6 +1971,22 @@ function NewFormationDescriptionView:update1000TeamInformation()
         if skillTableData.dazhao and skillTableData.dazhao == 1 then 
             dazhaoImg:setVisible(true)  
             dazhaoImg:setPosition(iconParent:getPositionX()+18, iconParent:getPositionY()+64)         
+        end
+
+        local lingyuImg = iconParent:getChildByFullName("lingyuImg")
+        if lingyuImg then
+            lingyuImg:setVisible(false)
+        end
+        if skillTableData.lingyu and skillTableData.lingyu == 1 then
+            if not lingyuImg then
+                lingyuImg = ccui.ImageView:create()
+                lingyuImg:loadTexture("label_big_skill_lingyu.png", 1)
+                lingyuImg:setPosition(15, iconParent:getContentSize().height - 15)
+                lingyuImg:setRotation(-25)
+                iconParent:addChild(lingyuImg)
+                lingyuImg:setScale(0.85)
+            end
+            lingyuImg:setVisible(true)
         end
     end
 end
@@ -1725,11 +2048,15 @@ function NewFormationDescriptionView:updateNpcTeamInformation()
     local steam = TeamUtils.getNpcTableValueByTeam(teamTableData, "steam")
     local useless1 = nil
     local useless2 = nil
-    if isAwaking and self._formationType == self._formationModel.kFormationTypeHeroDuel --[[and not self._isChanged]] then
+    if self._formationType == self._formationModel.kFormationTypeHeroDuel --[[and not self._isChanged]] then
         teamName, useless1, useless2, steam = TeamUtils:getTeamAwakingTab(teamTableData, self._iconId)
     end
-
-    self._team._layerClass:setBackGroundImage(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+    
+    local className = TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel")
+    if isAwaking then
+        className = className .. "_awake"
+    end
+    self._team._layerClass:setBackGroundImage(IconUtils.iconPath .. className .. ".png", 1)
     TeamUtils.showTeamLabelTip(self._team._layerClass, 7, teamTableData.id)
     local quality = self._teamModel:getTeamQualityByStage(teamTableData.stage)
     self._team._labelName:setColor(UIUtils.colorTable["ccColorQuality" .. quality[1]])
@@ -1788,7 +2115,7 @@ function NewFormationDescriptionView:updateNpcTeamInformation()
 
     self._team._labelGroupDes:setString(lang(tab:Race(teamTableData.race[1]).name))
     self._team._labelNumDes:setString((6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")) * (6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")))
-    self._team._labelZiZhiDes:setString(12 + teamTableData.zizhi)
+    self._team._labelZiZhiDes:setString(self._modelMgr:getModel("TeamModel"):getTeamZiZhiText(teamTableData.zizhi))
     self._team._labelLocationDes:setString(lang(teamTableData.dingwei))
     local dazhaoImg = self:getUI("bg.layer.layer_team.layer_right.team_info_2.dazhao")
     dazhaoImg:setZOrder(10)
@@ -1814,6 +2141,22 @@ function NewFormationDescriptionView:updateNpcTeamInformation()
             dazhaoImg:setVisible(true)  
             dazhaoImg:setPosition(iconParent:getPositionX()+18, iconParent:getPositionY()+64)         
         end
+
+        local lingyuImg = iconParent:getChildByFullName("lingyuImg")
+        if lingyuImg then
+            lingyuImg:setVisible(false)
+        end
+        if skillTableData.lingyu and skillTableData.lingyu == 1 then
+            if not lingyuImg then
+                lingyuImg = ccui.ImageView:create()
+                lingyuImg:loadTexture("label_big_skill_lingyu.png", 1)
+                lingyuImg:setPosition(15, iconParent:getContentSize().height - 15)
+                lingyuImg:setRotation(-25)
+                iconParent:addChild(lingyuImg)
+                lingyuImg:setScale(0.85)
+            end
+            lingyuImg:setVisible(true)
+        end
     end
 end
 
@@ -1824,6 +2167,7 @@ function NewFormationDescriptionView:updateElementalTeamInformation()
     self._hero._layer:setVisible(false)
 
     local teamTableData = nil
+    local className = nil
     if self._formationType == self._formationModel.kFormationTypeHeroDuel then
         teamTableData = clone(tab:Team(self._iconId))
         local heroDuelId = self._heroDuelModel:getWeekNum()
@@ -1836,8 +2180,10 @@ function NewFormationDescriptionView:updateElementalTeamInformation()
                 teamTableData.sl[i] = heroDuelTableData.teamskill[i]
             end
         end
+        className = TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel")
     else
         teamTableData = tab:Npc(self._iconId)
+        className = TeamUtils:getNpcClassName(teamTableData)
     end
     if not teamTableData then print("invalid team icon id", self._iconId) end
     --[[
@@ -1847,7 +2193,7 @@ function NewFormationDescriptionView:updateElementalTeamInformation()
     ]]
     local teamOwnSkillData = TeamUtils.getNpcTableValueByTeam(teamTableData, "skill")
 
-    self._team._layerClass:setBackGroundImage(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+    self._team._layerClass:setBackGroundImage(IconUtils.iconPath .. className .. ".png", 1)
     TeamUtils.showTeamLabelTip(self._team._layerClass, 7, teamTableData.id)
     local quality = self._teamModel:getTeamQualityByStage(teamTableData.stage)
     self._team._labelName:setColor(UIUtils.colorTable["ccColorQuality" .. quality[1]])
@@ -1895,7 +2241,7 @@ function NewFormationDescriptionView:updateElementalTeamInformation()
 
     self._team._labelGroupDes:setString(lang(tab:Race(teamTableData.race[1]).name))
     self._team._labelNumDes:setString((6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")) * (6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")))
-    self._team._labelZiZhiDes:setString(12 + teamTableData.zizhi)
+    self._team._labelZiZhiDes:setString(self._modelMgr:getModel("TeamModel"):getTeamZiZhiText(teamTableData.zizhi))
     self._team._labelLocationDes:setString(lang(teamTableData.dingwei))
     local dazhaoImg = self:getUI("bg.layer.layer_team.layer_right.team_info_2.dazhao")
     dazhaoImg:setZOrder(10)
@@ -1921,6 +2267,22 @@ function NewFormationDescriptionView:updateElementalTeamInformation()
             dazhaoImg:setVisible(true)  
             dazhaoImg:setPosition(iconParent:getPositionX()+18, iconParent:getPositionY()+64)         
         end
+
+        local lingyuImg = iconParent:getChildByFullName("lingyuImg")
+        if lingyuImg then
+            lingyuImg:setVisible(false)
+        end
+        if skillTableData.lingyu and skillTableData.lingyu == 1 then
+            if not lingyuImg then
+                lingyuImg = ccui.ImageView:create()
+                lingyuImg:loadTexture("label_big_skill_lingyu.png", 1)
+                lingyuImg:setPosition(15, iconParent:getContentSize().height - 15)
+                lingyuImg:setRotation(-25)
+                iconParent:addChild(lingyuImg)
+                lingyuImg:setScale(0.85)
+            end
+            lingyuImg:setVisible(true)
+        end
     end
 end
 
@@ -1940,7 +2302,8 @@ function NewFormationDescriptionView:updateAdventureTeamInformation()
     ]]
     local teamOwnSkillData = teamTableData.skill
 
-    self._team._layerClass:setBackGroundImage(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+    local className = TeamUtils:getClassIconNameByTeamD(teamData, "classlabel", teamTableData, true)
+    self._team._layerClass:setBackGroundImage(IconUtils.iconPath .. className .. ".png", 1)
     TeamUtils.showTeamLabelTip(self._team._layerClass, 7, teamData.teamId)
     local quality = self._teamModel:getTeamQualityByStage(teamData.stage)
     self._team._labelName:setColor(UIUtils.colorTable["ccColorQuality" .. quality[1]])
@@ -1987,22 +2350,35 @@ function NewFormationDescriptionView:updateAdventureTeamInformation()
 
     self._team._labelGroupDes:setString(lang(tab:Race(teamTableData.race[1]).name))
     self._team._labelNumDes:setString((6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")) * (6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")))
-    self._team._labelZiZhiDes:setString(12 + teamTableData.zizhi)
+    self._team._labelZiZhiDes:setString(self._modelMgr:getModel("TeamModel"):getTeamZiZhiText(teamTableData.zizhi))
     self._team._labelLocationDes:setString(lang(teamTableData.dingwei))
+    
+    local showSkill = self._teamModel:getTeamSkillShowSort(teamData, true)
+    local skillList = self._team._skill
     local dazhaoImg = self:getUI("bg.layer.layer_team.layer_right.team_info_2.dazhao")
+    local iconScale = 0.8
+    if #showSkill == 5 then
+        skillList = self._team._skill1
+        dazhaoImg = self:getUI("bg.layer.layer_team.layer_right.team_info_3.dazhao")
+        iconScale = 0.7
+        self._team._teamInfo:setVisible(false)
+        self._team._teamInfo1:setVisible(true)
+    end
+
     dazhaoImg:setZOrder(10)
     dazhaoImg:setVisible(false)
-    for i = 1, 4 do
-        local iconParent = self._team._skill[i]._icon
-        local labelName = self._team._skill[i]._name
-        local labelLevel = self._team._skill[i]._level
-        local imageLocked = self._team._skill[i]._locked
-        local skillLevel = teamData["sl" .. i]
-        local skillType = teamOwnSkillData[i][1]
-        local skillId = teamOwnSkillData[i][2]
+    for i = 1, #showSkill do
+        local showSkillIndex = showSkill[i]
+        local iconParent = skillList[i]._icon
+        local labelName = skillList[i]._name
+        local labelLevel = skillList[i]._level
+        local imageLocked = skillList[i]._locked
+        local skillLevel = teamData["sl" .. showSkillIndex] or 0
+        local skillType = teamOwnSkillData[showSkillIndex][1]
+        local skillId = teamOwnSkillData[showSkillIndex][2]
         local skillTableData = SkillUtils:getTeamSkillByType(skillId, skillType)
         local icon = IconUtils:createTeamSkillIconById({teamSkill = skillTableData, teamData = teamData, level = skillLevel, eventStyle = 1})
-        icon:setScale(0.8)
+        icon:setScale(iconScale)
         icon:setPosition(cc.p(-5, -5))
         iconParent:addChild(icon)
         labelName:setString(lang(skillTableData.name))
@@ -2012,6 +2388,22 @@ function NewFormationDescriptionView:updateAdventureTeamInformation()
         if skillTableData.dazhao and skillTableData.dazhao == 1 then 
             dazhaoImg:setVisible(true)  
             dazhaoImg:setPosition(iconParent:getPositionX()+18, iconParent:getPositionY()+64)         
+        end
+
+        local lingyuImg = iconParent:getChildByFullName("lingyuImg")
+        if lingyuImg then
+            lingyuImg:setVisible(false)
+        end
+        if skillTableData.lingyu and skillTableData.lingyu == 1 then
+            if not lingyuImg then
+                lingyuImg = ccui.ImageView:create()
+                lingyuImg:loadTexture("label_big_skill_lingyu.png", 1)
+                lingyuImg:setPosition(15, iconParent:getContentSize().height - 15)
+                lingyuImg:setRotation(-25)
+                iconParent:addChild(lingyuImg)
+                lingyuImg:setScale(0.85)
+            end
+            lingyuImg:setVisible(true)
         end
     end
 end
@@ -2039,11 +2431,11 @@ function NewFormationDescriptionView:updateCrossPKTeamInformation()
     local steam = TeamUtils.getNpcTableValueByTeam(teamTableData, "steam")
     local useless1 = nil
     local useless2 = nil
-    if isAwaking then
-        teamName, useless1, useless2, steam = TeamUtils:getTeamAwakingTab(teamData,self._changedId)
-    end
 
-    self._team._layerClass:setBackGroundImage(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+    teamName, useless1, useless2, steam = TeamUtils:getTeamAwakingTab(teamData,self._changedId)
+    
+    local className = TeamUtils:getClassIconNameByTeamD(teamData, "classlabel", teamTableData, true)
+    self._team._layerClass:setBackGroundImage(IconUtils.iconPath .. className .. ".png", 1)
     TeamUtils.showTeamLabelTip(self._team._layerClass, 7, teamData.teamId)
     local quality = self._teamModel:getTeamQualityByStage(teamData.stage)
     self._team._labelName:setColor(UIUtils.colorTable["ccColorQuality" .. quality[1]])
@@ -2102,22 +2494,35 @@ function NewFormationDescriptionView:updateCrossPKTeamInformation()
 
     self._team._labelGroupDes:setString(lang(tab:Race(teamTableData.race[1]).name))
     self._team._labelNumDes:setString((6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")) * (6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")))
-    self._team._labelZiZhiDes:setString(12 + teamTableData.zizhi)
+    self._team._labelZiZhiDes:setString(self._modelMgr:getModel("TeamModel"):getTeamZiZhiText(teamTableData.zizhi))
     self._team._labelLocationDes:setString(lang(teamTableData.dingwei))
+    
+    local showSkill = self._teamModel:getTeamSkillShowSort(teamData, true)
+    local skillList = self._team._skill
     local dazhaoImg = self:getUI("bg.layer.layer_team.layer_right.team_info_2.dazhao")
+    local iconScale = 0.8
+    if #showSkill == 5 then
+        skillList = self._team._skill1
+        dazhaoImg = self:getUI("bg.layer.layer_team.layer_right.team_info_3.dazhao")
+        iconScale = 0.7
+        self._team._teamInfo:setVisible(false)
+        self._team._teamInfo1:setVisible(true)
+    end
+
     dazhaoImg:setZOrder(10)
     dazhaoImg:setVisible(false)
-    for i = 1, 4 do
-        local iconParent = self._team._skill[i]._icon
-        local labelName = self._team._skill[i]._name
-        local labelLevel = self._team._skill[i]._level
-        local imageLocked = self._team._skill[i]._locked
-        local skillLevel = teamData["sl" .. i]
-        local skillType = teamOwnSkillData[i][1]
-        local skillId = teamOwnSkillData[i][2]
+    for i = 1, #showSkill do
+        local showSkillIndex = showSkill[i]
+        local iconParent = skillList[i]._icon
+        local labelName = skillList[i]._name
+        local labelLevel = skillList[i]._level
+        local imageLocked = skillList[i]._locked
+        local skillLevel = teamData["sl" .. showSkillIndex] or 0
+        local skillType = teamOwnSkillData[showSkillIndex][1]
+        local skillId = teamOwnSkillData[showSkillIndex][2]
         local skillTableData = SkillUtils:getTeamSkillByType(skillId, skillType)
         local icon = IconUtils:createTeamSkillIconById({teamSkill = skillTableData, teamData = teamData, level = skillLevel, eventStyle = 1})
-        icon:setScale(0.8)
+        icon:setScale(iconScale)
         icon:setPosition(cc.p(-5, -5))
         iconParent:addChild(icon)
         labelName:setString(lang(skillTableData.name))
@@ -2127,6 +2532,22 @@ function NewFormationDescriptionView:updateCrossPKTeamInformation()
         if skillTableData.dazhao and skillTableData.dazhao == 1 then 
             dazhaoImg:setVisible(true)  
             dazhaoImg:setPosition(iconParent:getPositionX()+18, iconParent:getPositionY()+64)         
+        end
+
+        local lingyuImg = iconParent:getChildByFullName("lingyuImg")
+        if lingyuImg then
+            lingyuImg:setVisible(false)
+        end
+        if skillTableData.lingyu and skillTableData.lingyu == 1 then
+            if not lingyuImg then
+                lingyuImg = ccui.ImageView:create()
+                lingyuImg:loadTexture("label_big_skill_lingyu.png", 1)
+                lingyuImg:setPosition(15, iconParent:getContentSize().height - 15)
+                lingyuImg:setRotation(-25)
+                iconParent:addChild(lingyuImg)
+                lingyuImg:setScale(0.85)
+            end
+            lingyuImg:setVisible(true)
         end
     end
 end
@@ -2146,7 +2567,8 @@ function NewFormationDescriptionView:updateClimbTowerTeamInformation()
     ]]
     local teamOwnSkillData = TeamUtils.getNpcTableValueByTeam(teamTableData, "skill")
 
-    self._team._layerClass:setBackGroundImage(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+    local className = TeamUtils:getNpcClassName(teamTableData)
+    self._team._layerClass:setBackGroundImage(IconUtils.iconPath .. className .. ".png", 1)
     TeamUtils.showTeamLabelTip(self._team._layerClass, 7, teamTableData.id)
 
     -- 增加觉醒判断
@@ -2233,7 +2655,7 @@ function NewFormationDescriptionView:updateClimbTowerTeamInformation()
 
     self._team._labelGroupDes:setString(lang(tab:Race(teamTableData.race[1]).name))
     self._team._labelNumDes:setString((6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")) * (6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")))
-    self._team._labelZiZhiDes:setString(12 + teamTableData.zizhi or 0)
+    self._team._labelZiZhiDes:setString(self._modelMgr:getModel("TeamModel"):getTeamZiZhiText(teamTableData.zizhi or 0))
     self._team._labelLocationDes:setString(lang(teamTableData.dingwei))
     local dazhaoImg = self:getUI("bg.layer.layer_team.layer_right.team_info_2.dazhao")
     dazhaoImg:setZOrder(10)
@@ -2265,6 +2687,22 @@ function NewFormationDescriptionView:updateClimbTowerTeamInformation()
         if skillTableData.dazhao and skillTableData.dazhao == 1 then 
             dazhaoImg:setVisible(true)  
             dazhaoImg:setPosition(iconParent:getPositionX()+18, iconParent:getPositionY()+64)         
+        end
+
+        local lingyuImg = iconParent:getChildByFullName("lingyuImg")
+        if lingyuImg then
+            lingyuImg:setVisible(false)
+        end
+        if skillTableData.lingyu and skillTableData.lingyu == 1 then
+            if not lingyuImg then
+                lingyuImg = ccui.ImageView:create()
+                lingyuImg:loadTexture("label_big_skill_lingyu.png", 1)
+                lingyuImg:setPosition(15, iconParent:getContentSize().height - 15)
+                lingyuImg:setRotation(-25)
+                iconParent:addChild(lingyuImg)
+                lingyuImg:setScale(0.85)
+            end
+            lingyuImg:setVisible(true)
         end
     end
 end
@@ -2423,7 +2861,8 @@ function NewFormationDescriptionView:updateHeroInformation()
     local attrData = BattleUtils.getHeroAttributes(clone(heroData))
     local skinAtt = self._heroModel:getHeroSkinAttr()
     local changeMap = {[1] = "atk",[2] = "def", [3]="int",[4] = "ack"}
-    
+    local starAttr = self._modelMgr:getModel("UserModel"):getStarHeroAttr() or {}
+    local starAttrKey = {[1] = "110",[2] = "113", [3]="116",[4] = "119"}
     -- 全局英雄属性
     -- 1234 攻防智知
     for i=1,4 do
@@ -2437,7 +2876,7 @@ function NewFormationDescriptionView:updateHeroInformation()
     for i=1,4 do
         local attValue = infoPanel:getChildByFullName("att" .. i ..".attTxt")
         if attrData[changeMap[i]] then
-            attValue:setString(string.format("%.01f",attrData[changeMap[i]]))
+            attValue:setString(string.format("%.01f",attrData[changeMap[i]] + (starAttr[starAttrKey[i]] or starAttr[tonumber(starAttrKey[i])] or 0) ))
         else
             -- print("=========heroDetail hAb===========",i)
             attValue:setString(0)
@@ -2461,6 +2900,136 @@ function NewFormationDescriptionView:updateHeroInformation()
         self:updateHeroSkillDetail1(heroTableData, heroData)
     end    
     
+end
+
+function NewFormationDescriptionView:updateStakeAtk1TeamInformation(  )
+    -- print("NewFormationDescriptionView:updateStakeAtk1TeamInformation")
+    self._team._layer:setVisible(true)
+    self._title:setString("兵团信息")
+    self._hero._layer:setVisible(false)
+
+    local teamTableData = clone(tab:Npc(self._iconId))
+    if not teamTableData then print("invalid team icon id", self._iconId) end
+
+    local teamOwnSkillData = TeamUtils.getNpcTableValueByTeam(teamTableData, "skill")
+
+    self._team._layerClass:setBackGroundImage(IconUtils.iconPath .. TeamUtils.getNpcTableValueByTeam(teamTableData, "classlabel") .. ".png", 1)
+    TeamUtils.showTeamLabelTip(self._team._layerClass, 7, teamTableData.id)
+    local quality = self._teamModel:getTeamQualityByStage(teamTableData.stage)
+    self._team._labelName:setColor(UIUtils.colorTable["ccColorQuality" .. quality[1]])
+    self._team._labelName:setString(lang(teamTableData.name) .. (0 == quality[2] and "" or  "+" .. quality[2]))
+
+    local isAwaking, awakingLvl = 1 == teamTableData.jx, teamTableData.jxLv
+    for i = 1, 6 do
+        self._team._star[i]._disable:setVisible(false)
+        local imgName = ""
+        if i <= teamTableData.star then
+            imgName = "globalImageUI6_star1.png"
+            if isAwaking and i <= awakingLvl then
+                imgName = "globalImageUI_teamskillBigStar1.png"
+            end
+        else            
+            imgName = "globalImageUI6_star2.png"
+            if isAwaking and i <= awakingLvl then
+                imgName = "globalImageUI_teamskillBigStar2.png"
+            end
+        end
+
+        self._team._star[i]._normal:loadTexture(imgName,1)
+    end
+
+    if isAwaking then
+        teamTableData.ast = 3
+        teamTableData.aLvl = awakingLvl
+        teamTableData.tree = {
+            b1 = teamTableData.jxSkill1, 
+            b2 = teamTableData.jxSkill2, 
+            b3 = teamTableData.jxSkill3
+        }
+        teamTableData.npcId = self._iconId
+        teamTableData.teamId = self._iconId
+    end
+
+    local offsetX , offsetY = 0,0
+    if teamTableData.xiaoren then
+        offsetX , offsetY  = tonumber(teamTableData.xiaoren[1]) ,tonumber(teamTableData.xiaoren[2])
+    end
+    self._steamFileName = "asset/uiother/steam/"..TeamUtils.getNpcTableValueByTeam(teamTableData, "steam")..".png"
+    local teamBody = ccui.ImageView:create(self._steamFileName)
+    teamBody:setAnchorPoint(cc.p(0.5, 0.1))
+    --teamBody:setRotation3D(cc.Vertex3F(0, 180, 0))
+    teamBody:setScale(NewFormationDescriptionView.kTeamScale)
+    teamBody:setPosition(self._team._layerBody:getContentSize().width / 2+offsetX, self._team._layerBody:getContentSize().height / 4.5+offsetY)
+    self._team._layerBody:addChild(teamBody)
+
+    --  team  race$cs   data[1]   race表 1，2，3，4
+    local image_body_bg = self:getUI("bg.layer.layer_team.layer_left.layer_body.image_body_bg")
+    local receData = teamTableData.race
+    local race = tab:Race(receData[1]).pic
+    image_body_bg:loadTexture("asset/uiother/race/race_" .. race ..".png")
+    local image_body_bottom = self:getUI("bg.layer.layer_team.layer_left.layer_body.image_body_bottom")
+    if image_body_bottom then
+        local filePath = "asset/uiother/dizuo/teamBgDizuo101.png"
+        if receData[1] then
+            filePath = "asset/uiother/dizuo/teamBgDizuo" .. receData[1] .. ".png"
+            if not cc.FileUtils:getInstance():isFileExist(filePath) then
+                filePath = "asset/uiother/dizuo/teamBgDizuo101.png"
+            end
+        end
+        image_body_bottom:loadTexture(filePath, 0)
+    end
+
+    self._team._labelFightScore:setVisible(true)
+    self._team._labelFightScore:setString("a" .. teamTableData.score)
+
+    self._team._labelLocked:setVisible(false)
+
+    self._team._labelGroupDes:setString(lang(tab:Race(teamTableData.race[1]).name))
+    self._team._labelNumDes:setString((6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")) * (6 - TeamUtils.getNpcTableValueByTeam(teamTableData, "volume")))
+    self._team._labelZiZhiDes:setString(self._modelMgr:getModel("TeamModel"):getTeamZiZhiText(teamTableData.zizhi or 0))
+    self._team._labelLocationDes:setString(lang(teamTableData.dingwei))
+    local dazhaoImg = self:getUI("bg.layer.layer_team.layer_right.team_info_2.dazhao")
+    dazhaoImg:setZOrder(10)
+    dazhaoImg:setVisible(false)
+    for i = 1, 4 do
+        local iconParent = self._team._skill[i]._icon
+        local labelName = self._team._skill[i]._name
+        local labelLevel = self._team._skill[i]._level
+        local imageLocked = self._team._skill[i]._locked
+        local skillLevel = teamTableData.sl[i]
+        local skillType = teamOwnSkillData[i][1]
+        local skillId = teamOwnSkillData[i][2]
+        local skillTableData = SkillUtils:getTeamSkillByType(skillId, skillType)
+        local icon = IconUtils:createTeamSkillIconById({teamSkill = skillTableData, teamData = teamTableData, level = skillLevel, eventStyle = 1})
+        icon:setScale(0.8)
+        icon:setPosition(cc.p(-5, -5))
+        iconParent:addChild(icon)
+        labelName:setString(lang(skillTableData.name))
+        labelLevel:setVisible(skillLevel > 0)
+        imageLocked:setVisible(skillLevel <= 0)
+        labelLevel:setString("Lv." .. skillLevel)
+        
+        if skillTableData.dazhao and skillTableData.dazhao == 1 then 
+            dazhaoImg:setVisible(true)  
+            dazhaoImg:setPosition(iconParent:getPositionX()+18, iconParent:getPositionY()+64)         
+        end
+
+        local lingyuImg = iconParent:getChildByFullName("lingyuImg")
+        if lingyuImg then
+            lingyuImg:setVisible(false)
+        end
+        if skillTableData.lingyu and skillTableData.lingyu == 1 then
+            if not lingyuImg then
+                lingyuImg = ccui.ImageView:create()
+                lingyuImg:loadTexture("label_big_skill_lingyu.png", 1)
+                lingyuImg:setPosition(15, iconParent:getContentSize().height - 15)
+                lingyuImg:setRotation(-25)
+                iconParent:addChild(lingyuImg)
+                lingyuImg:setScale(0.85)
+            end
+            lingyuImg:setVisible(true)
+        end
+    end
 end
 
 --[[
@@ -2556,7 +3125,7 @@ function NewFormationDescriptionView:updateHeroSkillDetail2(heroTableData,heroDa
         if not level then
             level = 1
         end
-        if i == 5 then
+        if i == 5 and self._iconType ~= NewFormationIconView.kIconTypeClimbTowerHero then
             local heroDataC = clone(heroData)
             local sid = heroDataC.slot and heroDataC.slot.sid and tonumber(heroDataC.slot.sid)
             if sid and sid ~= 0 then
@@ -4625,6 +5194,11 @@ function NewFormationDescriptionView:updateClimbTowerHeroInformation()
         self:updateHeroSkillDetail1(heroTableData, heroData)
     end 
 end
+
+function NewFormationDescriptionView:updateStakeAtk1HeroInformation(  )
+    
+end
+
 
 return NewFormationDescriptionView
 

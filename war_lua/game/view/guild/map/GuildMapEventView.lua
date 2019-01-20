@@ -80,7 +80,7 @@ function GuildMapEventView:onInit()
     local event = self:getUI("event1_1")
     event:setVisible(false)
 	
-	for i=26, 28 do
+	for i=26, 29 do
 		local event = self:getUI("event"..i)
 		if event then
 			event:setVisible(false)
@@ -472,7 +472,8 @@ function GuildMapEventView:event5Plan3()
     avatarBg:removeAllChildren()
 
     -- 头像
-    local avatar = IconUtils:createHeadIconById({avatar = holdUserInfo.avatar,level = holdUserInfo.lvl , tp = 4,avatarFrame = holdUserInfo["avatarFrame"]})   --,tp = 2
+    local headP = {avatar = holdUserInfo.avatar,level = holdUserInfo.lvl , tp = 4,avatarFrame = holdUserInfo["avatarFrame"], plvl = holdUserInfo.plvl}
+    local avatar = IconUtils:createHeadIconById(headP)   --,tp = 2
     avatarBg:addChild(avatar)
 
 
@@ -1339,7 +1340,7 @@ function GuildMapEventView:activeEvent7()
         enemyPanel:setVisible(true)
         local x = 0
         for k,v in pairs(thisEle.hadrob) do
-            local avatar = IconUtils:createHeadIconById({avatar = v.avatar, level = v.lvl , tp = 1, avatarFrame = v.avatarFrame})   --,tp = 2
+            local avatar = IconUtils:createHeadIconById({avatar = v.avatar, level = v.lvl , tp = 1, avatarFrame = v.avatarFrame, plvl = v.plvl})   --,tp = 2
             avatar:setPosition(x, 5)
             avatar:setAnchorPoint(0, 0)
             enemyPanel:addChild(avatar)
@@ -2102,6 +2103,91 @@ function GuildMapEventView:onInit27()
 		taskPanel:setVisible(true)
 		rewardPanel:setVisible(false)
 	end
+end
+
+--[[
+--! @function onInit29
+--! @desc 个人点监狱，直接领取奖励
+--! @return 
+--]]
+
+function GuildMapEventView:onInit29()
+	local mapList = self._guildMapModel:getData().mapList
+	local userList = self._guildMapModel:getData().userList
+
+	local thisTarget = mapList[self._targetId]
+
+	local thisEle = thisTarget.my
+	if thisEle == nil or next(thisEle) == nil then 
+		self._viewMgr:showTip("数据不匹配")
+		self:closeInit()
+		return
+	end
+
+	-- 路过右侧
+	local cancelBtn = self:getUI("event29.bg.cancelBtn")
+--	cancelBtn:setVisible(false)
+	self:registerClickEvent(cancelBtn, function()
+		self:close()
+	end)
+
+	-- 左侧占领
+	local enterBtn = self:getUI("event29.bg.enterBtn")
+--	enterBtn:setVisible(false)
+
+	local tipLab = self:getUI("event29.bg.rewardBg.tipLab")
+	tipLab:setFontName(UIUtils.ttfName)
+	tipLab:setColor(UIUtils.colorTable.ccUIBaseTextColor2)
+
+	local infoBg = self:getUI("event29.bg.infoBg")
+	if self._sysGuildMapThing.art1 ~= nil then
+		if infoBg.tempPic == nil then 
+			local tempPic = cc.Sprite:createWithSpriteFrameName(self._sysGuildMapThing.art1 .. ".png")
+			tempPic:setAnchorPoint(0.5, 0)
+			tempPic:setPosition(cc.p(infoBg:getContentSize().width * 0.5 - 20, 30))
+			infoBg:addChild(tempPic)
+			infoBg.tempPic = tempPic
+		end
+	end
+
+	local userData = self._modelMgr:getModel("UserModel"):getData()
+	local reward = {}
+
+	for i=1, 6 do
+		local award = self._sysGuildMapThing["award" .. i]
+		if award ~= nil  and userData.lvl >= award[1] and userData.lvl <= award[2] then 
+			for k,v in pairs(award[3]) do
+				reward[#reward + 1] = v 
+			end
+		end
+	end
+	local rewardBg = self:getUI("event29.bg.rewardBg")
+
+	if rewardBg.backNode ~= nil then rewardBg.backNode:removeFromParent() end
+	-- 奖励
+	local GuildMapUtils = require "game.view.guild.map.GuildMapUtils"
+	local backNode = GuildMapUtils:showItems(reward)
+	backNode:setAnchorPoint(0, 0.5)
+	backNode:setPosition(15, rewardBg:getContentSize().height/2)
+	rewardBg:addChild(backNode)
+	rewardBg.backNode = backNode
+	if rewardBg.positionY == nil then
+		rewardBg.positionY = rewardBg:getPositionY()
+	end
+	rewardBg:setPositionY(rewardBg.positionY + 30)
+	self:registerClickEvent(enterBtn, function()
+		self._serverMgr:sendMsg("GuildMapServer", "roleGetReward", {tagPoint = self._targetId}, true, {}, function(result)
+			if result == nil then 
+				return
+			end      
+			if self._callback ~= nil then 
+				self._callback(result)
+			end
+			if self.close ~= nil then
+				self:close()
+			end
+		end)
+	end)
 end
 
 function GuildMapEventView:acTent()

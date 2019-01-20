@@ -8,6 +8,43 @@
 
 local GuildMapLayer = require("game.view.guild.map.GuildMapLayer")
 
+function GuildMapLayer:showEvent30(inParam)
+	self._viewMgr:lock(-1)
+	local anim = mcMgr:createViewMC("wabaodonghua_lianmengxunbao", false, true, function (  )
+		local eleData = self._guildMapModel:getShowElementDataByGridKey(inParam.targetId)
+		inParam.treasureType = eleData.tType
+		if inParam.treasureType==2 then
+			inParam.treasureData = eleData
+		end
+		inParam.treasureEventKey = eleData.tmKey
+		self._viewMgr:showDialog("guild.map.GuildMapTreasureEventDialog", inParam, true)
+		self._viewMgr:unlock()
+	end)
+	anim:setPosition(inParam.targetPos.x, inParam.targetPos.y)
+	self._bgSprite:addChild(anim)
+end
+
+function GuildMapLayer:showEvent29(inParam)
+	inParam.callback = function(result)
+		self:listenModelDelEleCur()
+		DialogUtils.showGiftGet( {
+			gifts = result["reward"], 
+			callback = function()
+				if self.showEvent1 == nil then
+					return
+				end
+				self._viewMgr:lock(-1)
+				local anim = mcMgr:createViewMC("ziyuanxiaoshi_guildmapzhanling", false, true)
+					anim:addCallbackAtFrame(8, function() 
+							self._viewMgr:unlock()
+						end)
+				anim:setPosition(inParam.targetPos.x, inParam.targetPos.y)
+				self._bgSprite:addChild(anim, 1000)
+			end
+		})
+	end
+	self._viewMgr:showDialog("guild.map.GuildMapEventView", inParam, true)
+end
 
 function GuildMapLayer:showEvent28(inParam)
 	UIUtils:reloadLuaFile("guild.map.GuildMapOfficerFuncDialog")

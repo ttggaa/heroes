@@ -286,4 +286,47 @@ function SpellBooksModel:isNewGift(nextId)
 	end
 end
 
+--获取法术祈愿 热点法术数据
+function SpellBooksModel:getHotSpotData()
+    local curServerTime = self._userModel:getCurServerTime()
+    local serverWeek = self._userModel:getData().week
+	local beginTime,endTime = TimeUtils.getWeekBeginAndEnd(curServerTime)
+	local hour = tonumber(TimeUtils.date("%H",curServerTime))
+	if hour < 5 then
+		curServerTime = curServerTime - 86400
+	end
+	local year = TimeUtils.date("%Y",curServerTime)
+	local dmonth = TimeUtils.date("%W",curServerTime)
+	local id = serverWeek or tonumber(string.format("%02d%02d",tonumber(year),tonumber(dmonth)))
+	local hotData1 = tab:ScrollHotSpot(tonumber(id))
+	local giftId = hotData1 and hotData1.scrollTemplate or 1
+	local giftData = tab:ScrollTemplate(giftId).art
+	return giftData
+end
+
+--法术祈愿热点法术 红点
+function SpellBooksModel:getHotSpotFlag()
+	local giftData = self:getHotSpotData()
+	if giftData == nil then return false end
+	return self:isFirstEnter()
+end
+
+
+--判断当天是否是第一次显示
+function SpellBooksModel:isFirstEnter()
+    local curServerTime = self._userModel:getCurServerTime()
+    local timeDate
+    local tempCurDayTime = TimeUtils.getIntervalByTimeString(TimeUtils.getDateString(curServerTime,"%Y-%m-%d 05:00:00"))
+    if curServerTime > tempCurDayTime then
+        timeDate = TimeUtils.getDateString(curServerTime,"%Y%m%d")
+    else
+        timeDate = TimeUtils.getDateString(curServerTime - 86400,"%Y%m%d")
+    end
+    local tempdate = SystemUtils.loadAccountLocalData("SKILLCARDTAKE_IS_SHOWED_ITEM")
+    if tempdate ~= timeDate then
+        return true
+    end
+    return false
+end
+
 return SpellBooksModel

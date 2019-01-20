@@ -36,62 +36,62 @@ function TimeUtils.getDateString(seconds,dataformat)
 end
 
 function TimeUtils.getStringTimeForInt(timeInt)
-	if(tonumber(timeInt) <= 0)then
-		return "00:00:00"
-	elseif(timeInt/60 >= 60)then
-		return string.format("%.2d:%.2d:%.2d",timeInt/3600,(timeInt/60)%60,timeInt%60)
-	elseif(timeInt >= 60)then
-		return string.format("00:%.2d:%.2d",(timeInt/60)%60,timeInt%60)
-	else
-		return string.format("00:00:%.2d",timeInt%60)
-	end
+    if(tonumber(timeInt) <= 0)then
+        return "00:00:00"
+    elseif(timeInt/60 >= 60)then
+        return string.format("%.2d:%.2d:%.2d",timeInt/3600,(timeInt/60)%60,timeInt%60)
+    elseif(timeInt >= 60)then
+        return string.format("00:%.2d:%.2d",(timeInt/60)%60,timeInt%60)
+    else
+        return string.format("00:00:%.2d",timeInt%60)
+    end
 end
 
 function TimeUtils.getTimeStringHMS(timeInt)
-	if(tonumber(timeInt) <= 0)then
-		return "00h00m00s"
-	else
-		return string.format("%02dh%02dm%02ds", math.floor(timeInt/(60*60)), math.floor((timeInt/60)%60), timeInt%60)
-	end
+    if(tonumber(timeInt) <= 0)then
+        return "00h00m00s"
+    else
+        return string.format("%02dh%02dm%02ds", math.floor(timeInt/(60*60)), math.floor((timeInt/60)%60), timeInt%60)
+    end
 end
 
 --分别获取 时 分 秒
 function TimeUtils.getTimeStringSplitHMS(timeInt)
-	if(tonumber(timeInt) <= 0)then
-		return "00","00","00"
-	else
-		return string.format("%02d", math.floor(timeInt/(60*60))), 
-		string.format("%02d", math.floor((timeInt/60)%60)),
-		string.format("%02d", math.floor(timeInt%60))  
-	end
+    if(tonumber(timeInt) <= 0)then
+        return "00","00","00"
+    else
+        return string.format("%02d", math.floor(timeInt/(60*60))), 
+        string.format("%02d", math.floor((timeInt/60)%60)),
+        string.format("%02d", math.floor(timeInt%60))  
+    end
 end
 
 -- 将一个时间数转换成"00:00:00"格式
 function TimeUtils.getTimeString(timeInt)
-	if(tonumber(timeInt) <= 0)then
-		return "00:00:00"
-	else
-		return string.format("%02d:%02d:%02d", math.floor(timeInt/(60*60)), math.floor((timeInt/60)%60), timeInt%60)
-	end
+    if(tonumber(timeInt) <= 0)then
+        return "00:00:00"
+    else
+        return string.format("%02d:%02d:%02d", math.floor(timeInt/(60*60)), math.floor((timeInt/60)%60), timeInt%60)
+    end
 end
 
 
 -- 将一个时间数转换成"00:00"格式(分秒)
 function TimeUtils.getTimeStringMS(timeInt)
-	if(tonumber(timeInt) <= 0)then
-		return "00:00"
-	else
-		return string.format("%02d:%02d", math.floor((timeInt/60)%60), timeInt%60)
-	end
+    if(tonumber(timeInt) <= 0)then
+        return "00:00"
+    else
+        return string.format("%02d:%02d", math.floor((timeInt/60)%60), timeInt%60)
+    end
 end
 
 -- 将一个时间数转换成"00时00分00秒"格式(小时分)
 function TimeUtils.getTimeStringHM(timeInt)
-	if(tonumber(timeInt) <= 0)then
-		return "00:00"
-	else
-		return string.format("%02d:%02d", math.floor(timeInt/(60*60)), math.floor((timeInt/60)%60))
-	end
+    if(tonumber(timeInt) <= 0)then
+        return "00:00"
+    else
+        return string.format("%02d:%02d", math.floor(timeInt/(60*60)), math.floor((timeInt/60)%60))
+    end
 end
 
 
@@ -119,11 +119,11 @@ end
 
 -- 将一个时间数转换成"00时00分00秒"格式
 function TimeUtils.getTimeStringFont(timeInt)
-	if(tonumber(timeInt) <= 0)then
-		return "00时00分00秒"
-	else
-		return string.format("%02d时%02d分%02d秒", math.floor(timeInt/(60*60)), math.floor((timeInt/60)%60), timeInt%60)
-	end
+    if(tonumber(timeInt) <= 0)then
+        return "00时00分00秒"
+    else
+        return string.format("%02d时%02d分%02d秒", math.floor(timeInt/(60*60)), math.floor((timeInt/60)%60), timeInt%60)
+    end
 end
 
 -- nGenTime: 产生时间戳（也可以是一个未来的时间，比如CD时间戳）
@@ -142,13 +142,13 @@ end
 --offset是偏移量,例如凌晨4点:4*60*60
 --return type is integer, 0--当天, n--不在同一天,相差n天
 function TimeUtils.getDifferDay(timeInt, offset)
-	timeInt = tonumber(timeInt or 0)
-	offset = tonumber(offset or 0)
+    timeInt = tonumber(timeInt or 0)
+    offset = tonumber(offset or 0)
     local curTime = tonumber(os.time()) + offset
     if(os.date("%j",curTime) == 1 and os.date("%j",timeInt - offset) ~= 1)then
-    	return os.date("%j",curTime) - (os.date("%j",timeInt - offset) - os.date("%j",curTime-24*60*60))
+        return os.date("%j",curTime) - (os.date("%j",timeInt - offset) - os.date("%j",curTime-24*60*60))
     else--if(os.date("%j",curTime) ~= os.date("%j",timeInt - offset))then
-    	return os.date("%j",curTime) - os.date("%j",timeInt - offset)
+        return os.date("%j",curTime) - os.date("%j",timeInt - offset)
     end
 end
 
@@ -176,12 +176,12 @@ end
 
 --给一个时间如:153000,得到今天15:30:00的时间戳 
 -- function getIntervalByTime( time )
--- 	local curTime = BTUtil:getSvrTimeInterval()
--- 	local temp = os.date("*t",curTime)
--- 	time = string.format("%06d", time)
+--  local curTime = BTUtil:getSvrTimeInterval()
+--  local temp = os.date("*t",curTime)
+--  time = string.format("%06d", time)
 
--- 	local h,m,s = string.match(time, "(%d%d)(%d%d)(%d%d)" )
--- 	local timeString = temp.year .."-".. temp.month .."-".. temp.day .." ".. h ..":".. m ..":".. s
+--  local h,m,s = string.match(time, "(%d%d)(%d%d)(%d%d)" )
+--  local timeString = temp.year .."-".. temp.month .."-".. temp.day .." ".. h ..":".. m ..":".. s
 --     local timeInt = TimeUtil.TimeUtils.getIntervalByTimeString(timeString)
 
 --     return timeInt
@@ -199,17 +199,17 @@ end
 
 
 function TimeUtils.getDaysOfMonth(seconds)
-	local year = TimeUtils.getDateString(seconds, "%Y")
-	local month = TimeUtils.getDateString(seconds, "%m")
-	return os.date("%d",os.time({year= year,month= month+1,day=0}))
+    local year = TimeUtils.getDateString(seconds, "%Y")
+    local month = TimeUtils.getDateString(seconds, "%m")
+    return os.date("%d",os.time({year= year,month= month+1,day=0}))
 end
 
 function TimeUtils:getTimeDisByFormat(timeDis)
-	if not timeDis then
+    if not timeDis then
         return
     end
    
-   	local timeDes = ""
+    local timeDes = ""
     if timeDis > 86400 then
         timeDes = math.floor(timeDis/86400) .. "天"
     elseif timeDis > 3600 then
@@ -300,6 +300,12 @@ local VALENTINE_END = "2018-2-15 05:00:00"
 -- 白色情人节
 local WHITE_VALENTINE_BEGIN = "2018-3-14 05:00:00"
 local WHITE_VALENTINE_END = "2018-3-15 05:00:00"
+--周年庆
+local YEAR_BEGIN = "2018-6-20 05:00:00"
+local YEAR_END = "2018-7-4 05:00:00"
+
+local XMAX_BEGIN = "2018-12-24 05:00:00"
+local XMAX_END = "2019-1-1 05:00:00"
 
 -- 计算主城的时间
 function TimeUtils.reCalculateMainViewTimeType()
@@ -308,6 +314,13 @@ function TimeUtils.reCalculateMainViewTimeType()
         -- 过年特效
         local time = ModelManager:getInstance():getModel("UserModel"):getCurServerTime()
         print(time,"time....",os.date("%x",time))
+
+        if (TimeUtils.getIntervalByTimeString(XMAX_BEGIN) < time and 
+            TimeUtils.getIntervalByTimeString(XMAX_END) > time) then
+            TimeUtils.mainViewVer = 4
+            return
+        end
+
         if (TimeUtils.getIntervalByTimeString(VALENTINE_BEGIN) < time and
                     TimeUtils.getIntervalByTimeString(VALENTINE_END) > time)
             or (TimeUtils.getIntervalByTimeString(WHITE_VALENTINE_BEGIN) < time and
@@ -326,14 +339,23 @@ function TimeUtils.reCalculateMainViewTimeType()
         else
             return 
         end
+
+
     end
 
     local mainViewVer
     local hour = tonumber(os.date("%H"))
     if OS_IS_WINDOWS then
-        if hour >= 10 and hour < 12 then
+        -- if hour >= 10 and hour < 12 then
+        --     mainViewVer = 1
+        -- elseif hour >= 12 and hour < 18 then
+        --     mainViewVer = 2
+        -- else
+        --     mainViewVer = 3
+        -- end
+        if hour >= 5 and hour < 17 then
             mainViewVer = 1
-        elseif hour >= 12 and hour < 18 then
+        elseif hour >= 17 and hour < 20 then
             mainViewVer = 2
         else
             mainViewVer = 3
@@ -350,11 +372,54 @@ function TimeUtils.reCalculateMainViewTimeType()
     TimeUtils.mainViewVer = mainViewVer
 end
 
+--主城活动是否开启
+TimeUtils.Valentine = 6
+TimeUtils.Year = 7
+local openDate = {
+    [TimeUtils.Valentine] = {["begin"] = "2018-2-14 05:00:00" ,["end"] = "2018-2-15 05:00:00"},
+    [TimeUtils.Year] = {["begin"] = "2018-6-20 05:00:00" ,["end"] = "2018-7-4 05:00:00"}
+}
+function TimeUtils.mainViewActIsOpen(actType)
+    local time = ModelManager:getInstance():getModel("UserModel"):getCurServerTime()
+    if tonumber(actType) == tonumber(TimeUtils.Year) then
+        if TimeUtils.getIntervalByTimeString(openDate[actType]["begin"]) < time and
+            TimeUtils.getIntervalByTimeString(openDate[actType]["end"]) > time
+        then
+            return true
+        end
+    end
+    return false
+end
+
 --[[
     计算两个时间戳的相隔天数  界限为每日5点
 ]]--
 function TimeUtils.getDiffDays(time1, time2)
     return math.abs(TimeUtils.formatTimeToFiveOclock(time2) - TimeUtils.formatTimeToFiveOclock(time1)) / 86400
+end
+
+--[[
+    获取给定周几的固定时间,参数1格式:int 1~7,参数2格式:05:00:00
+--]]
+function TimeUtils.getTimeStampWithWeekTime(timeStamp, time, week)
+    local weekBegin, weekEnd =TimeUtils.getWeekBeginAndEnd(timeStamp)
+    
+    time = string.split(time, ":")
+    local timeH = time[1]
+    local timeM = time[2]
+    local timeS = time[3]
+    
+    local weekInterval = week - 1
+    local backTime = weekBegin + weekInterval*86400
+    
+    local timeStr = TimeUtils.getDateString(backTime)
+    local date = string.split(timeStr, " ")
+    date = string.format("%s %d:%d:%d", date[1], timeH, timeM, timeS)
+    backTime = TimeUtils.getIntervalByTimeString( date )
+    
+    local timeStr = TimeUtils.getTimeStringFont1(timeStamp-backTime)
+    
+    return backTime
 end
 
 return TimeUtils

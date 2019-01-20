@@ -62,6 +62,8 @@ function GuildInView:onInit()
         end
         self._viewMgr:showDialog("guild.join.GuildInEstablishLayer")
     end)
+	
+	self:onInitQuitEvaluate()
 
 
     local quickAdd = self:getUI("bg.titleBg.quickAdd")
@@ -481,6 +483,35 @@ function GuildInView:tableNum()
     return table.nums(self._allianceListData)
 end
 
+
+--退盟评价
+function GuildInView:onInitQuitEvaluate()
+	local myLvl = self._modelMgr:getModel("UserModel"):getPlayerLevel()
+	local limitLvl = tab:Setting("G_GUILD_EXIT_LEVEL").value or 0
+	
+	local quitEvaluate = self:getUI("bg.titleBg.quitEvaluate")
+	quitEvaluate:setVisible(self._guildModel:isShowQuitEvaluate())
+	if quitEvaluate:isVisible() then
+		self:registerClickEvent(quitEvaluate, function()--退盟评价
+			local guildName = self._modelMgr:getModel("UserModel"):getLastGuildName()
+			if guildName and guildName~="" then
+				UIUtils:reloadLuaFile("guild.join.GuildEvaluateDialog")
+				self._viewMgr:showDialog("guild.join.GuildEvaluateDialog", {callback = function(isTimeOut)
+					if isTimeOut then
+						self._viewMgr:showTip("已过期")
+						quitEvaluate:setVisible(false)
+					else
+						self._viewMgr:showTip(lang("Alliance evaluation_2"))
+						quitEvaluate:setVisible(false)
+					end
+				end})
+			else
+				self._viewMgr:showTip("联盟已解散，无法评价")
+				quitEvaluate:setVisible(false)
+			end
+		end)
+	end
+end
 
 -- function GuildInView:setNavigation()
 --      self._viewMgr:showNavigation("global.UserInfoView",{hideBtn = true,hideInfo=true})

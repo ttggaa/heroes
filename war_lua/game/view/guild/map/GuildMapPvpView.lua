@@ -118,7 +118,8 @@ function GuildMapPvpView:onInit1()
     avatarBg:removeAllChildren()
 
     -- 头像
-    local avatar = IconUtils:createHeadIconById({avatar = holdUserInfo.avatar,level = holdUserInfo.lvl , tp = 4,avatarFrame = holdUserInfo["avatarFrame"]})   --,tp = 2
+    local avatar = IconUtils:createHeadIconById({avatar = holdUserInfo.avatar,level = holdUserInfo.lvl , tp = 4,
+                                                    avatarFrame = holdUserInfo["avatarFrame"], plvl = holdUserInfo.plvl})   --,tp = 2
     avatarBg:addChild(avatar)
 
 

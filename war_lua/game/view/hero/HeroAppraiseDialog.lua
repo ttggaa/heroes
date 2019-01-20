@@ -131,7 +131,7 @@ function HeroAppraiseDialog:onInit()
 
     self._heroName:setString(lang(heroData.heroname))
     self._heroDes:setString(lang("HEROLOCATION_"..self._heroID))
-    local camp = {"无","城堡","壁垒","墓园","据点","地狱","塔楼","地下城","要塞","元素"}
+    local camp = {"无","城堡","壁垒","墓园","据点","地狱","塔楼","地下城","要塞","元素","港口"}
     self._camp:setString(camp[heroData.masterytype+1] or "无")
 
 end
@@ -658,7 +658,8 @@ function HeroAppraiseDialog:updateSuggestCell(inView, param, indexId)
 	end
     name:setPositionY(90)
     level:setPositionY(90)
-    level:setString("Lv."..param.lvl)
+    local inParam = {lvlStr = "Lv." .. (param.lvl or 0), lvl = (param.lvl or 0), plvl = param.plvl, disX = 100}
+    UIUtils:adjustLevelShow(level, inParam, 1)
     if name:getContentSize().width > 60 then
         level:setPositionX(name:getPositionX()+name:getContentSize().width+40)
     else

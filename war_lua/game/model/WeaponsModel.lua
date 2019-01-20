@@ -48,7 +48,7 @@ end
  
 -- 子类覆盖此方法来存储数据
 function WeaponsModel:setData(data)
-    dump(data, "6666666========", 10)
+    -- dump(data, "6666666========", 10)
     self._data = data
     -- self._checkTipData = {}
     -- -- 匹配数据

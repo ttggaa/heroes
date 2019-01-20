@@ -418,7 +418,7 @@ function TreasureShopView:onInit()
     -- mcChengZi:setPosition(cc.p(drawFiveTextBg:getContentSize().width/2-2,drawFiveTextBg:getContentSize().height/2))
     -- self._5ChengZiMc = mcChengZi
     -- drawFiveTextBg:addChild(mcChengZi,10)
-	self:reflashUI()
+    self:reflashUI()
     self:addBgMc()
     self:addDaiJiMc()
     self:registerTimer(5,0,0, function ()
@@ -494,8 +494,8 @@ end
 
 -- 接收自定义消息
 function TreasureShopView:reflashUI(data)
-	local coinNum = self._modelMgr:getModel("UserModel"):getData().treasureCoin
-	self._spliceNum:setString(coinNum or 0)
+    local coinNum = self._modelMgr:getModel("UserModel"):getData().treasureCoin
+    self._spliceNum:setString(coinNum or 0)
     local leftCount,haveExItem,toGetNum,highToGetNum = self._tModel:countLeftNum()
     -- if haveExItem > 0 then 
     self._guide:removeChildByName("rtx")
@@ -668,6 +668,8 @@ function TreasureShopView:reflashPreBoard( )
     -- if self._prePanel then self._prePanel:setVisible(false) end
     -- if true then return end
     local nowTime = self._modelMgr:getModel("UserModel"):getCurServerTime()
+    local serverWeek = self._modelMgr:getModel("UserModel"):getData().week
+
     local weekday = tonumber(TimeUtils.date("%w",nowTime)) or 1
     local hour  = tonumber(TimeUtils.date("%H",nowTime) or 0) or 0
     local week = TimeUtils.date("%W",nowTime) or 0
@@ -691,8 +693,11 @@ function TreasureShopView:reflashPreBoard( )
     local weekEnd = TimeUtils.date("%d",nowTime+(7-weekIndex+1)*86400) or 1
     local monthEnd = TimeUtils.date("%m",nowTime+(7-weekIndex+1)*86400) or 1
     if week == 0 then week = 1 end
-    local showIndex = year .. string.format("%02d",week)
-    local showD = tab.scrollHotSpot[tonumber(showIndex)]
+    -- local showIndex = year .. string.format("%02d",week)
+    
+    local showIndex = serverWeek or year .. string.format("%02d",week)
+    print("======serverWeek=========="..serverWeek)
+    local showD = tab.scrollHotSpot[tonumber(serverWeek)]
     -- if not showD then 
     --     showD = tab.scrollHotSpot[showIndex]
     -- end

@@ -20,7 +20,8 @@ function DialogFlashLTAResult:ctor(data)
     self.buyNum = data.buyNum               --一次/十次
     self._costType = data.costType          --金币/钻石
     self._curData = data.curData            --活动结束时间
-    self._acId = tonumber(data.acId)        --兵团id
+    self._acId = tonumber(data.acId)        --活动activity_id
+    self._id = data.id                      --活动id
     local uiInfo = {   --新活动修改处
         [1051] = {
             titleAnim = "bimengxianshihunshi_bimenghunshi",
@@ -51,6 +52,31 @@ function DialogFlashLTAResult:ctor(data)
             titleAnim = "juexingdaemozhaomu_juexingdaemozhaomu",
             teamId = 507,
             itemId = 94507,
+            },
+        [1057] = {
+            titleAnim = "heilongjuexingzhaomu_heilongjuexingzhaomu",
+            teamId = 707,
+            itemId = 94707,
+            },
+        [1058] = {
+            titleAnim = "manniuhunshi_manniuhunshi",
+            teamId = 805,
+            itemId = 94805,
+            },
+        [1059] = {
+            titleAnim = "shengtanghunshi_shengtanghunshi",
+            teamId = 108,
+            itemId = 94108,
+            },
+        [1060] = {
+            titleAnim = "kuangzhanshijuexing_kuangzhanshijuexing",
+            teamId = 408,
+            itemId = 94408,
+            },
+        [1061] = {
+            titleAnim = "taitanjuexing_taitanjuexing",
+            teamId = 607,
+            itemId = 94607,
             },
         }
 
@@ -113,7 +139,7 @@ function DialogFlashLTAResult:onInit()
         --魂石上限提示
         local sysTeamD = tab.team[self._uiInfo["teamId"]]
         local _, hasNum = self._modelMgr:getModel("ItemModel"):getItemsById(sysTeamD["awakingUp"])
-        local isTiped = self._ltAwkModel:getIsTiped()
+        local isTiped = self._ltAwkModel:getIsTipedById(self._id)
 
         local function tenRecruitTip()
             local tag = SystemUtils.loadAccountLocalData("LIMIT_AWAKE_NO_WARING")
@@ -131,7 +157,7 @@ function DialogFlashLTAResult:onInit()
         end
 
         if not isTiped and hasNum >= 520 then  --不是免费 / 魂石上限
-            self._ltAwkModel:setIsTiped(true)
+            self._ltAwkModel:setIsTipedById(true, self._id)
             self._viewMgr:showDialog("global.GlobalSelectDialog",
             {   desc = lang("ac1051tips2_awake"),
                 button1 = "确定",
@@ -556,7 +582,7 @@ function DialogFlashLTAResult:closeView()
             self.callback()
         end
         self:close(true)
-        UIUtils:reloadLuaFile("flashcard.DialogFlashLTAResult")
+        UIUtils:reloadLuaFile("activity.acLimit.DialogFlashLTAResult")
     end
 end
 
@@ -636,7 +662,7 @@ function DialogFlashLTAResult:buyItemByGem(cost,num)
     else
         self._backBtn:runAction(cc.FadeOut:create(0.1))
         self._tenAginBtn:runAction(cc.FadeOut:create(0.1))
-        self._serverMgr:sendMsg("LimitItemsServer", "limitItemsLottery", {num = 10}, true, {}, function(result, errorCode)
+        self._serverMgr:sendMsg("LimitItemsServer", "limitItemsLottery", {num = 10, acId = self._id}, true, {}, function(result, errorCode)
             audioMgr:playSound("Draw")
         
             for k,v in pairs(self._itemTable) do

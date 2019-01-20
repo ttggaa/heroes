@@ -19,8 +19,6 @@ function LimitTeamsServer:onGetLimitTeamInfo(result, error)
 		return
 	end
 
-	self._teamTLModel:setIsReqed(true)
-	self._teamTLModel:setData(result)
 	self:callback(result, error)
 end
 
@@ -52,7 +50,7 @@ function LimitTeamsServer:onPushNotice(result)
 		return
 	end
 
-	self._teamTLModel:insertNotice(result)  		--限时兵团界面
+	self._teamTLModel:insertNoticeById(result)  		--限时兵团界面
 	for i,v in ipairs(result) do
 		if v["type"] and (v["type"] == 1 or v["type"] == 3) then  --整卡/招募 主界面跑马灯
 			local noticeModel = self._modelMgr:getModel("NoticeModel")

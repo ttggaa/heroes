@@ -19,12 +19,14 @@ local discountToCn = {
     "七折","八折","九折",
 }
 
+
 local titleTxt = {
     "爆款热卖",
     "每日福利",
     "优选福利",
     "至尊专享",
     "直购特惠",
+    "武器专区",
 }
 local table_insert = table.insert
 local table_nums = table.nums
@@ -39,7 +41,7 @@ function DirectShopView:ctor(param)
     self._curentBuyData = nil
     
 
-    self.tabCount = 5
+    self.tabCount = 6
     self._driectModel = self._modelMgr:getModel("DirectShopModel")
     self._isInBackGround = false
     self._aniItemList = nil
@@ -60,7 +62,7 @@ function DirectShopView:onInit()
 	self.leftStatusBar = {}
     self.redNode = {}
     self._totalData = self._modelMgr:getModel("DirectShopModel"):getData()
-    dump(self._totalData,"self._totalData===》",10)
+    -- dump(self._totalData,"self._totalData===》",10)
     local keys = {}
     for key,data in pairs (self._totalData) do 
         if table_nums(data) > 0 then
@@ -1146,6 +1148,7 @@ function DirectShopView:onBuyItem(param)
                 return
             end
 
+            self._curentBuyData.costType = "luckyCoin"
             --批量购买判断
             if leftBuyTimes > needCount then
                 --满足批量购买

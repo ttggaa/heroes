@@ -45,6 +45,12 @@ function MailBoxView:onInit()
         self:attachMent()
     end)
 
+    local onekeyDel = self:getUI("bg.onekeyDel")
+    self._onekeyDel = onekeyDel
+    self:registerClickEvent(onekeyDel, function()
+        self:deleteAllReadedMail()
+    end)
+
     self:addTableView()
 
     self:reflashUI()
@@ -127,7 +133,7 @@ function MailBoxView:tableCellAtIndex(table, idx)
     if nil == cell then
         cell = cc.TableViewCell:new()
         local mailNode = self._mailNode:clone() 
-        mailNode:setVisible(true)
+        
         mailNode:setAnchorPoint(cc.p(0,0))
         mailNode:setPosition(cc.p(1,5))
         mailNode:setName("mailNode1")
@@ -233,6 +239,7 @@ function MailBoxView:updateCell(mailNode, param, indexId)
             param.ser = lang(tId.sender)
             -- print(param.til, param.ser)
         end
+        mailNode:setVisible(true)
         local str = param.til or ""
 
         -- 限定标题字数
@@ -299,7 +306,7 @@ function MailBoxView:updateCell(mailNode, param, indexId)
             end
             local level = tId.level or 1
             if level >= 1 and level <= 3 then
-                level = tId.level
+                level = tId.level or 1
             else
                 level = 1
             end
@@ -359,11 +366,18 @@ function MailBoxView:updateCell(mailNode, param, indexId)
                                 content = self:split(content, k, v)
                             end
                         end
-                    -- elseif tonumber(param.tId) == 31 then
-                    --     local month = TimeUtils.getDateString(param.st + 86400,"%m")
-                    --     local day = TimeUtils.getDateString(param.st + 86400,"%d")
-                    --     local timer = month .. "月" .. day .. "日 20:00:00"
-                    --     content = string.gsub(content, "{$offerdate}", timer) 
+                    elseif ttid == 93 then
+                        for k,v in pairs(tempData) do
+                            if k == "$team1" then
+                                local name = lang(tab.guessTeam[v]["teamID"])
+                                content = self:split(content, k, name)
+                            elseif k == "$team2" then
+                                local name = lang(tab.guessTeam[v]["teamID"])
+                                content = self:split(content, k, name)
+                            else
+                                content = self:split(content, k, v)
+                            end
+                        end
                     else
                         for k,v in pairs(tempData) do
                             content = self:split(content, k, v)
@@ -410,6 +424,7 @@ end
 
 function MailBoxView:reflashUI()
     self._model = self._modelMgr:getModel("MailBoxModel"):getData()
+    -- dump(self._model,"modeldata")
     local mailBg = self:getUI("bg.panelBg.Image_22")
     if #self._model == 0 then
         self._listView:setVisible(false)
@@ -418,8 +433,10 @@ function MailBoxView:reflashUI()
         local limit = 32
         if userLvl < limit then
             self._onekeyaward:setVisible(false)
+            self._onekeyDel:setVisible(false)
         else
             self._onekeyaward:setVisible(true)
+            self._onekeyDel:setVisible(true)
         end
         -- print("邮件为空")
     else
@@ -429,8 +446,10 @@ function MailBoxView:reflashUI()
         local limit = 32
         if userLvl < limit then
             self._onekeyaward:setVisible(false)
+            self._onekeyDel:setVisible(false)
         else
             self._onekeyaward:setVisible(true)
+            self._onekeyDel:setVisible(true)
         end
     end
     local count = self:getNoReadMail()
@@ -599,7 +618,7 @@ function MailBoxView:attachMent()
         self._viewMgr:showTip("暂无可领取的邮件")
         return
     end
-    dump(mailList, "count=======" .. count, 2)
+    -- dump(mailList, "count=======" .. count, 2)
     self._serverMgr:sendMsg("MailServer", "getAttachment", {mailId=mailList}, true, {}, function(result)
         self:attachMentFinish(result)
     end, function(errorId)
@@ -633,7 +652,7 @@ function MailBoxView:attachMentFinish(result)
     if not result then
         return
     end
-    dump(result, "rstu==========", 5)
+    -- dump(result, "rstu==========", 5)
     for k,v in pairs(self._saveMailList) do
         v.rec = 1
     end
@@ -656,6 +675,31 @@ function MailBoxView:attachMentFinish(result)
     end
     self._removeMailList = nil
     self._saveMailList = nil
+end
+
+function MailBoxView:deleteAllReadedMail()
+    local readNum = self._mailModel:deleteReadedMail()
+    if readNum <= 0 then
+        self._viewMgr:showTip(lang("MAILBOX_TIPS1"))
+        return
+    end
+
+    local function reqDeleteMail()
+        self._serverMgr:sendMsg("MailServer", "delUsedMail", {}, true, {}, function(result)
+            self._mailModel:setNewMail()
+            self:reflashUI()
+            end)
+    end
+  
+    self._viewMgr:showDialog("global.GlobalSelectDialog",
+        {   desc = lang("MAILBOX_TIPS2"),
+            button1 = "确定",
+            button2 = "取消", 
+            callback1 = function ()
+                reqDeleteMail()
+            end,
+            callback2 = function()
+            end})
 end
 
 return MailBoxView

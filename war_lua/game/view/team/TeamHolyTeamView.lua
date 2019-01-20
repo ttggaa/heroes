@@ -200,7 +200,6 @@ function TeamHolyTeamView:updateHolyView(  )
 		backBgNode:setScale(systeam.scaleHoly)
 	else
 		backBgNode:setScale(1)
-		self._viewMgr:showTip("team表 id:"..teamId.." 没有配置scaleHoly字段！！@吴茂炯")
 	end
     backBgNode:setPosition(cc.p(animBg:getContentSize().width/2+pos[1], pos[2]-10))
 
@@ -463,7 +462,7 @@ function TeamHolyTeamView:updateTeamCard(inView, inTable, idx)
 	local backQuality = self._teamModel:getTeamQualityByStage(teamD["stage"])
 	-- 觉醒数据
 	local isAwaking, aLvl = TeamUtils:getTeamAwaking(teamD)
-	local teamName, art1, art2, art3 = TeamUtils:getTeamAwakingTab(teamD)
+	local teamName, art1, art2, art3, art4, cteam = TeamUtils:getTeamAwakingTab(teamD)
 
 	local cardClip = inView:getChildByFullName("cardClip")
 	cardClip:setSaturation(0)
@@ -475,11 +474,11 @@ function TeamHolyTeamView:updateTeamCard(inView, inTable, idx)
 
 	local roleSp = cardClip:getChildByFullName("roleSp")
 	if roleSp then
-		local fileName = "asset/uiother/cteam/ct_" .. teamId .. ".jpg"
-		if isAwaking == true then
-			fileName = "asset/uiother/cteam/cta_" .. teamId .. ".jpg"
-		end
-		UIUtils:asyncLoadTexture(roleSp, fileName)
+		-- local fileName = "asset/uiother/cteam/ct_" .. teamId .. ".jpg"
+		-- if isAwaking == true then
+		-- 	fileName = "asset/uiother/cteam/cta_" .. teamId .. ".jpg"
+		-- end
+		UIUtils:asyncLoadTexture(roleSp, cteam)
 	end
 
 	local fg = cardClip:getChildByFullName("fg")
@@ -489,7 +488,7 @@ function TeamHolyTeamView:updateTeamCard(inView, inTable, idx)
 
 	local classlabel = cardClip:getChildByFullName("classlabel")
 	if classlabel then
-		local tclasslabel = systeam.classlabel
+		local tclasslabel = TeamUtils:getClassIconNameByTeamD(teamD, "classlabel", systeam)
 		classlabel:setSpriteFrame(tclasslabel .. ".png")
 	end
 

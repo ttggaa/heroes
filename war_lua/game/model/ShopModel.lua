@@ -15,7 +15,6 @@ function ShopModel:ctor()
 end
 
 function ShopModel:setData(data)
-    -- dump(data)
     if data and table.nums(data) > 0 then 
     	self:updateShop(data)
         self:reflashData()
@@ -93,10 +92,9 @@ function ShopModel:updateShopGoods( inData )
     self:reflashData()
 end
 function ShopModel:updateShopGoodsAfterBuy( inData )
-    -- dump(inData,"************")
     for k,shop in pairs(inData) do
         if self._data[k] then -- 判断商店
-            if k == "league" or k == "godWar" then
+            if k == "league" or k == "godWar" or k == "exp" then
                 for k1,itemNum in pairs(shop) do
                     local showIndex = self:getShowIndex(k1, k)
                     local temp = self._data[k][k1]
@@ -114,6 +112,7 @@ function ShopModel:updateShopGoodsAfterBuy( inData )
                         end
                     else
                         temp = itemNum
+                        self._data[k][k1] = temp
                     end
                 end
             elseif k == "heroDuel" or k == "HDAvatar" or k == "HDSkin" then
@@ -178,6 +177,12 @@ function ShopModel:getShopRefreshTime( shopTp,detectTime  )
         timeValue = tab:Setting("G_ELEMENTAL_BONUS_REFLASH").value
     elseif shopTp == "friend" then
         timeValue = tab:Setting("G_FRIEND_RETURN_REFRESH").value
+    elseif shopTp == "crossFight" then
+        timeValue = tab:Setting("G_CROSSFIGHT_BONUS_REFLASH").value
+    elseif shopTp == "sign" then
+        timeValue = tab:Setting("G_SIGN_REFRESH").value
+    elseif shopTp == "honorArena" then
+        timeValue = tab:Setting("G_HONORARENA_BONUS_REFLASH").value
     end
     if type(timeValue) == "string" then
         local timeTable = string.split(timeValue,":")
@@ -241,6 +246,12 @@ function ShopModel:getShopRefreshHour( shopTp )
         timeValue = tab:Setting("G_ELEMENTAL_BONUS_REFLASH").value
     elseif shopTp == "friend" then
         timeValue = tab:Setting("G_FRIEND_RETURN_REFRESH").value
+    elseif shopTp == "crossFight" then
+        timeValue = tab:Setting("G_CROSSFIGHT_BONUS_REFLASH").value
+    elseif shopTp == "sign" then
+        timeValue = tab:Setting("G_SIGN_REFRESH").value
+    elseif shopTp == "honorArena" then
+        timeValue = tab:Setting("G_HONORARENA_BONUS_REFLASH").value
     end
     if type(timeValue) == "string" then
         local timeTable = string.split(timeValue,":")

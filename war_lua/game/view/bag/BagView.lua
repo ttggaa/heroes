@@ -141,6 +141,37 @@ function BagView:onInit()
     -- mc1:setVisible(false)
     self._tabEventTarget[1]._appearSelect = true
     self:tabButtonClick(self._tabEventTarget[1],true)
+    local isHas ,param = itemModel:isHaveAutoUseMaterial()
+    if isHas then
+        ScheduleMgr:delayCall(500, self, function( ) 
+            local mc1 = mcMgr:createViewMC("beibaobaoxiangkaiqi_beibaobaoxiangkaiqi", false, true ,function()
+                self:unlock()
+                self._maskLayer:removeFromParent()
+                self._maskLayer = nil
+                self._serverMgr:sendMsg("ItemServer", "useItems", param or {}, true, {}, function(result)
+                    self._viewMgr:showDialog("bag.BagAutoUseDialog",{gifts = result.reward})
+                end)
+            end)
+            if mc1 then
+                self._maskLayer = ccui.Layout:create()
+                self._maskLayer:setBackGroundColorOpacity(255)
+                self._maskLayer:setBackGroundColorType(1)
+                self._maskLayer:setBackGroundColor(cc.c3b(0,0,0))
+                self._maskLayer:setContentSize(MAX_SCREEN_WIDTH, MAX_SCREEN_HEIGHT)
+                self._maskLayer:setOpacity(210)
+                self:addChild(self._maskLayer, 999999)
+
+                self:lock(-1)
+                mc1:setName("openBox")
+                mc1:setPosition(MAX_SCREEN_WIDTH/2, MAX_SCREEN_HEIGHT/2)
+                -- mc1:setScale(0.95)
+                self._maskLayer:addChild(mc1)
+            end
+        end)
+    else
+        print(" 7777777777 ")
+    end
+
 
 end
 
@@ -627,6 +658,22 @@ function BagView:refreshBagInfo(data)
     local butType = tonumber(toolD["butType"])
     -- 默认显示
     flexoBtn:setTitleText("使用")
+    local vipLimitFuc = function()
+        local goodsId = data["goodsId"]
+        print("==========goodsId=======",goodsId)
+        if tab:ToolGift(goodsId) then
+            local openVipLv = tab:ToolGift(goodsId)["openVipLv"]
+            local vip = self._modelMgr:getModel("VipModel"):getData().level
+            if openVipLv then
+                if tonumber(openVipLv) > tonumber(vip) then
+                    self._viewMgr:showTip("VIP等级不足,无法打开礼包")
+                    return true
+                end
+            end
+        end
+        return false
+    end
+
     if butType == 0 or butType == 5 then-- 获取途径
         flexoBtn:setTitleText("来源")
         self:registerClickEvent(flexoBtn, function ()
@@ -644,6 +691,9 @@ function BagView:refreshBagInfo(data)
                 self._viewMgr:showTip(limitTipDes)
                 return 
             end
+            if vipLimitFuc() then
+                return 
+            end
             self:useOneItem(data)
         end)    
     elseif butType == 1 then -- 批量使用 从1
@@ -652,12 +702,18 @@ function BagView:refreshBagInfo(data)
                 self._viewMgr:showTip(limitTipDes)
                 return 
             end
+            if vipLimitFuc() then
+                return 
+            end
             self._viewMgr:showDialog("bag.DialogBatchUse",{data=data,useThreshold = "one"},true)
         end)   
     elseif butType == 2 or butType == 3 then -- 批量使用 从上限
         self:registerClickEvent(flexoBtn, function ()
             if limitTipDes then
                 self._viewMgr:showTip(limitTipDes)
+                return 
+            end
+            if vipLimitFuc() then
                 return 
             end
             self._viewMgr:showDialog("bag.DialogBatchUse",{data=data,useThreshold = "max"},true)
@@ -1031,6 +1087,9 @@ function BagView:sendUseItemMsg( param )
             local goodsData = tab:Tool(param.goodsId)
             if goodsData and goodsData.typeId == 102 then
                 DialogUtils.showSkinGetDialog( {skinId = tonumber("2" .. param.goodsId)})
+            elseif goodsData and goodsData.typeId == 105 then
+                local skinId = string.sub(tostring(param.goodsId), 2, 20)
+                DialogUtils.showTeamSkinGetDialog({skinId = tonumber(skinId)})
             else
                 local items = {}
                 local uniqueTab = {}

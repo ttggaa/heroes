@@ -431,9 +431,9 @@ function ActivityView:initActivityData()
     local acTaskData = self._activityModel:getActivityTaskData()
     local acShowList = self._activityModel:getActivityShowList()
     local acOpenInfoTableData = tab.activityopen
-    -- if OS_IS_WINDOWS then
-    --     acOpenInfoTableData = tab.activityopen_dev
-    -- end
+    if OS_IS_WINDOWS and GameStatic.is_activityOpenDev then
+        acOpenInfoTableData = tab.activityopen_dev
+    end
 
     -- dump(acTableData, "acTableData", 5)
     -- dump(acTaskTableData, "acTaskTableData", 5)
@@ -498,7 +498,7 @@ function ActivityView:initActivityData()
     local sortTask = function(t)
         table.sort(t, function(a, b)
             --[[
-            if a.order ~= b.order then
+            if a.order ~= b.order then2
                 return a.order < b.order
             end
             ]]
@@ -602,6 +602,7 @@ function ActivityView:initActivityData()
                 or 29 == v.ac_type
                 or 6 == v.ac_type
                 or 31 == v.ac_type  --原生推广员 邀请豪礼（好友邀请）
+                or 41 == v.ac_type  -- 主播
             then
                 -- 原生推广员 屏蔽游客
                 if 31 == v.ac_type and sdkMgr:isGuest() then
@@ -652,6 +653,8 @@ function ActivityView:initActivityData()
                         t.redTag = self._lotterModel:isLotteryRed() or 1 ~= SystemUtils.loadAccountLocalData("ACTIVITY_" .. v.activity_id)                    
                     elseif 31 == v.ac_type then  --好友邀请红点判断逻辑
                         t.redTag = self._activityModel:isFriendInvitedRed()
+                    elseif 41 == v.ac_type then
+                        t.redTag = self._activityModel:isZhuboCandGet()  -- 主播红点
                     end
                     t.acType = v.ac_type
                     t.uiType  = (f1 and d1) and d1.ui_type or 1
@@ -787,6 +790,23 @@ function ActivityView:initActivityData()
         end
     end
     -- end
+
+    -- 元素馈赠
+    print(self._activityModel:isElementGiftRed(),"============self._activityModel:isElementGiftOpen()====",self._activityModel:isElementGiftOpen())
+    if self._activityModel:isElementGiftOpen()
+        or (self._activity and table.nums(self._activity) >0 and self._activity[self._uiIndex].id == 100001) then
+        local f, d = findacTableData(100001)
+        if f then
+            local t = clone(d)
+            t.dirty = true
+            t.redTag = self._activityModel:isElementGiftRed()
+            t.newTag = 1 ~= SystemUtils.loadAccountLocalData("ACTIVITY_" .. t.id)
+            t.acType = 100001
+            t.uiType  = 100001
+            t.layer = nil
+            table.insert(result, t)
+        end
+    end
 
     table.sort(result, function(a, b)
         if not a.order then 
@@ -1070,6 +1090,10 @@ function ActivityView:hasTaskCanGet(index)
             return self._activityModel:isFriendInvitedRed()
         elseif 89991 == self._activity[index].id then
             return self._activityModel:isAcHeroDuelCanGet()
+        elseif 2203 == self._activity[index].id then
+            return self._activityModel:isZhuboCandGet()  -- 主播红点
+        elseif 100001 == self._activity[index].id then
+            return self._activityModel:isElementGiftRed()
         end
     end   
     
@@ -1384,6 +1408,7 @@ function ActivityView:changeActivityLayer()
         [102] = "activity.common.ACEveryDayRechargeLayer",
         [107] = "activity.common.AcDayRechargeLayer",
         [108] = "activity.common.AcRuneCardLayer",  -- 圣徽周卡
+        [109] = "activity.common.ACEveryDayRechargeNewLayer",  -- 每日充值2
         [12] = "activity.common.VipWeekGiftLayer", --VIP周礼包
         [13] = "activity.common.ActivityLotteryLayer", --整点抽奖
         [16] = "activity.common.AcFriendsInvitedLayer", --好友邀请
@@ -1392,8 +1417,8 @@ function ActivityView:changeActivityLayer()
         [999] = "activity.ACShareGetGiftLayer",
         [99999] = "activity.ACSupplyPhysicalPower",             --体领取体力
         [100000] = "activity.ACCommentGuideLayer",
+        [100001] = "activity.AcElementGiftLayer",               --元素馈赠
     }
-
     local layerName = activityLayerInfo[self._activity[self._uiIndex].uiType]
     if not layerName and (3 == self._activity[self._uiIndex].uiType or 4 == self._activity[self._uiIndex].uiType) then
         layerName = "activity.common.ActivityShowCommonLayer"
@@ -1624,265 +1649,24 @@ end
 
 function ActivityView:onButtonGoClicked(taskData)
     --print("onButtonGoClicked", taskData.id, taskData.button)
-    if self["goView" .. taskData.button] then
-        self["goView" .. taskData.button](self)
-    end
-end
-
-function ActivityView:goView1() self._viewMgr:showView("intance.IntanceView", {superiorType = 1}) end
-function ActivityView:goView2() self._viewMgr:showView("vip.VipView", {viewType = 0}) end
-function ActivityView:goView3()
-    if not SystemUtils:enableElite() then
-        self._viewMgr:showTip(lang("TIP_JINGYING_1"))
-        return 
-    end
-    self._viewMgr:showView("intance.IntanceEliteView", {superiorType = 1}) 
-end
-function ActivityView:goView4() 
-    if not SystemUtils:enableDwarvenTreasury() then
-        self._viewMgr:showTip(lang("TIP_TASK_TIP_LOCK"))
-        return 
-    end
-    self._viewMgr:showView("pve.AiRenMuWuView") 
-end
-function ActivityView:goView5() 
-    if not SystemUtils:enableCrypt() then
-        self._viewMgr:showTip(lang("TIP_TASK_TIP_LOCK"))
-        return 
-    end
-    self._viewMgr:showView("pve.ZombieView") 
-end
-function ActivityView:goView6() 
-    if not SystemUtils:enableBoss() then
-        self._viewMgr:showTip(lang("TIP_TASK_TIP_LOCK"))
-        return 
-    end
-    self._viewMgr:showView("pve.DragonView") 
-end
-function ActivityView:goView7() self._viewMgr:showView("team.TeamListView") end
-function ActivityView:goView8() self._viewMgr:showView("flashcard.FlashCardView") end
-function ActivityView:goView9() 
-    if not SystemUtils:enableArena() then
-        self._viewMgr:showTip(lang("TIP_Arena"))
-        return 
-    end
-    self._viewMgr:showView("arena.ArenaView") 
-end
-function ActivityView:goView10() 
-    if not SystemUtils:enableCrusade() then
-        self._viewMgr:showTip(lang("TIP_Crusade"))
-        return 
-    end
-    self._viewMgr:showView("crusade.CrusadeView") 
-end
-function ActivityView:goView11() DialogUtils.showBuyRes({goalType = "gold", callback = function(success)
-    --if success then self._layer_task_everyday._scrollView:scrollToTop(1, true) end
-end}) end
-function ActivityView:goView12() DialogUtils.showBuyRes({goalType = "physcal", callback = function(success)
-    --if success then self._layer_task_everyday._scrollView:scrollToTop(1, true) end
-end}) end
-function ActivityView:goView13()
-    if self._uiIndex == self:getActivityUIIndexById(101) then
-        self._viewMgr:showView("shop.ShopView",{idx = 6})
-        -- self._viewMgr:showTip(lang("tips_zhaomuyouli"))
-        return
-    end
-    self:switchActivityById(101)
-end
-function ActivityView:goView14() DialogUtils.showBuyRes({goalType = "gem", callback = function(success)
-    --if success then self._layer_task_everyday._scrollView:scrollToTop(1, true) end
-end}) end
-function ActivityView:goView15() DialogUtils.showBuyRes({goalType = "gem", callback = function(success)
-    --if success then self._layer_task_everyday._scrollView:scrollToTop(1, true) end
-end}) end
-function ActivityView:goView16() 
-    if self._modelMgr:getModel("ActivityCarnivalModel"):carnivalIsOpen() then
-        self._viewMgr:showDialog("activity.ActivityCarnival", {}, true)
+    local btnType = taskData.button
+    if self["goView" .. btnType] then
+        self["goView" .. btnType](self)
     else
-        self._viewMgr:showTip(lang("TIP_TASK_TIP_LOCK"))
-    end
-end
-
-function ActivityView:goView17() 
-    local showday, _ = self._modelMgr:getModel("ActivitySevenDaysModel"):getShowDayAndState()
-    if SystemUtils:enableSevenDay() and showday > 0  then
-        self._viewMgr:showDialog("activity.ActivitySevenDaysView", {})
-    else
-        self._viewMgr:showTip(lang("TIP_TASK_TIP_LOCK"))
-    end
-end
-
-function ActivityView:goView18() 
-    if not SystemUtils:enableGuild() then
-        self._viewMgr:showTip(lang("TIP_Guild"))
-        return 
-    end
-    local userData = self._userModel:getData()
-    if not userData.guildId or userData.guildId == 0 then
-        self._viewMgr:showView("guild.join.GuildInView")
-    else
-        self._viewMgr:showView("guild.GuildView")
-    end
-end
-
-function ActivityView:goView19() 
-    if not SystemUtils:enableTreasure() then
-        self._viewMgr:showTip(lang("TIP_Treasure"))
-        return 
-    end
-
-    self._viewMgr:showView("treasure.TreasureShopView")
-end
-
-function ActivityView:goView20() 
-    if not SystemUtils:enableTeam() then
-        self._viewMgr:showTip(lang("TIP_TEAM"))
-        return 
-    end
-
-    self._viewMgr:showView("team.TeamListView")
-end
-
-function ActivityView:goView21() 
-    if not SystemUtils:enableHero() then
-        self._viewMgr:showTip(lang("TIP_HERO"))
-        return 
-    end
-
-    self._viewMgr:showView("hero.HeroView")
-end
---[[
-function ActivityView:goView22() 
-    if not SystemUtils:enableMF() then
-        self._viewMgr:showTip(lang("TIP_MF"))
-        return 
-    end
-
-    self._viewMgr:showView("MF.MFView")
-end
-
-function ActivityView:goView23() 
-    if not SystemUtils:enableCloudCity() then
-        self._viewMgr:showTip(lang("TIP_TOWER"))
-        return 
-    end
-
-    self._viewMgr:showView("cloudcity.CloudCityView")
-end
-
-function ActivityView:goView24()
-    local isOpen,openDes = LeagueUtils:isLeagueOpen()
-    if not isOpen then
-        self._viewMgr:showTip(openDes)
-        return
-    end
-    self._viewMgr:showView("league.LeagueView")
-end
-
-]]
-
-function ActivityView:goView25()
-    if not SystemUtils:enablePokedex() then
-        self._viewMgr:showTip(lang("TIP_Pokedex"))
-        return 
-    end
-
-    self._viewMgr:showView("pokedex.PokedexView")
-end
-
-function ActivityView:goView26()
-    if not SystemUtils:enableTeam() then
-        self._viewMgr:showTip(lang("TIP_TEAM"))
-        return 
-    end
-
-    -- self._viewMgr:showView("team.TeamListView")
-    DialogUtils.showBuyRes({goalType = "texp", callback = function(success)
-        --if success then self._layer_task_everyday._scrollView:scrollToTop(1, true) end
-    end})
-end
-
---[[
-function ActivityView:goView27()
-    self._viewMgr:showDialog("tencentprivilege.TencentPrivilegeView")
-end
-]]
-
--- [[
-function ActivityView:goView28()
-    local isOpen,openDes = LeagueUtils:isLeagueOpen()
-    if isOpen then
-        self._viewMgr:showView("league.LeagueView")
-    else
-        self._viewMgr:showTip(openDes)
-        --todo
-    end
-end
---]]
-
-function ActivityView:goView29()
-    if not SystemUtils:enableTreasure() then
-        self._viewMgr:showTip(lang("TIP_Treasure"))
-        return 
-    end
-
-    self._viewMgr:showView("treasure.TreasureView")
-end
-
-function ActivityView:goView30()
-    if not SystemUtils:enableNests() then
-        self._viewMgr:showTip(lang("TIP_Nests"))
-        return 
-    end
-
-    self._viewMgr:showView("nests.NestsView")
-end
-
-function ActivityView:goView31()
-    local userInfo = self._userModel:getData()  
-    local _,_,level = SystemUtils:enableTraining()
-    if userInfo.lvl < level then
-        self._viewMgr:showTip("请先将等级提升到"..level.."级")
-    else
-        self._viewMgr:showView("training.TrainingView")
-    end
-end
-
-function ActivityView:goView32()
-    if not self._weaponsModel then 
-        self._weaponsModel = self._modelMgr:getModel("WeaponsModel")
-    end
-    local weaponsModel = self._weaponsModel
-    local state = weaponsModel:getWeaponState()
-    if state == 1 then
-        self._viewMgr:showTip(lang("TIP_Weapon"))
-    elseif state == 2 then
-        self._viewMgr:showTip(lang("TIP_Weapon2"))
-    elseif state == 3 then
-        self._viewMgr:showTip(lang("TIP_Weapon3"))
-    elseif state == 4 then
-        local tdata = weaponsModel:getWeaponsDataByType(1)
-        if tdata then
-            self._viewMgr:showView("weapons.WeaponsView", {})
-        else
-            self._serverMgr:sendMsg("WeaponServer", "getWeaponInfo", {}, true, {}, function(result)
-                self._viewMgr:showView("weapons.WeaponsView", {})
-            end)
+        if AcBtnEventUtils["goView" .. btnType] then
+            AcBtnEventUtils["goView" .. btnType]()
         end
     end
 end
 
-
---[[
-function ActivityView:goView31()
-    if not SystemUtils:enableElement() then
-        self._viewMgr:showTip(lang("TIP_elementalPlane"))
-        return 
+function ActivityView:goView13()
+    if self._uiIndex == self:getActivityUIIndexById(101) then
+        self._viewMgr:showView("shop.ShopView",{idx = 6})
+        return
     end
-
-    self._viewMgr:showView("elemental.ElementalView")
+    self:switchActivityById(101)
 end
-]]
+
 function ActivityView:showRewardDialog(taskData)
     local reward = taskData.reward
     local notChange = false
@@ -1940,7 +1724,7 @@ function ActivityView:onButtonGetClicked(taskData)
         data.costItemId = consumeData[1][2]
         data.costNum = consumeData[1][3]
         self._viewMgr:showDialog("shop.DialogShopBuy", data, true)
-    elseif 5 == taskData.uitype then
+    elseif 5 == taskData.uitype or (taskData.uitype == 4 and #taskData.reward > 1) then
         self._viewMgr:showDialog("global.GlobalSelectAwardDialog", {gift = taskData.reward or {}, callback = function(selectedIndex)
             if not selectedIndex then return end
             doGet(selectedIndex)
@@ -1948,7 +1732,12 @@ function ActivityView:onButtonGetClicked(taskData)
     elseif taskData.exchange_num and taskData.finish_max >= 6 then
         self._viewMgr:showDialog("activity.ActivityBatchExchangeView",{activityId = self._activity[self._uiIndex].id, taskData = clone(taskData), useThreshold = "one"}, true)
     else
-        doGet()
+        if taskData.uitype == 4 and #taskData.reward == 1 then
+            doGet(1)
+        else
+            doGet()
+        end
+        
     end
 
     --[[

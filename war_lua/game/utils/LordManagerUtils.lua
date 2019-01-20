@@ -28,15 +28,25 @@ LordManagerUtils.lordDesStr ={
     ["LordManager_Des313"]="可挑战次数:",
     ["LordManager_Des314"]="可驻派位置:",
     ["LordManager_Des315"]="可领取位置:",
+    ["LordManager_Des316"]="仓库待领取:",
+    ["LordManager_Des401"]="可挑战次数:",
+    ["LordManager_Des402"]="可挑战次数:",
+    ["LordManager_Des403"]="可挑战次数:",
 }
 
-LordManagerUtils.tabNames = {"bg.left_panel.tab1",
-							"bg.left_panel.tab2",
-							"bg.left_panel.tab3"}
+LordManagerUtils.tabNames = {
+	"bg.left_panel.tab1",
+	"bg.left_panel.tab2",
+	"bg.left_panel.tab3",
+	"bg.left_panel.tab4",
+}
 
-LordManagerUtils.tabNameImg = {"2_activ.png",
-								"3_activ.png",
-								"1_activ.png"}
+LordManagerUtils.tabNameImg = {
+	"2_activ.png",
+	"3_activ.png",
+	"1_activ.png",
+	"xgn_jiaofeng.png",
+}
 
 LordManagerUtils.costTypeImg = {"globalImageUI_littleGold.png",
 								"globalImageUI_littleDiamond.png",

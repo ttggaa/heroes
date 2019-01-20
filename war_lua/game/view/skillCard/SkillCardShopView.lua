@@ -14,6 +14,7 @@ local playerData
 function SkillCardShopView:ctor(param)
     SkillCardShopView.super.ctor(self)
     self._shopModel = self._modelMgr:getModel("ShopModel")
+    self._spbModel = self._modelMgr:getModel("SpellBooksModel")
     self._timeLabs = {} 
     self._itemTable = {}
     playerData = self._modelMgr:getModel("UserModel"):getData()
@@ -130,6 +131,9 @@ function SkillCardShopView:reflashShopInfo()
     self._scrollView:setInnerContainerSize(cc.size(self.scrollViewW,self.scrollViewH))
     local skillBookCoin = self._modelMgr:getModel("UserModel"):getData().skillBookCoin or 0
     self._refreshTimeLab:setString(skillBookCoin)
+
+    --法术数据
+    self._spbInfo = self._spbModel:getData()
 
     local goodsData = self:getGoodsData()
     -- dump(goodsData,"商店详情",10)
@@ -327,14 +331,31 @@ function SkillCardShopView:createItem(index, data,x,y)
 
     -- data.discount = 3
     local discountBg = item:getChildByFullName("discountBg")
+    local discountLab = discountBg:getChildByFullName("discountLab")
+    discountLab:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
+
     if data.image == 1 then --显示超值页签
         discountBg:setVisible(true)
-        -- discountBg:loadTexture("globalImageUI6_connerTag_p.png",1)
-        local discountLab = discountBg:getChildByFullName("discountLab")
-        discountLab:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor, 1)
-        -- discountLab:setString("超值")
+        discountBg:loadTexture("globalImageUI6_connerTag_p.png",1)
+        discountLab:setString("超值")
     else
-        discountBg:setVisible(false)
+        discountBg:setVisible(true)
+        local realSpellId = string.sub(tostring(data.itemId), 4, 20)
+        local spInfo = self._spbInfo[realSpellId]
+        if spInfo and next(spInfo) then
+            if tonumber(spInfo.l) == 0 then
+                discountBg:loadTexture("globalImageUI6_connerTag_r.png",1)
+                discountLab:setString("未获得")
+            elseif tonumber(spInfo.l) < 5 then
+                discountBg:loadTexture("globalImageUI6_connerTag_p.png",1)
+                discountLab:setString("未满级")
+            else
+                discountBg:setVisible(false)
+            end
+        else
+            discountBg:loadTexture("globalImageUI6_connerTag_r.png",1)
+            discountLab:setString("未获得")
+        end
     end
 
     --[[

@@ -604,22 +604,23 @@ function CityBattleShopView:refreshRefresBtnCost()
         self._refreshCostImage:loadTexture(costRes,1)
         self._refreshCostImage:setScale(0.8)
     end
-
-    local times = self._shopModel:getShopByType("citybattle").reflashTimes or 0
-    if times >= maxRefreshTimes then
-        UIUtils:setGray(self._refreshBtn,true)
-        self._refreshCostImage:setVisible(false)
-        self._costLable:setVisible(false)
-        self._refreshCostbg:setVisible(false)
-        self._refreshBtn:setTitleText("次数用尽")
-    else
-        UIUtils:setGray(self._refreshBtn,false)
-        self._refreshCostImage:setVisible(true)
-        self._costLable:setVisible(true)
-        self._refreshCostbg:setVisible(true)
-        self._refreshBtn:setTitleText("刷新")
+    local shopData = self._shopModel:getShopByType("citybattle")
+    if shopData then
+        local times = shopData.reflashTimes or 0
+        if times >= maxRefreshTimes then
+            UIUtils:setGray(self._refreshBtn,true)
+            self._refreshCostImage:setVisible(false)
+            self._costLable:setVisible(false)
+            self._refreshCostbg:setVisible(false)
+            self._refreshBtn:setTitleText("次数用尽")
+        else
+            UIUtils:setGray(self._refreshBtn,false)
+            self._refreshCostImage:setVisible(true)
+            self._costLable:setVisible(true)
+            self._refreshCostbg:setVisible(true)
+            self._refreshBtn:setTitleText("刷新")
+        end
     end
-
 end
 
 -- 更新商店数据

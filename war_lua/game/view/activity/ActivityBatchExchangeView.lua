@@ -118,6 +118,10 @@ function ActivityBatchExchangeView:updateUI()
         have = userData.hDuelCoin or 0
     elseif "siegePropExp" == itemType then
         have = userData.siegePropExp or 0
+    elseif "runeCoin" == itemType then
+        have = userData.runeCoin
+    elseif "skillBookCoin" == itemType then
+        have = userData.skillBookCoin
     elseif "rune" == itemType then
         _, have = self._modelMgr:getModel("TeamModel"):getRunesById(itemId)
     end
@@ -156,6 +160,12 @@ function ActivityBatchExchangeView:updateUI()
 
     elseif "siegePropExp" == rewardType then
         have = userData.siegePropExp
+
+    elseif "runeCoin" == rewardType then
+        have = userData.runeCoin
+
+    elseif "skillBookCoin" == rewardType then
+        have = userData.skillBookCoin
 
     elseif "rune" == rewardType then
         _, have = self._modelMgr:getModel("TeamModel"):getRunesById(rewardId)

@@ -227,10 +227,10 @@ function GlobalBuyResDialog:reflashUI(data)
 	self._costLab:setString(math.ceil(costNum))
 	if costNum == 0 then
 		self._costLab:setString("    免费（".. freeTime .."）")
-		self._costLab:setColor(UIUtils.colorTable.ccUIBaseColor2)
+		self._costLab:setColor(UIUtils.colorTable.ccUIBaseColor9)
 		-- self._costIcon:setVisible(false)
 		-- self._costLab:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor,1)
-		self._costIcon:loadTexture(IconUtils.resImgMap["privilege"],1)
+		self._costIcon:loadTexture(IconUtils.resImgMap["gem"],1)
 	else
 		self._costLab:setColor(UIUtils.colorTable.ccUIBaseTextColor2)
 		-- self._costLab:enableOutline(UIUtils.colorTable.ccUIBaseOutlineColor,1)

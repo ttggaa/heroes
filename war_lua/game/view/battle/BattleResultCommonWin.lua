@@ -128,13 +128,13 @@ function BattleResultCommonWin:onInit()
 	    local colume = 4
 	    local rowNum = math.ceil(count/colume)
 	    local teamModel = self._modelMgr:getModel("TeamModel")
-	    local outputID = self._battleInfo.leftData[1].D["id"]
-	    self._lihuiId = self._battleInfo.leftData[1].D["id"]
-	    local outputValue = self._battleInfo.leftData[1].damage or 0
-	    local outputLihuiV = self._battleInfo.leftData[1].damage or 0
+	    local outputID = 0--self._battleInfo.leftData[1].D["id"]
+	    self._lihuiId = 0--self._battleInfo.leftData[1].D["id"]
+	    local outputValue = 0--self._battleInfo.leftData[1].damage or 0
+	    local outputLihuiV = 0--self._battleInfo.leftData[1].damage or 0
 		-- dump(self._battleInfo.leftData,"self._battleInfo.leftData==>")
 	    for i = 1,#self._battleInfo.leftData do
-	    	if self._battleInfo.leftData[i].damage then
+	    	if self._battleInfo.leftData[i].damage and not self._battleInfo.leftData[i].assistance then
 		    	if tonumber(self._battleInfo.leftData[i].damage) > tonumber(outputValue) then
 		    		outputValue = self._battleInfo.leftData[i].damage
 		    		outputID = self._battleInfo.leftData[i].D["id"]
@@ -160,24 +160,26 @@ function BattleResultCommonWin:onInit()
 		    	local teamD = tab:Team(id)
 		    	-- dump(self._battleInfo.leftData[i].D,"self._battleInfo.leftData[i].D...")
 				local teamData = teamModel:getTeamAndIndexById(id)
+				dump(teamData,"====teamData=====")
 				local quality = teamModel:getTeamQualityByStage(teamData.stage)
 		    	team = IconUtils:createTeamIconById({teamData = teamData, sysTeamData = teamD, quality = quality[1] , quaAddition = quality[2],eventStyle = 0})
 		    	team:setAnchorPoint(0.5, 0.5)
 		    	-- team:setScale(0.5)
 		    	-- 如果有专精变身替换icon
+
+		    	local teampData = clone(teamData)
+		    	teampData.teamId = id
+
+			    local art = nil
+			    local changeId = nil
 		    	if curHeroId then 
-		    		local isAwaking, _ = TeamUtils:getTeamAwaking(teamData)
-			    	local art,changeId = TeamUtils.changeArtForHeroMastery(curHeroId,id)
-			    	if changeId and art then
-			    		-- 觉醒优先
-			    		if isAwaking then
-			    			local tData = tab:Team(changeId)
-			    			art = tData.jxart1
-			    		end
-			    		local teamIcon = team:getChildByFullName("teamIcon")
-			    		teamIcon:loadTexture(art .. ".jpg",1)
-			    	end
+			    	art,changeId = TeamUtils.changeArtForHeroMastery(curHeroId,id)
 			    end
+			   	local _,art = TeamUtils:getTeamAwakingTab(teamData,changeId,false)
+                local teamIcon = team:getChildByFullName("teamIcon")
+			    teamIcon:loadTexture(art .. ".jpg",1)
+
+
 		    	if i % 4 == 0 then
 		    		team:setPosition(beginX, beginY)		    		  		
 		    		beginX = invW * 0.5
@@ -214,7 +216,7 @@ function BattleResultCommonWin:onInit()
 	    	end
 	    end
 	    for i = 1, count do
-	    	if self._battleInfo.leftData[i] and not self._battleInfo.leftData[i].copy then 
+	    	if self._battleInfo.leftData[i] and not self._battleInfo.leftData[i].copy and not self._battleInfo.leftData[i].assistance then 
 		    	local id = self._battleInfo.leftData[i].D["id"]
 		    	initTeamIconFunc(id,i)
 		    end
@@ -524,12 +526,13 @@ function BattleResultCommonWin:animBegin()
         local teamModel = self._modelMgr:getModel("TeamModel")
         local tdata,_idx = teamModel:getTeamAndIndexById(lihuiId)
         local isAwaking,_ = TeamUtils:getTeamAwaking(tdata)
-        local teamName, art1, art2, art3 = TeamUtils:getTeamAwakingTab(tdata, tdata.id)
-        if isAwaking then
-        	-- 结算例会单独处理 读配置
-            imgName = teamData.jxart2
-            artUrl = "asset/uiother/team/"..imgName..".png"
-        end
+        local teamName, art1, art2, art3 = TeamUtils:getTeamAwakingTab(tdata, self._lihuiId)
+        -- if isAwaking then
+        -- 	-- 结算例会单独处理 读配置
+        --     imgName = teamData.jxart2
+        --     artUrl = "asset/uiother/team/"..imgName..".png"
+        -- end
+        artUrl = "asset/uiother/team/".. art2 ..".png"
 
         if  teamData["jisuan"] then
             local teamX ,teamY = teamData["jisuan"][1], teamData["jisuan"][2]

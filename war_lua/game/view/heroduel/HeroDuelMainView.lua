@@ -26,6 +26,44 @@ function HeroDuelMainView:getBgName()
     return "heroDuelBg.jpg"
 end
 
+function HeroDuelMainView:changeBgImage(img)
+    if self.__viewBg then
+        if img then
+            self.__viewBg:setTexture("asset/bg/"..img)
+        else
+            self.__viewBg:setTexture("asset/bg/"..self:getBgName())
+        end
+    end
+end
+
+function HeroDuelMainView:changeMode(mode,isAnmi)
+    mode = mode or 0
+    local callback = function ( ... )
+        if mode == 0 then
+            self:changeBgImage()
+            self._bgLeft:loadTexture("bg1_heroDuel.png", 1)
+            self._bgRight:loadTexture("bg1_heroDuel.png", 1)
+        else
+            self:changeBgImage("heroDuelBg1.jpg")
+            self._bgLeft:loadTexture("bg1_heroDuel1.png", 1)
+            self._bgRight:loadTexture("bg1_heroDuel1.png", 1)
+        end
+    end
+    if isAnmi then
+        local moveDown = cc.MoveBy:create(0.2,cc.p(0,-200))
+        local up = cc.MoveBy:create(0.2,cc.p(0,200))
+        local moveUp = cc.EaseElasticOut:create(up,1)
+        local callFunc = cc.CallFunc:create(function ( ... )
+            callback()
+        end)
+        local sq = cc.Sequence:create({moveDown,callFunc,moveUp})
+        self._leftMenuNode:runAction(sq)
+        self._rightMenuNode:runAction(sq:clone())
+    else
+        callback()
+    end
+end
+
 function HeroDuelMainView:getAsyncRes()
     return
     {
@@ -266,18 +304,18 @@ end
 
 function HeroDuelMainView:reflashUI(data)
     self:updateCardsPanel()
-
+    self:changeMode(data.mode)
     -- 0:未报名  1:选卡中  2:可匹配  3:可领奖
     if data.status == 0 then
-        self:showLayer("enterance", {buyTimes = data.buyTimes, open = data.open, callBack = specialize(self.enterCallBack, self)})
+        self:showLayer("enterance", {buyTimes = data.buyTimes, open = data.open, callBack = specialize(self.enterCallBack, self),callBack1 = specialize(self.mainCallBack, self),mode = (data.mode or 0)})
     elseif data.status == 1 then
-        self:showLayer("main", {mainData = data, callBack = specialize(self.mainCallBack, self)})
+        self:showLayer("main", {mainData = data, callBack = specialize(self.mainCallBack, self),mode = (data.mode or 0)})
 
     elseif data.status == 2 then
-        self:showLayer("main", {mainData = data, callBack = specialize(self.mainCallBack, self)})
+        self:showLayer("main", {mainData = data, callBack = specialize(self.mainCallBack, self),mode = (data.mode or 0)})
 
     elseif data.status == 3 then
-        self:showLayer("main", {mainData = data, callBack = specialize(self.mainCallBack, self)})
+        self:showLayer("main", {mainData = data, callBack = specialize(self.mainCallBack, self),mode = (data.mode or 0)})
 
     end
 end
@@ -306,6 +344,10 @@ function HeroDuelMainView:onModelReflash(eventName)
     elseif eventName == self._hModel.HD_OPEN then
         self._mainData.open = 1
         self._curLayer:onHDuelOpen()
+    elseif eventName == self._hModel.CHANGE_MODE then
+        local hdData = self._hModel:getHeroDuelData()
+        self._curLayer:reflashUI(hdData)
+        self._curLayer:onTop()
     end
 end
 
@@ -410,6 +452,8 @@ function HeroDuelMainView:mainCallBack(data)
     if data.acType == "continue" then
         self._mainData["toSelect"] = data["toSelect"]
         self:showLayer("select", {mainData = self._mainData, callBack = specialize(self.selectCallBack, self)})
+    elseif data.acType == "changeMode" then
+        self:changeMode(data.mode,true)
     else
 
     end
@@ -418,7 +462,8 @@ end
 -- 选卡结束回调
 function HeroDuelMainView:selectCallBack(data)
     self._mainData.status = 2
-    self:showLayer("main", {mainData = self._mainData, callBack = specialize(self.mainCallBack, self)})
+    local mode = self._hModel:getHeroDuelData("mode")
+    self:showLayer("main", {mainData = self._mainData, callBack = specialize(self.mainCallBack, self),mode = mode })
 end
 
 function HeroDuelMainView:showActivityView()

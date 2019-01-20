@@ -103,14 +103,14 @@ function BattleResultTrainingLose:animBegin()
 end
 
 function BattleResultTrainingLose:onQuit()
-	if self._callback then
-		self._callback()
-	end
+    if self._callback then
+        self._callback()
+    end
 end
 
 
 -- function BattleResultTrainingLose:onCount()
--- 	self._viewMgr:showView("battle.BattleCountView",self._battleInfo,true)
+--  self._viewMgr:showView("battle.BattleCountView",self._battleInfo,true)
 -- end
 
 

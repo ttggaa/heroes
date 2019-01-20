@@ -27,10 +27,35 @@ function HeroDuelForbiddenView:ctor(data)
     self.popAnim = false
 
     self._errorCallBack = data.callback
+    self._mode = data.mode
 end
 
 function HeroDuelForbiddenView:getBgName()
     return "heroDuelBg.jpg"
+end
+
+function HeroDuelForbiddenView:changeBgImage(img)
+    if self.__viewBg then
+        if img then
+            self.__viewBg:setTexture("asset/bg/"..img)
+        else
+            self.__viewBg:setTexture("asset/bg/"..self:getBgName())
+        end
+    end
+end
+
+function HeroDuelForbiddenView:changeMode(mode)
+    if mode == 1 then
+        self:changeBgImage("heroDuelBg1.jpg")
+        self._bgLeft:loadTexture("bg1_heroDuel1.png", 1)
+        self._bgRight:loadTexture("bg1_heroDuel1.png", 1)
+        self._teamNode:loadTexture("bg_forbidden_heroDuel1.png", 1)
+    else
+        self:changeBgImage()
+        self._bgLeft:loadTexture("bg1_heroDuel.png", 1)
+        self._bgRight:loadTexture("bg1_heroDuel.png", 1)
+        self._teamNode:loadTexture("bg_forbidden_heroDuel.png", 1)
+    end
 end
 
 function HeroDuelForbiddenView:onInit()
@@ -154,6 +179,9 @@ function HeroDuelForbiddenView:onInit()
     self:listenRSResponse(specialize(self.onSocektResponse, self))
 
     self:sendSocketMgs("teamBanReady")
+    self._bgLeft = self:getUI("bg.layer.bgLeft")
+    self._bgRight = self:getUI("bg.layer.bgRight")
+    self:changeMode(self._mode)
 end
 
 function HeroDuelForbiddenView:reflashUI()
@@ -416,7 +444,11 @@ function HeroDuelForbiddenView:createCardCell(id, isMine)
         shadow:setPosition(centerx, centery-4)
         cardbg:addChild(shadow, 2)
 
-        local classIcon = cc.Sprite:createWithSpriteFrameName(teamD.classlabel .. ".png")
+        local className = teamD.classlabel
+        if self._hModel:isTeamJx(id) then
+            className = className .. "_awake"
+        end
+        local classIcon = cc.Sprite:createWithSpriteFrameName(className .. ".png")
         classIcon:setPosition(230, 92)
         classIcon:setName("classIcon")
         classIcon:setScale(38/classIcon:getContentSize().width)
@@ -502,7 +534,11 @@ function HeroDuelForbiddenView:overTurnCardCell(inview, id)
 --        clipNode:addChild(bg)
         clipNode:addChild(roleSp)
 
-        local classIcon = cc.Sprite:createWithSpriteFrameName(teamD.classlabel .. ".png")
+        local className = teamD.classlabel
+        if self._hModel:isTeamJx(id) then
+            className = className .. "_awake"
+        end
+        local classIcon = cc.Sprite:createWithSpriteFrameName(className .. ".png")
         classIcon:setPosition(230, 92)
         classIcon:setName("classIcon")
         classIcon:setFlippedX(true)
@@ -653,7 +689,11 @@ function HeroDuelForbiddenView:createTeamCell(teamId, tp)
     border:setPosition(cellW*0.5, cellH*0.5)
     iconNode:addChild(border)
 
-    local classIcon = cc.Sprite:createWithSpriteFrameName(sysTeam.classlabel .. ".png")
+    local className = sysTeam.classlabel
+    if self._hModel:isTeamJx(tonumber(teamId)) then
+        className = className .. "_awake"
+    end
+    local classIcon = cc.Sprite:createWithSpriteFrameName(className .. ".png")
     classIcon:setPosition(classIcon:getContentSize().width*0.5+4,cellH-classIcon:getContentSize().height*0.5-4)
     classIcon:setScale(0.88)
     iconNode:addChild(classIcon)

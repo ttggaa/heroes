@@ -103,6 +103,19 @@ function MailServer:onNewMail( result, error)
 end
 
 
+function MailServer:onDelUsedMail(result, error)
+    if error ~= 0 then 
+        return
+    end
+
+    local oldNum = table.nums(self._mailBoxModel:getData())
+    local newNum = table.nums(result)
+    if oldNum ~= newNum then 
+        self._mailBoxModel:setData(result)
+    end
+    self:callback(result)
+end
+
 --删除邮件
 -- function MailServer:onDelMail( result, error)
 --  if error ~= 0 then 

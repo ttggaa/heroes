@@ -17,7 +17,7 @@ function ExtraServer:onGetSiegeInfo(result, error)
 	end
 
     if result then
-        dump(result)
+        -- dump(result)
         if result["d"] ~= nil and result["d"]["formations"] ~= nil then
             local formationModel = self._modelMgr:getModel("FormationModel")
             formationModel:updateAllFormationData(result["d"]["formations"])

@@ -448,4 +448,17 @@ function ArenaModel:getBestTeamData( leftData,rightData )
     }
 end
 
+--领主管家获取扫荡对象
+function ArenaModel:getSweepEnemy()
+    local enemys = self:getEnemys()
+    if (not enemys) or #enemys == 0 then return nil end
+    local rank = self._data.rank or 0
+    for i,v in ipairs(enemys) do
+        if v.rank > rank then
+            return v
+        end
+    end
+    return nil
+end
+
 return ArenaModel

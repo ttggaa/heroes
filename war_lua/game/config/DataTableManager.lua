@@ -213,6 +213,7 @@ function DataTableManager:ctor(procBattle)
     _decodeTab(self, "activeAward")
     _decodeTab(self, "growAward")
     _decodeTab(self, "awakingTask")
+    _decodeTab(self, "weekactiveAward")
     
     -- 图鉴
     _decodeTab(self, "teamPokedex")
@@ -245,6 +246,7 @@ function DataTableManager:ctor(procBattle)
     _decodeTab(self, "shopExp")
     _decodeTab(self, "shopElement")
     _decodeTab(self, "shopSlot")
+    _decodeTab(self, "honorArenaShop")
 
     
     -- 刷新及购买消耗配置表
@@ -296,6 +298,12 @@ function DataTableManager:ctor(procBattle)
     -- 抽卡预览
     _decodeTab(self, "choukashow")
 
+    -- 阵营抽卡
+    _decodeTab(self, "raceDrawConfig")
+    _decodeTab(self, "raceDrawOpen")
+    _decodeTab(self, "raceDrawShow")
+    
+
     --法术书
     _decodeTab(self, "scrollHotSpot")
     _decodeTab(self, "scrollTemplate")
@@ -342,6 +350,8 @@ function DataTableManager:ctor(procBattle)
 
     -- 商品库
     _decodeTab(self, "cashGoodsLib")
+    -- 宝物直购
+    _decodeTab(self, "treasureMerchant")
 
     -- 每日充值
     _decodeTab(self, "activity102")
@@ -355,6 +365,8 @@ function DataTableManager:ctor(procBattle)
     _decodeTab(self, "activity910")
     _decodeTab(self, "activity911")
     _decodeTab(self, "activity912")
+    _decodeTab(self, "activity913")
+    _decodeTab(self, "activity914")
     _decodeTab(self, "sevenAimConst")
     -- 7日
     _decodeTab(self, "activity902")
@@ -376,6 +388,13 @@ function DataTableManager:ctor(procBattle)
     --领体力
     _decodeTab(self, "dailyPhyscal")
 
+    -- 回流
+    _decodeTab(self, "activetask")
+    _decodeTab(self, "integralreward")
+
+    -- 元素馈赠    
+    _decodeTab(self, "eleGift")
+
     -- 气泡
     _decodeTab(self, "qipao")
     _decodeTab(self, "activityqipao")
@@ -385,6 +404,7 @@ function DataTableManager:ctor(procBattle)
     _decodeTab(self, "sign")
     _decodeTab(self, "signCount")
     _decodeTab(self, "signShare")
+    _decodeTab(self, "shopSign")
 
     -- 公测庆典 集字兑换
     _decodeTab(self, "celebrationExchange")
@@ -400,6 +420,18 @@ function DataTableManager:ctor(procBattle)
 
     -- 圣徽周卡
     _decodeTab(self, "activity108")
+
+    -- 终极降临
+    _decodeTab(self, "guildShow")
+    _decodeTab(self, "guildTask50001")
+    _decodeTab(self, "personalTask50001")
+    _decodeTab(self, "guildReward50001")
+
+    -- 限时祈愿 16资质
+    _decodeTab(self, "prayConfig")
+    _decodeTab(self, "prayBox")
+    _decodeTab(self, "prayRank")
+    _decodeTab(self, "prayShop")
 
     -- 好友邀请
     _decodeTab(self, "activityInviteNew")
@@ -461,6 +493,7 @@ function DataTableManager:ctor(procBattle)
     _decodeTab(self, "sphinxPersonRank")
     _decodeTab(self, "sphinxQuestion")
     _decodeTab(self, "sphinxZhongqiu")
+    _decodeTab(self, "guildMapTreasureEvent")
     
     --联盟秘境
     _decodeTab(self, "famAppear")
@@ -498,6 +531,8 @@ function DataTableManager:ctor(procBattle)
     --射箭小游戏
     _decodeTab(self, "arrow")
     _decodeTab(self, "arrowAward")
+    _decodeTab(self, "octopusAct")
+    _decodeTab(self, "octopusTrail")
 
     --训练所 
     _decodeTab(self, "training")
@@ -505,6 +540,11 @@ function DataTableManager:ctor(procBattle)
     _decodeTab(self, "evaluate")
     _decodeTab(self, "trainingRank")
     _decodeTab(self, "trainingAward")
+
+    --木桩
+    _decodeTab(self, "stakeBattle")
+    _decodeTab(self, "stakeReward")
+    _decodeTab(self, "stakeHero")
 
     -- 兵团技巧
     _decodeTab(self, "technique")
@@ -684,7 +724,7 @@ function DataTableManager:ctor(procBattle)
     _decodeTab(self, "shopRuneReward")
     _decodeTab(self, "attClient")
 
-	_decodeTab(self, "runeCastingMastery")
+    _decodeTab(self, "runeCastingMastery")
 
 
     -- 主城小物件
@@ -715,7 +755,62 @@ function DataTableManager:ctor(procBattle)
     _decodeTab(self, "starChartsCatena")
 
     _decodeTab(self, "leagueHeroOrder")
+
+    -- 后援
+    _decodeTab(self, "backupMain")
+    _decodeTab(self, "backupLevelup")
+    _decodeTab(self, "backupSkillLevelup")
+    --兵团皮肤
+    _decodeTab(self, "teamSkin")
     
+    --跨服诸神（周年庆）
+    _decodeTab(self, "crossFightTime")
+    _decodeTab(self, "crossFightRank")
+    _decodeTab(self, "shopCrossFight")
+    _decodeTab(self, "crossFightReward")
+
+    --英雄法相
+    _decodeTab(self,"heroShadow")
+
+    --世界杯竞猜
+    _decodeTab(self, "guess")
+    _decodeTab(self, "guessTeam")
+    _decodeTab(self, "guessBet")
+    _decodeTab(self, "guessReward")
+
+    -- 兵团专属
+    _decodeTab(self, "exclusive", true)
+    _decodeTab(self, "exclusiveLevel", true)
+    
+    --兵团战阵
+    _decodeTab(self, "battleDiagram")
+    _decodeTab(self, "battleLineMap")
+    _decodeTab(self, "battleUp")
+
+    --荣耀竞技场
+    _decodeTab(self, "honorArenaAward")
+    _decodeTab(self, "rankStageAward")
+    _decodeTab(self, "honorArenaActivity")
+    _decodeTab(self, "honorArenaSoloGroup")
+    _decodeTab(self, "honorArenaResource")
+
+    --炼金工坊
+    _decodeTab(self, "alchemyPlan")
+    _decodeTab(self, "toolAlchemyPoint")
+
+    --世界boss
+    _decodeTab(self,"worldBossAtackReward")
+    _decodeTab(self,"worldBossRank")
+    _decodeTab(self,"worldBossLeagueRank")
+    _decodeTab(self,"worldBossMain")
+    _decodeTab(self,"worldBossColdDown")
+    --巅峰
+    _decodeTab(self, "paragonLevel")
+    _decodeTab(self, "paragonTalent")
+    _decodeTab(self, "paragonTalentTree")
+    _decodeTab(self, "paragonLevel")
+
+    _decodeTab(self, "professionBattle")
 end
 
 function DataTableManager:antiInit()
@@ -1097,6 +1192,10 @@ end
 function DataTableManager:_procDecodeTab(filename)
     if self[filename] then return end
     self[filename] = require(filename)
+    if filename == "npc" then
+        local npcExtend = require(filename .. "1")
+        table.merge(self[filename], npcExtend)
+    end
     if self["extend_"..filename] then
         self["extend_"..filename](self)
     end
@@ -1258,7 +1357,16 @@ function DataTableManager:initProcBattle()
     _procDecodeTab(self, "starChartsCatena")
     _procDecodeTab(self, "starCharts")
     _procDecodeTab(self, "attClient")
+    _procDecodeTab(self, "stakeBattle")
+    _procDecodeTab(self, "teamSkin")
+    _procDecodeTab(self, "backupMain")
+    _procDecodeTab(self, "setting")
+    _procDecodeTab(self, "battleUp")
+    _procDecodeTab(self, "battleDiagram")
+    _procDecodeTab(self, "exclusive")
+    _procDecodeTab(self, "paragonTalent")
 
+    _procDecodeTab(self, "professionBattle")
 --    _procDecodeTab(self, "purFight")
 end
 
